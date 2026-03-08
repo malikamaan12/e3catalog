@@ -35,7 +35,7 @@ async function checkPublicTables() {
         }
 
         client.release();
-    } catch (err) {
+    } catch (err: any) {
         console.error('Error:', err.message);
     } finally {
         await pool.end();

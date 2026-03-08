@@ -15,7 +15,7 @@ async function diagnose() {
         try {
             const res = await client.query('SELECT * FROM users LIMIT 1');
             console.log('Query successful. Rows found:', res.rowCount);
-        } catch (queryErr) {
+        } catch (queryErr: any) {
             console.error('--- Query Failed ---');
             console.error('Message:', queryErr.message);
             console.error('Code:', queryErr.code);
@@ -25,7 +25,7 @@ async function diagnose() {
         }
 
         client.release();
-    } catch (connErr) {
+    } catch (connErr: any) {
         console.error('--- Connection Failed ---');
         console.error(connErr.message);
     } finally {

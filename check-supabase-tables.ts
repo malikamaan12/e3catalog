@@ -21,7 +21,7 @@ async function checkTables() {
             res.rows.forEach(r => console.log(`- ${r.table_name}`));
         }
         client.release();
-    } catch (err) {
+    } catch (err: any) {
         console.error('Error:', err.message);
     } finally {
         await pool.end();

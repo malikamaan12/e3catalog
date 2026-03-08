@@ -17,7 +17,7 @@ async function checkColumns() {
         console.log('--- Columns in "users" table ---');
         res.rows.forEach(r => console.log(`- ${r.column_name} (${r.data_type})`));
         client.release();
-    } catch (err) {
+    } catch (err: any) {
         console.error('Error:', err.message);
     } finally {
         await pool.end();
