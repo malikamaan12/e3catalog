@@ -43,10 +43,12 @@ export async function GET() {
         console.error("Admin init error detail:", {
             message: error.message,
             stack: error.stack,
-            code: error.code
+            code: error.code,
+            detail: error.detail,
+            hint: error.hint
         });
         return NextResponse.json(
-            { error: "Internal server error: " + (error.message || "Unknown error") },
+            { error: `Internal server error: ${error.message}${error.detail ? ' | ' + error.detail : ''}${error.hint ? ' | ' + error.hint : ''}` },
             { status: 500 }
         );
     }
