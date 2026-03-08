@@ -1,0 +1,195 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { Box, Lock, Mail, ArrowRight, Loader2, User, ShieldCheck } from "lucide-react";
+
+export default function LoginPage() {
+    const router = useRouter();
+    const [loginType, setLoginType] = useState<"client" | "admin">("client");
+    const [emailState, setEmailState] = useState("");
+    const [passwordState, setPasswordState] = useState("");
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsLoading(true);
+        setError(null);
+
+        try {
+            const res = await fetch("/api/auth/login", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email: emailState, password: passwordState }),
+            });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                // Return a more user-friendly error depending on the login mode
+                const errMsg =
+                    loginType === "client"
+                        ? (data.error || "Failed to sign in. Did you use the phone number you requested the quote with?")
+                        : (data.error || "Invalid admin credentials");
+                throw new Error(errMsg);
+            }
+
+            // Route based on actual role claim instead of what tab they clicked
+            const adminRoles = ["admin", "super_admin", "sales_rep", "warehouse_manager", "vendor"];
+            if (adminRoles.includes(data.user?.role)) {
+                router.push("/admin");
+            } else {
+                router.push("/dashboard");
+            }
+            router.refresh();
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    return (
+        <div className="min-h-screen bg-navy text-navy-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative overflow-hidden">
+            {/* Decorative gradient glow */}
+            <div className="absolute top-0 right-0 -mr-32 -mt-32 w-96 h-96 rounded-full bg-gold/10 blur-3xl opacity-50 pointer-events-none" />
+            <div className="absolute bottom-0 left-0 -ml-32 -mb-32 w-96 h-96 rounded-full bg-navy-400/20 blur-3xl opacity-50 pointer-events-none" />
+
+            <div className="sm:mx-auto sm:w-full sm:max-w-md relative z-10">
+                <Link href="/" className="flex items-center justify-center gap-2 mb-8 group">
+                    <Box className="h-10 w-10 text-gold group-hover:scale-110 transition-transform duration-300" />
+                    <span className="text-2xl font-bold tracking-tight text-white uppercase font-outfit">
+                        E3 <span className="font-light text-navy-300">Rentals</span>
+                    </span>
+                </Link>
+                <h2 className="mt-6 text-center text-3xl font-bold tracking-tight text-white font-outfit">
+                    Access your account
+                </h2>
+                <p className="mt-2 text-center text-sm text-navy-300">
+                    Or{" "}
+                    <Link href="/catalog" className="font-medium text-gold hover:text-gold-300 transition-colors">
+                        browse the catalog
+                    </Link>{" "}
+                    to start a new quote
+                </p>
+            </div>
+
+            <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md relative z-10">
+                <div className="bg-navy-800/50 backdrop-blur-xl py-8 px-4 shadow-[0_0_40px_rgba(0,0,0,0.3)] sm:rounded-2xl sm:px-8 border border-navy-700">
+
+                    {/* Login Type Toggle */}
+                    <div className="flex p-1 mb-8 bg-black/40 rounded-xl">
+                        <button
+                            onClick={() => { setLoginType("client"); setError(null); }}
+                            className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium rounded-lg transition-all ${loginType === "client" ? "bg-navy-700 text-white shadow" : "text-navy-400 hover:text-white"}`}
+                        >
+                            <User className="h-4 w-4" />
+                            Client Portal
+                        </button>
+                        <button
+                            onClick={() => { setLoginType("admin"); setError(null); }}
+                            className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium rounded-lg transition-all ${loginType === "admin" ? "bg-navy-700 text-white shadow" : "text-navy-400 hover:text-white"}`}
+                        >
+                            <ShieldCheck className="h-4 w-4" />
+                            Admin Portal
+                        </button>
+                    </div>
+
+                    <form className="space-y-6" onSubmit={handleSubmit}>
+                        {error && (
+                            <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-xl text-sm leading-relaxed">
+                                {error}
+                            </div>
+                        )}
+
+                        <div>
+                            <label className="block text-sm font-medium text-navy-200" htmlFor="email">
+                                Email Address
+                            </label>
+                            <div className="mt-2 relative">
+                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-navy-400">
+                                    <Mail className="h-5 w-5" />
+                                </div>
+                                <input
+                                    id="email"
+                                    type="email"
+                                    value={emailState}
+                                    onChange={(e) => setEmailState(e.target.value)}
+                                    className="block w-full rounded-xl border-navy-600 bg-navy-900/50 py-3 pl-10 pr-3 text-white placeholder-navy-400 focus:border-gold focus:ring-gold sm:text-sm shadow-inner transition-colors"
+                                    placeholder={loginType === "admin" ? "admin@e3rentals.com" : "hello@company.com"}
+                                    required
+                                />
+                            </div>
+                        </div>
+
+                        <div>
+                            <div className="flex items-center justify-between">
+                                <label className="block text-sm font-medium text-navy-200" htmlFor="password">
+                                    Password {loginType === "client" && <span className="text-navy-400 text-xs font-normal">(Phone Number)</span>}
+                                </label>
+                            </div>
+                            <div className="mt-2 relative">
+                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-navy-400">
+                                    <Lock className="h-5 w-5" />
+                                </div>
+                                <input
+                                    id="password"
+                                    type="password"
+                                    value={passwordState}
+                                    onChange={(e) => setPasswordState(e.target.value)}
+                                    className="block w-full rounded-xl border-navy-600 bg-navy-900/50 py-3 pl-10 pr-3 text-white placeholder-navy-400 focus:border-gold focus:ring-gold sm:text-sm shadow-inner transition-colors"
+                                    placeholder={loginType === "admin" ? "Enter admin password" : "Enter your phone number"}
+                                    required
+                                />
+                            </div>
+                        </div>
+
+                        <div>
+                            <button
+                                type="submit"
+                                disabled={isLoading}
+                                className="group relative flex w-full justify-center rounded-xl bg-gold px-4 py-3 text-sm font-bold text-navy-900 hover:bg-gold-400 focus:outline-none focus:ring-2 focus:ring-gold focus:ring-offset-2 focus:ring-offset-navy-900 disabled:opacity-70 disabled:cursor-not-allowed transition-all shadow-[0_0_20px_rgba(201,168,76,0.2)] hover:shadow-[0_0_25px_rgba(201,168,76,0.4)]"
+                            >
+                                {isLoading ? (
+                                    <span className="flex items-center gap-2">
+                                        <Loader2 className="h-5 w-5 animate-spin" />
+                                        Signing in...
+                                    </span>
+                                ) : (
+                                    <span className="flex items-center gap-2">
+                                        Sign in to {loginType === "admin" ? "Admin" : "Account"}
+                                        <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                                    </span>
+                                )}
+                            </button>
+                        </div>
+                    </form>
+
+                    {loginType === "client" && (
+                        <div className="mt-6">
+                            <div className="relative">
+                                <div className="absolute inset-0 flex items-center">
+                                    <div className="w-full border-t border-navy-700" />
+                                </div>
+                                <div className="relative flex justify-center text-sm">
+                                    <span className="bg-[#121929] px-2 text-navy-400">
+                                        New to E3 Rentals?{" "}
+                                        <Link href="/signup" className="font-medium text-gold hover:text-gold-300 transition-colors">
+                                            Sign up here
+                                        </Link>
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div className="mt-6 text-center text-sm text-navy-300">
+                                An account is automatically created for you when you submit your first quote request from the catalog.
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+}
