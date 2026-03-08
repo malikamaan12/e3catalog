@@ -1,6 +1,13 @@
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+let resendInstance: Resend | null = null;
+
+function getResend() {
+    if (!resendInstance) {
+        resendInstance = new Resend(process.env.RESEND_API_KEY);
+    }
+    return resendInstance;
+}
 
 const FROM = process.env.EMAIL_FROM || "E3 Rentals <noreply@e3rentals.com>";
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
@@ -192,6 +199,7 @@ export async function sendQuoteStatusEmail(opts: {
     if (!finalHtml) return;
 
     try {
+        const resend = getResend();
         await resend.emails.send({
             from: FROM,
             to: opts.to,
