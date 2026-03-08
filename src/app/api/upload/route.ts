@@ -5,6 +5,20 @@ import { v4 as uuid } from "uuid";
 
 export async function POST(req: NextRequest) {
     try {
+        // Check that R2 credentials are configured
+        const missingVars = [];
+        if (!process.env.S3_ACCESS_KEY_ID) missingVars.push("S3_ACCESS_KEY_ID");
+        if (!process.env.S3_SECRET_ACCESS_KEY) missingVars.push("S3_SECRET_ACCESS_KEY");
+        if (!process.env.S3_ENDPOINT) missingVars.push("S3_ENDPOINT");
+        if (!process.env.S3_BUCKET_NAME) missingVars.push("S3_BUCKET_NAME");
+
+        if (missingVars.length > 0) {
+            return NextResponse.json(
+                { error: `Storage not configured. Missing environment variables: ${missingVars.join(", ")}` },
+                { status: 500 }
+            );
+        }
+
         const body = await req.json();
         const { filename, contentType, folder = "uploads" } = body;
 
@@ -42,8 +56,8 @@ export async function POST(req: NextRequest) {
             key: result.key,
             publicUrl: getPublicCDNUrl(key),
         });
-    } catch (err) {
+    } catch (err: any) {
         console.error("Upload API error:", err);
-        return NextResponse.json({ error: "Failed to process upload request" }, { status: 500 });
+        return NextResponse.json({ error: "Failed to process upload request: " + err.message }, { status: 500 });
     }
 }
