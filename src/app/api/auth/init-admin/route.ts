@@ -40,9 +40,13 @@ export async function GET() {
         });
 
     } catch (error: any) {
-        console.error("Admin init error:", error);
+        console.error("Admin init error detail:", {
+            message: error.message,
+            stack: error.stack,
+            code: error.code
+        });
         return NextResponse.json(
-            { error: "Internal server error" },
+            { error: "Internal server error: " + (error.message || "Unknown error") },
             { status: 500 }
         );
     }
