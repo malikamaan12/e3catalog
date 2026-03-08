@@ -2,25 +2,28 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import * as schema from "./schema";
 
-// Parse individual params from DATABASE_URL or use separate env vars.
-// Using individual params avoids URL-encoding issues with special chars in passwords.
+// Prefer individual params if DB_HOST is set (avoids URL encoding issues)
 function getDbConfig() {
-    const url = process.env.DATABASE_URL;
-    if (url) {
-        try {
-            // Try to use it as a connection string first
-            return { connectionString: url, ssl: { rejectUnauthorized: false } };
-        } catch {
-            // Fall through to individual params
-        }
+    if (process.env.DB_HOST) {
+        return {
+            host: process.env.DB_HOST,
+            port: parseInt(process.env.DB_PORT || "5432"),
+            user: process.env.DB_USER || "postgres",
+            password: process.env.DB_PASSWORD || "Malik12amaan@#",
+            database: process.env.DB_NAME || "postgres",
+            ssl: { rejectUnauthorized: false },
+        };
     }
-    // Fallback: individual connection params (avoids URL encoding issues)
+    if (process.env.DATABASE_URL) {
+        return { connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } };
+    }
+    // Hardcoded fallback — Session Pooler (IPv4-compatible for Vercel)
     return {
-        host: process.env.DB_HOST || "aws-1-ap-northeast-1.pooler.supabase.com",
-        port: parseInt(process.env.DB_PORT || "5432"),
-        user: process.env.DB_USER || "postgres.kwswkoysskkxuezbfmyt",
-        password: process.env.DB_PASSWORD || "Malik12amaan@#",
-        database: process.env.DB_NAME || "postgres",
+        host: "aws-1-ap-northeast-1.pooler.supabase.com",
+        port: 5432,
+        user: "postgres.kwswkoysskkxuezbfmyt",
+        password: "Malik12amaan@#",
+        database: "postgres",
         ssl: { rejectUnauthorized: false },
     };
 }
