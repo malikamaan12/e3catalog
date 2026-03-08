@@ -84,7 +84,10 @@ export async function POST(req: Request) {
             code: error.code
         });
         return NextResponse.json(
-            { error: "Internal server error: " + (error.message || "Unknown error") },
+            {
+                error: "Internal server error: " + (error.message || "Unknown error"),
+                version: "2026-03-09-v2-login"
+            },
             { status: 500 }
         );
     }
