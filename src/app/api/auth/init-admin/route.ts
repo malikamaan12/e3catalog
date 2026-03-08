@@ -34,6 +34,7 @@ export async function GET() {
 
         return NextResponse.json({
             success: true,
+            version: "2026-03-09-v1",
             message: "Primary admin account created successfully.",
             email: "admin@e3rentals.com",
             password: "adminpassword123"
