@@ -16,9 +16,9 @@ function getDbConfig() {
     }
     // Fallback: individual connection params (avoids URL encoding issues)
     return {
-        host: process.env.DB_HOST || "db.kwswkoysskkxuezbfmyt.supabase.co",
+        host: process.env.DB_HOST || "aws-1-ap-northeast-1.pooler.supabase.com",
         port: parseInt(process.env.DB_PORT || "5432"),
-        user: process.env.DB_USER || "postgres",
+        user: process.env.DB_USER || "postgres.kwswkoysskkxuezbfmyt",
         password: process.env.DB_PASSWORD || "Malik12amaan@#",
         database: process.env.DB_NAME || "postgres",
         ssl: { rejectUnauthorized: false },
