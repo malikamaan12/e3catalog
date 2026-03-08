@@ -5,7 +5,7 @@ import { users } from "./db/schema";
 import { eq } from "drizzle-orm";
 
 const SECRET_KEY = new TextEncoder().encode(
-    process.env.JWT_SECRET || "default_super_secret_key_for_development"
+    process.env.JWT_SECRET || process.env.AUTHENTICATION_SECRET || "default_super_secret_key_for_development"
 );
 
 export async function signToken(payload: { id: string; email: string; role: string }) {

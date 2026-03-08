@@ -78,9 +78,13 @@ export async function POST(req: Request) {
             },
         });
     } catch (error: any) {
-        console.error("Login endpoint error:", error);
+        console.error("Login endpoint error detail:", {
+            message: error.message,
+            stack: error.stack,
+            code: error.code
+        });
         return NextResponse.json(
-            { error: "Internal server error" },
+            { error: "Internal server error: " + (error.message || "Unknown error") },
             { status: 500 }
         );
     }
