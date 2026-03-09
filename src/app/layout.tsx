@@ -4,6 +4,7 @@ import { Navbar } from "@/components/Navbar";
 import { SiteSettingsProvider } from "@/components/SiteSettingsProvider";
 import { MarketingBanner } from "@/components/landing/MarketingBanner";
 import { MarketingPopup } from "@/components/landing/MarketingPopup";
+import { Toaster } from "react-hot-toast";
 
 export const metadata: Metadata = {
   title: "E3 Rentals — Premium Event Equipment",
@@ -25,6 +26,25 @@ export default function RootLayout({
           {children}
           <MarketingPopup />
         </SiteSettingsProvider>
+        <Toaster
+          position="top-right"
+          toastOptions={{
+            duration: 4000,
+            style: {
+              background: "#1a2035",
+              color: "#e8dcc8",
+              border: "1px solid rgba(255,255,255,0.1)",
+              borderRadius: "10px",
+              fontSize: "14px",
+            },
+            success: {
+              iconTheme: { primary: "#c9a84c", secondary: "#1a2035" },
+            },
+            error: {
+              iconTheme: { primary: "#ef4444", secondary: "#1a2035" },
+            },
+          }}
+        />
       </body>
     </html>
   );

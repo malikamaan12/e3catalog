@@ -18,6 +18,7 @@ import {
     Users,
     CreditCard
 } from "lucide-react";
+import NotificationBell from "@/components/NotificationBell";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
@@ -117,9 +118,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <div className="flex">
                 {/* Sidebar */}
                 <aside className="w-64 fixed top-20 left-0 bottom-0 bg-[var(--color-surface)] border-r border-[var(--color-border-subtle)] p-6 hidden lg:block">
-                    <div className="mb-8">
-                        <h2 className="font-[family-name:var(--font-heading)] text-xs tracking-widest text-[var(--color-gold)] font-semibold mb-1">ADMIN PANEL</h2>
-                        <p className="font-[family-name:var(--font-heading)] text-xs text-[var(--color-slate)] uppercase tracking-wider">Management Console</p>
+                    <div className="mb-8 flex items-start justify-between">
+                        <div>
+                            <h2 className="font-[family-name:var(--font-heading)] text-xs tracking-widest text-[var(--color-gold)] font-semibold mb-1">ADMIN PANEL</h2>
+                            <p className="font-[family-name:var(--font-heading)] text-xs text-[var(--color-slate)] uppercase tracking-wider">Management Console</p>
+                        </div>
+                        <NotificationBell />
                     </div>
 
                     <nav className="space-y-1">
