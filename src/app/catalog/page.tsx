@@ -1,12 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { ProductCard } from "@/components/ProductCard";
 import { Footer } from "@/components/Footer";
 import { Suspense } from "react";
-import * as LucideIcons from "lucide-react";
-import { LayoutGrid } from "lucide-react";
+import {
+    LayoutGrid, Layers, Building2, Frame, Link2, Lightbulb, Mic2,
+    Monitor, Zap, Wind, Armchair, Palette, Flag, Navigation,
+    Shield, Gamepad2, Trophy, Laptop2, Truck, ShieldCheck, HardHat
+} from "lucide-react";
 
 interface Product {
     id: string;
@@ -32,34 +35,31 @@ interface Category {
     children?: Category[];
 }
 
-// Slug → Lucide icon name (matches what's stored in DB)
-const SLUG_ICON_MAP: Record<string, string> = {
-    "staging": "Layers",
-    "exhibitions": "Building2",
-    "structures": "Frame",
-    "rigging-truss": "Link2",
-    "lighting": "Lightbulb",
-    "audio": "Mic2",
-    "led-displays": "Monitor",
-    "power-electrical": "Zap",
-    "climate-utilities": "Wind",
-    "furniture": "Armchair",
-    "decor": "Palette",
-    "branding": "Flag",
-    "wayfinding": "Navigation",
-    "crowd-control": "Shield",
-    "entertainment": "Gamepad2",
-    "sports-equipment": "Trophy",
-    "event-technology": "Laptop2",
-    "logistics-equipment": "Truck",
-    "safety-equipment": "ShieldCheck",
-    "manpower": "HardHat",
+// Explicit icon map — covers all 20 categories + fallback
+const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
+    "Layers": Layers, "Building2": Building2, "Frame": Frame,
+    "Link2": Link2, "Lightbulb": Lightbulb, "Mic2": Mic2,
+    "Monitor": Monitor, "Zap": Zap, "Wind": Wind,
+    "Armchair": Armchair, "Palette": Palette, "Flag": Flag,
+    "Navigation": Navigation, "Shield": Shield, "Gamepad2": Gamepad2,
+    "Trophy": Trophy, "Laptop2": Laptop2, "Truck": Truck,
+    "ShieldCheck": ShieldCheck, "HardHat": HardHat,
+};
+
+// Slug → icon name fallback (used if DB icon field is null)
+const SLUG_FALLBACK: Record<string, string> = {
+    "staging": "Layers", "exhibitions": "Building2", "structures": "Frame",
+    "rigging-truss": "Link2", "lighting": "Lightbulb", "audio": "Mic2",
+    "led-displays": "Monitor", "power-electrical": "Zap", "climate-utilities": "Wind",
+    "furniture": "Armchair", "decor": "Palette", "branding": "Flag",
+    "wayfinding": "Navigation", "crowd-control": "Shield", "entertainment": "Gamepad2",
+    "sports-equipment": "Trophy", "event-technology": "Laptop2",
+    "logistics-equipment": "Truck", "safety-equipment": "ShieldCheck", "manpower": "HardHat",
 };
 
 function CategoryIcon({ icon, slug, className = "w-4 h-4" }: { icon?: string | null; slug: string; className?: string }) {
-    // 1. Try DB icon name first, 2. Fall back to slug map, 3. Default to LayoutGrid
-    const iconName = icon || SLUG_ICON_MAP[slug] || "LayoutGrid";
-    const Icon = (LucideIcons as any)[iconName] || LayoutGrid;
+    const iconName = icon || SLUG_FALLBACK[slug] || "";
+    const Icon = ICON_MAP[iconName] || LayoutGrid;
     return <Icon className={className} />;
 }
 
