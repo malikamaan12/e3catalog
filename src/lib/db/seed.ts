@@ -58,13 +58,13 @@ async function bulkAddProducts() {
 
             await client.query(`
                 INSERT INTO products (
-                    id, category_id, name, slug, item_code,
+                    id, vendor_id, category_id, name, slug, item_code,
                     short_description, dimensions, weight, power_requirements, materials,
                     price_per_day, show_price, price_type, unit, min_order_qty,
                     featured, requires_license, requires_approval,
                     created_at, updated_at
                 ) VALUES (
-                    $1, $2, $3, $4, $5,
+                    $1, '3db04aee-d024-4f77-9f7f-53fc94d40460', $2, $3, $4, $5,
                     $6, $7, $8, $9, $10,
                     $11, true, 'daily', 'unit', 1,
                     false, false, false,

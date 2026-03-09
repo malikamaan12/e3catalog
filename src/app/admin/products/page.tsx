@@ -8,6 +8,7 @@ import AvailabilityTimeline from "@/components/admin/AvailabilityTimeline";
 
 interface Product {
     id: string;
+    itemCode: string | null;
     name: string;
     slug: string;
     pricePerDay: number;
@@ -62,7 +63,10 @@ export default function AdminProductsPage() {
         return products.filter(p => {
             // Search
             const q = searchQuery.toLowerCase();
-            const matchesSearch = !q || p.name.toLowerCase().includes(q) || p.slug.toLowerCase().includes(q);
+            const matchesSearch = !q ||
+                p.name.toLowerCase().includes(q) ||
+                p.slug.toLowerCase().includes(q) ||
+                (p.itemCode && p.itemCode.toLowerCase().includes(q));
 
             // Category
             const matchesCategory = categoryFilter === "ALL" || p.category?.name === categoryFilter;
@@ -157,6 +161,7 @@ export default function AdminProductsPage() {
                             <thead>
                                 <tr className="border-b border-[var(--color-border-subtle)]">
                                     <th className="text-left py-3 px-4 text-xs font-semibold text-[var(--color-gold)] tracking-wider">PRODUCT</th>
+                                    <th className="text-left py-3 px-4 text-xs font-semibold text-[var(--color-gold)] tracking-wider">SKU</th>
                                     <th className="text-left py-3 px-4 text-xs font-semibold text-[var(--color-gold)] tracking-wider hidden md:table-cell">CATEGORY</th>
                                     <th className="text-right py-3 px-4 text-xs font-semibold text-[var(--color-gold)] tracking-wider">PRICE/DAY</th>
                                     <th className="text-center py-3 px-4 text-xs font-semibold text-[var(--color-gold)] tracking-wider hidden md:table-cell">UNITS</th>
@@ -186,6 +191,11 @@ export default function AdminProductsPage() {
                                                         <p className="text-xs text-[var(--color-slate)]">{product.slug}</p>
                                                     </div>
                                                 </div>
+                                            </td>
+                                            <td className="py-3 px-4">
+                                                <span className="text-xs font-mono bg-[var(--color-navy-lighter)] px-2 py-1 rounded border border-white/5 text-[var(--color-gold)]">
+                                                    {product.itemCode || "—"}
+                                                </span>
                                             </td>
                                             <td className="py-3 px-4 text-sm text-[var(--color-slate)] hidden md:table-cell">{product.category?.name || "—"}</td>
                                             <td className="py-3 px-4 text-sm text-[var(--color-slate)] hidden md:table-cell text-right font-medium text-[var(--color-gold)]">{product.pricePerDay.toLocaleString()} QAR</td>
