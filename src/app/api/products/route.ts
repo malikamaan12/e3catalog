@@ -48,6 +48,7 @@ export async function GET(req: NextRequest) {
                 categoryId: true,
                 dimensions: true,
                 vendorId: true,
+                itemCode: true,
             },
             with: {
                 category: { columns: { name: true, slug: true } },
@@ -75,6 +76,7 @@ export async function GET(req: NextRequest) {
                 categoryId: true,
                 dimensions: true,
                 vendorId: true,
+                itemCode: true,
             },
             with: {
                 category: { columns: { name: true, slug: true } },

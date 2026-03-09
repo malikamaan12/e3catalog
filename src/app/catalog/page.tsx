@@ -23,6 +23,7 @@ interface Product {
     thumbnailUrl: string | null;
     dimensions: string | null;
     category: { name: string; slug: string } | null;
+    itemCode: string | null;
 }
 
 interface Category {

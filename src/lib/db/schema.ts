@@ -337,6 +337,10 @@ export const productsRelations = relations(products, ({ one, many }) => ({
         fields: [products.categoryId],
         references: [categories.id],
     }),
+    vendor: one(vendors, {
+        fields: [products.vendorId],
+        references: [vendors.id],
+    }),
     media: many(productMedia),
     documents: many(productDocuments),
     safetyCertificates: many(safetyCertificates),
@@ -421,11 +425,12 @@ export const usersRelations = relations(users, ({ many }) => ({
     vendorProfile: many(vendors),
 }));
 
-export const vendorsRelations = relations(vendors, ({ one }) => ({
+export const vendorsRelations = relations(vendors, ({ one, many }) => ({
     user: one(users, {
         fields: [vendors.userId],
         references: [users.id]
-    })
+    }),
+    products: many(products),
 }));
 
 export const systemLogsRelations = relations(systemLogs, ({ one }) => ({

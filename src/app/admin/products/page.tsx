@@ -17,6 +17,7 @@ interface Product {
     condition: string;
     thumbnailUrl: string | null;
     category: { name: string; slug: string } | null;
+    vendor: { id: string; companyName: string } | null;
     media: Array<{ id: string; type: string }>;
     safetyCertificates: Array<{ id: string; certName: string }>;
 }
@@ -32,6 +33,7 @@ export default function AdminProductsPage() {
     const [searchQuery, setSearchQuery] = useState("");
     const [categoryFilter, setCategoryFilter] = useState("ALL");
     const [conditionFilter, setConditionFilter] = useState("ALL");
+    const [vendorFilter, setVendorFilter] = useState("ALL");
 
     useEffect(() => {
         fetch("/api/admin/products")
@@ -59,6 +61,14 @@ export default function AdminProductsPage() {
         return Array.from(cats).sort();
     }, [products]);
 
+    const uniqueVendors = useMemo(() => {
+        const vens = new Set<string>();
+        products.forEach(p => {
+            if (p.vendor?.companyName) vens.add(p.vendor.companyName);
+        });
+        return Array.from(vens).sort();
+    }, [products]);
+
     const processedProducts = useMemo(() => {
         return products.filter(p => {
             // Search
@@ -66,7 +76,8 @@ export default function AdminProductsPage() {
             const matchesSearch = !q ||
                 p.name.toLowerCase().includes(q) ||
                 p.slug.toLowerCase().includes(q) ||
-                (p.itemCode && p.itemCode.toLowerCase().includes(q));
+                (p.itemCode && p.itemCode.toLowerCase().includes(q)) ||
+                (p.vendor?.companyName && p.vendor.companyName.toLowerCase().includes(q));
 
             // Category
             const matchesCategory = categoryFilter === "ALL" || p.category?.name === categoryFilter;
@@ -74,9 +85,13 @@ export default function AdminProductsPage() {
             // Condition
             const matchesCondition = conditionFilter === "ALL" || p.condition === conditionFilter;
 
-            return matchesSearch && matchesCategory && matchesCondition;
+            // Vendor
+            const matchesVendor = vendorFilter === "ALL" ||
+                (vendorFilter === "PLATFORM" ? !p.vendor : p.vendor?.companyName === vendorFilter);
+
+            return matchesSearch && matchesCategory && matchesCondition && matchesVendor;
         });
-    }, [products, searchQuery, categoryFilter, conditionFilter]);
+    }, [products, searchQuery, categoryFilter, conditionFilter, vendorFilter]);
 
     return (
         <div>
@@ -123,6 +138,20 @@ export default function AdminProductsPage() {
                     <div className="flex items-center gap-2 bg-[var(--color-navy)] border border-[var(--color-border-subtle)] rounded-lg px-3 py-2">
                         <Filter className="w-4 h-4 text-[var(--color-gold)]" />
                         <select
+                            value={vendorFilter}
+                            onChange={(e) => setVendorFilter(e.target.value)}
+                            className="bg-transparent text-sm text-[var(--color-warm-white)] focus:outline-none appearance-none cursor-pointer"
+                        >
+                            <option value="ALL">All Vendors</option>
+                            <option value="PLATFORM">Platform Only</option>
+                            {uniqueVendors.map(v => (
+                                <option key={v} value={v}>{v}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <div className="flex items-center gap-2 bg-[var(--color-navy)] border border-[var(--color-border-subtle)] rounded-lg px-3 py-2">
+                        <Filter className="w-4 h-4 text-[var(--color-gold)]" />
+                        <select
                             value={conditionFilter}
                             onChange={(e) => setConditionFilter(e.target.value)}
                             className="bg-transparent text-sm text-[var(--color-warm-white)] focus:outline-none appearance-none cursor-pointer capitalize"
@@ -162,6 +191,7 @@ export default function AdminProductsPage() {
                                 <tr className="border-b border-[var(--color-border-subtle)]">
                                     <th className="text-left py-3 px-4 text-xs font-semibold text-[var(--color-gold)] tracking-wider">PRODUCT</th>
                                     <th className="text-left py-3 px-4 text-xs font-semibold text-[var(--color-gold)] tracking-wider">SKU</th>
+                                    <th className="text-left py-3 px-4 text-xs font-semibold text-[var(--color-gold)] tracking-wider">VENDOR</th>
                                     <th className="text-left py-3 px-4 text-xs font-semibold text-[var(--color-gold)] tracking-wider hidden md:table-cell">CATEGORY</th>
                                     <th className="text-right py-3 px-4 text-xs font-semibold text-[var(--color-gold)] tracking-wider">PRICE/DAY</th>
                                     <th className="text-center py-3 px-4 text-xs font-semibold text-[var(--color-gold)] tracking-wider hidden md:table-cell">UNITS</th>
@@ -196,6 +226,17 @@ export default function AdminProductsPage() {
                                                 <span className="text-xs font-mono bg-[var(--color-navy-lighter)] px-2 py-1 rounded border border-white/5 text-[var(--color-gold)]">
                                                     {product.itemCode || "—"}
                                                 </span>
+                                            </td>
+                                            <td className="py-3 px-4">
+                                                {product.vendor ? (
+                                                    <span className="text-xs font-medium text-[var(--color-gold)] bg-[var(--color-gold)]/10 px-2 py-0.5 rounded-full border border-[var(--color-gold)]/20">
+                                                        {product.vendor.companyName}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-xs font-medium text-[var(--color-slate)] bg-white/5 px-2 py-0.5 rounded-full border border-white/10 uppercase">
+                                                        Platform
+                                                    </span>
+                                                )}
                                             </td>
                                             <td className="py-3 px-4 text-sm text-[var(--color-slate)] hidden md:table-cell">{product.category?.name || "—"}</td>
                                             <td className="py-3 px-4 text-sm text-[var(--color-slate)] hidden md:table-cell text-right font-medium text-[var(--color-gold)]">{product.pricePerDay.toLocaleString()} QAR</td>

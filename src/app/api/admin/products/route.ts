@@ -20,11 +20,19 @@ export async function GET() {
         where: targetVendorId ? eq(products.vendorId, targetVendorId) : undefined,
         with: {
             category: { columns: { name: true, slug: true } },
+            vendor: { columns: { id: true, companyName: true } },
             media: true,
             safetyCertificates: true,
+            inventoryUnits: { columns: { id: true } },
         },
     });
-    return NextResponse.json(result);
+
+    const productsWithCounts = result.map(p => ({
+        ...p,
+        totalUnits: (p as any).inventoryUnits?.length || 0
+    }));
+
+    return NextResponse.json(productsWithCounts);
 }
 
 export async function POST(req: NextRequest) {

@@ -17,6 +17,7 @@ interface ProductCardProps {
     priceType?: string;
     priceRangeMax?: number | null;
     unit?: string;
+    itemCode?: string | null;
 }
 
 export function ProductCard({
@@ -35,6 +36,7 @@ export function ProductCard({
     priceType,
     priceRangeMax,
     unit,
+    itemCode,
 }: ProductCardProps) {
     // If we don't have currentAvailableUnits (old API), fallback to totalUnits
     const available = currentAvailableUnits !== undefined ? currentAvailableUnits : totalUnits;
@@ -99,9 +101,16 @@ export function ProductCard({
             {/* Content */}
             <div className="p-5">
                 <div className="flex items-start justify-between gap-3 mb-2">
-                    <h3 className="font-[family-name:var(--font-heading)] font-semibold text-[var(--color-warm-white)] leading-tight line-clamp-2 group-hover:text-[var(--color-gold)] transition-colors">
-                        {name}
-                    </h3>
+                    <div className="flex-1">
+                        <h3 className="font-[family-name:var(--font-heading)] font-semibold text-[var(--color-warm-white)] leading-tight line-clamp-2 group-hover:text-[var(--color-gold)] transition-colors">
+                            {name}
+                        </h3>
+                        {itemCode && (
+                            <p className="text-[10px] font-mono text-[var(--color-gold)] opacity-70 mt-0.5 tracking-wider">
+                                {itemCode}
+                            </p>
+                        )}
+                    </div>
                     <div className="flex items-center gap-1.5 shrink-0 mt-1">
                         <span className="text-[10px] text-[var(--color-slate)] font-medium tracking-wide uppercase">{availabilityLabel}</span>
                         <div className={`dot-${availabilityStatus}`} />
