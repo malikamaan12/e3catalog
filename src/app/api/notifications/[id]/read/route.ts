@@ -6,8 +6,9 @@ import { requireAdmin } from "@/lib/requireAdmin";
 
 export async function POST(
     req: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
+    const { id } = await params;
     const authCheck = await requireAdmin(["super_admin", "admin", "sales_rep", "vendor", "warehouse_manager"]);
     if (authCheck.error) return authCheck.error;
     const user = authCheck.user!;
@@ -16,7 +17,7 @@ export async function POST(
         await db
             .update(notifications)
             .set({ isRead: true })
-            .where(and(eq(notifications.id, params.id), eq(notifications.userId, user.id)));
+            .where(and(eq(notifications.id, id), eq(notifications.userId, user.id)));
 
         return NextResponse.json({ success: true });
     } catch (err: any) {
