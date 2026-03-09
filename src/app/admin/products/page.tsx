@@ -38,8 +38,19 @@ export default function AdminProductsPage() {
     useEffect(() => {
         fetch("/api/admin/products")
             .then((r) => r.json())
-            .then((data) => { setProducts(data); setLoading(false); })
-            .catch(() => setLoading(false));
+            .then((data) => {
+                if (Array.isArray(data)) {
+                    setProducts(data);
+                } else {
+                    console.error("Admin API Error or Invalid Data:", data);
+                    setProducts([]);
+                }
+                setLoading(false);
+            })
+            .catch((err) => {
+                console.error("Fetch Error:", err);
+                setLoading(false);
+            });
 
         fetch("/api/auth/me")
             .then(r => r.json())
@@ -55,21 +66,26 @@ export default function AdminProductsPage() {
 
     const uniqueCategories = useMemo(() => {
         const cats = new Set<string>();
-        products.forEach(p => {
-            if (p.category?.name) cats.add(p.category.name);
-        });
+        if (Array.isArray(products)) {
+            products.forEach(p => {
+                if (p.category?.name) cats.add(p.category.name);
+            });
+        }
         return Array.from(cats).sort();
     }, [products]);
 
     const uniqueVendors = useMemo(() => {
         const vens = new Set<string>();
-        products.forEach(p => {
-            if (p.vendor?.companyName) vens.add(p.vendor.companyName);
-        });
+        if (Array.isArray(products)) {
+            products.forEach(p => {
+                if (p.vendor?.companyName) vens.add(p.vendor.companyName);
+            });
+        }
         return Array.from(vens).sort();
     }, [products]);
 
     const processedProducts = useMemo(() => {
+        if (!Array.isArray(products)) return [];
         return products.filter(p => {
             // Search
             const q = searchQuery.toLowerCase();

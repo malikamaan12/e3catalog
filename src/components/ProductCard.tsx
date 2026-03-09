@@ -50,7 +50,7 @@ export function ProductCard({
     let availabilityLabel = "Out of Stock";
 
     if (available > 0) {
-        const percentage = available / totalUnits;
+        const percentage = totalUnits > 0 ? available / totalUnits : 0;
         const dispUnit = (unit === 'unit' || !unit) ? 'in stock' : `${unit} in stock`;
         const dispLeft = (unit === 'unit' || !unit) ? 'left' : `${unit} left`;
 

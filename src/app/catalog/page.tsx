@@ -102,16 +102,24 @@ function CatalogContent() {
         fetch(url)
             .then((r) => r.json())
             .then((data) => {
-                setProducts(data);
+                if (Array.isArray(data)) {
+                    setProducts(data);
+                } else {
+                    console.error("API Error or Invalid Data:", data);
+                    setProducts([]);
+                }
                 setLoading(false);
             })
-            .catch(() => setLoading(false));
+            .catch((err) => {
+                console.error("Fetch Error:", err);
+                setLoading(false);
+            });
     }, [selectedCategory]);
 
-    const filteredProducts = products.filter((p) =>
+    const filteredProducts = Array.isArray(products) ? products.filter((p) =>
         p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         p.shortDescription?.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    ) : [];
 
     const handleCategorySelect = (slug: string) => {
         setSelectedCategory(slug);

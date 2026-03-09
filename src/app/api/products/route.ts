@@ -90,10 +90,12 @@ export async function GET(req: NextRequest) {
     const productsWithAvailability = await Promise.all(
         result.map(async (prod: any) => {
             const timeline = await getAvailabilityTimeline(prod.id, 1);
-            const currentAvail = timeline.length > 0 ? timeline[0].available : (prod.inventoryUnits?.length || 0);
+            const totalUnits = prod.inventoryUnits?.length || 0;
+            const currentAvail = timeline.length > 0 ? timeline[0].available : totalUnits;
 
             return {
                 ...prod,
+                totalUnits,
                 currentAvailableUnits: currentAvail,
             };
         })
