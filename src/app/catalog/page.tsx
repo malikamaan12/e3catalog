@@ -5,24 +5,8 @@ import { useSearchParams } from "next/navigation";
 import { ProductCard } from "@/components/ProductCard";
 import { Footer } from "@/components/Footer";
 import { Suspense } from "react";
-import {
-    Grid,
-    MonitorPlay,
-    Lightbulb,
-    Speaker,
-    Sofa,
-    Mic2,
-    Smile,
-    Clapperboard,
-    Laptop2,
-    Tent,
-    Ticket,
-    FerrisWheel,
-    ShieldAlert,
-    Signpost,
-    Armchair,
-    HardHat
-} from "lucide-react";
+import * as LucideIcons from "lucide-react";
+import { LayoutGrid } from "lucide-react";
 
 interface Product {
     id: string;
@@ -48,25 +32,35 @@ interface Category {
     children?: Category[];
 }
 
-function CategoryIcon({ slug, className = "w-4 h-4" }: { slug: string, className?: string }) {
-    switch (slug) {
-        case "staging-trusses": return <Tent className={className} />;
-        case "lighting": return <Lightbulb className={className} />;
-        case "sound-audio": return <Speaker className={className} />;
-        case "furniture-decor": return <Sofa className={className} />;
-        case "audio-visual": return <Mic2 className={className} />;
-        case "mascot": return <Smile className={className} />;
-        case "audio-visual-technical": return <Clapperboard className={className} />;
-        case "it-event-technology": return <Laptop2 className={className} />;
-        case "staging-structures-custom-builds": return <Tent className={className} />;
-        case "digital-services-ticketing": return <Ticket className={className} />;
-        case "entertainment-rides-activations": return <FerrisWheel className={className} />;
-        case "crowd-control-safety": return <ShieldAlert className={className} />;
-        case "event-branding-signage": return <Signpost className={className} />;
-        case "event-furniture-decor": return <Armchair className={className} />;
-        case "manpower-talent": return <HardHat className={className} />;
-        default: return <Grid className={className} />;
-    }
+// Slug → Lucide icon name (matches what's stored in DB)
+const SLUG_ICON_MAP: Record<string, string> = {
+    "staging": "Layers",
+    "exhibitions": "Building2",
+    "structures": "Frame",
+    "rigging-truss": "Link2",
+    "lighting": "Lightbulb",
+    "audio": "Mic2",
+    "led-displays": "Monitor",
+    "power-electrical": "Zap",
+    "climate-utilities": "Wind",
+    "furniture": "Armchair",
+    "decor": "Palette",
+    "branding": "Flag",
+    "wayfinding": "Navigation",
+    "crowd-control": "Shield",
+    "entertainment": "Gamepad2",
+    "sports-equipment": "Trophy",
+    "event-technology": "Laptop2",
+    "logistics-equipment": "Truck",
+    "safety-equipment": "ShieldCheck",
+    "manpower": "HardHat",
+};
+
+function CategoryIcon({ icon, slug, className = "w-4 h-4" }: { icon?: string | null; slug: string; className?: string }) {
+    // 1. Try DB icon name first, 2. Fall back to slug map, 3. Default to LayoutGrid
+    const iconName = icon || SLUG_ICON_MAP[slug] || "LayoutGrid";
+    const Icon = (LucideIcons as any)[iconName] || LayoutGrid;
+    return <Icon className={className} />;
 }
 
 export default function CatalogPage() {
@@ -162,7 +156,7 @@ function CatalogContent() {
                                     onClick={() => handleCategorySelect("")}
                                     className={`w-full text-left px-3 py-2.5 rounded-lg font-[family-name:var(--font-heading)] text-sm font-semibold transition-all flex items-center gap-3 ${!selectedCategory ? "bg-[var(--color-gold)]/15 text-[var(--color-gold)]" : "text-[var(--color-slate)] hover:text-[var(--color-warm-white)] hover:bg-white/5"}`}
                                 >
-                                    <Grid className="w-4 h-4" /> <span>All Equipment</span>
+                                    <LayoutGrid className="w-4 h-4" /> <span>All Equipment</span>
                                 </button>
 
                                 {/* Parent groups */}
@@ -179,7 +173,7 @@ function CatalogContent() {
                                                 className={`w-full text-left px-3 py-2.5 rounded-lg font-[family-name:var(--font-heading)] text-sm font-semibold transition-all flex items-center gap-3 justify-between ${isGroupSelected ? "bg-[var(--color-gold)]/15 text-[var(--color-gold)]" : "text-[var(--color-warm-white)] hover:bg-white/5"}`}
                                             >
                                                 <span className="flex items-center gap-3 truncate">
-                                                    <CategoryIcon slug={group.slug} className={`w-4 h-4 shrink-0 ${isGroupSelected ? 'text-[var(--color-gold)]' : 'text-[var(--color-slate)]'}`} />
+                                                    <CategoryIcon icon={group.icon} slug={group.slug} className={`w-4 h-4 shrink-0 ${isGroupSelected ? 'text-[var(--color-gold)]' : 'text-[var(--color-slate)]'}`} />
                                                     <span className="truncate">{group.name}</span>
                                                 </span>
                                                 <span className={`text-xs text-[var(--color-slate)] transition-transform duration-200 shrink-0 ${isGroupExpanded || isGroupSelected ? "rotate-90 text-[var(--color-gold)]" : ""}`}>›</span>
@@ -194,7 +188,7 @@ function CatalogContent() {
                                                             onClick={() => handleCategorySelect(child.slug)}
                                                             className={`w-full text-left px-3 py-2 rounded-lg font-[family-name:var(--font-heading)] text-xs font-semibold transition-all flex items-center gap-2.5 ${selectedCategory === child.slug ? "text-[var(--color-gold)] bg-[var(--color-gold)]/10" : "text-[var(--color-slate)] hover:text-[var(--color-warm-white)] hover:bg-white/5"}`}
                                                         >
-                                                            <CategoryIcon slug={child.slug} className={`w-3.5 h-3.5 shrink-0 ${selectedCategory === child.slug ? 'text-[var(--color-gold)]' : 'text-[var(--color-slate)]'}`} />
+                                                            <CategoryIcon icon={child.icon} slug={child.slug} className={`w-3.5 h-3.5 shrink-0 ${selectedCategory === child.slug ? 'text-[var(--color-gold)]' : 'text-[var(--color-slate)]'}`} />
                                                             <span>{child.name}</span>
                                                         </button>
                                                     ))}
@@ -214,7 +208,7 @@ function CatalogContent() {
                                     onClick={() => handleCategorySelect("")}
                                     className={`px-3 py-1.5 rounded-lg font-[family-name:var(--font-heading)] text-xs font-semibold transition-all flex items-center gap-2 ${!selectedCategory ? "bg-[var(--color-gold)] text-[var(--color-navy)]" : "glass text-[var(--color-slate)] hover:text-[var(--color-gold)]"}`}
                                 >
-                                    <Grid className="w-3.5 h-3.5" /> All
+                                    <LayoutGrid className="w-3.5 h-3.5" /> All
                                 </button>
                                 {categoryTree.map((group) => (
                                     <button
@@ -222,7 +216,7 @@ function CatalogContent() {
                                         onClick={() => handleCategorySelect(group.slug)}
                                         className={`px-3 py-1.5 rounded-lg font-[family-name:var(--font-heading)] text-xs font-semibold transition-all flex items-center gap-2 ${selectedCategory === group.slug ? "bg-[var(--color-gold)] text-[var(--color-navy)]" : "glass text-[var(--color-slate)] hover:text-[var(--color-gold)]"}`}
                                     >
-                                        <CategoryIcon slug={group.slug} className="w-3.5 h-3.5" /> {group.name}
+                                        <CategoryIcon icon={group.icon} slug={group.slug} className="w-3.5 h-3.5" /> {group.name}
                                     </button>
                                 ))}
                             </div>
