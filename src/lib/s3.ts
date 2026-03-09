@@ -15,6 +15,9 @@ export const s3Client = new S3Client({
         secretAccessKey,
     },
     ...(endpoint ? { endpoint } : {}),
+    // Required for Cloudflare R2: disable checksum headers that R2 doesn't support
+    requestChecksumCalculation: "WHEN_REQUIRED" as any,
+    responseChecksumValidation: "WHEN_REQUIRED" as any,
 });
 
 const BUCKET_NAME = process.env.S3_BUCKET_NAME || "rental-app-media";
