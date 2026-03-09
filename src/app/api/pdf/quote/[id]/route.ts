@@ -50,6 +50,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
                 return {
                     name: product?.name || "Unknown Item",
+                    itemCode: product?.itemCode || "",
                     shortDescription: product?.shortDescription || "",
                     dimensions: product?.dimensions || "N/A",
                     weight: product?.weight || "N/A",

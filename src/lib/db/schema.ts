@@ -130,6 +130,7 @@ export const products = pgTable("products", {
     categoryId: varchar("category_id", { length: 255 }).notNull().references(() => categories.id),
     name: varchar("name", { length: 255 }).notNull(),
     slug: varchar("slug", { length: 255 }).notNull().unique(),
+    itemCode: varchar("item_code", { length: 100 }).unique(), // SKU / Item Code (e.g. "LGT-001")
     shortDescription: varchar("short_description", { length: 500 }),
     description: varchar("description", { length: 2000 }),
     // Specs
@@ -167,6 +168,7 @@ export const products = pgTable("products", {
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
+
 
 // ─── Product Tags (Junction) ───
 export const productTags = pgTable("product_tags", {

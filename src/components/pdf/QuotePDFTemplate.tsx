@@ -142,6 +142,7 @@ interface QuotePDFProps extends React.ComponentProps<typeof Document> {
     letterheadFooterUrl?: string | null;
     items: Array<{
         name: string;
+        itemCode?: string;
         shortDescription: string;
         thumbnailUrl: string;
         dimensions: string;
@@ -248,6 +249,9 @@ export function QuotePDFTemplate({
                     {renderHeader()}
 
                     <Text style={[styles.title, { fontSize: 20 }]}>{item.name}</Text>
+                    {item.itemCode && (
+                        <Text style={{ fontSize: 9, color: "#94a3b8", fontFamily: "Courier", marginBottom: 8 }}>Item Code: {item.itemCode}</Text>
+                    )}
 
                     {item.thumbnailUrl && (
                         <Image src={item.thumbnailUrl} style={styles.productHeroImage} />
@@ -308,6 +312,9 @@ export function QuotePDFTemplate({
                         <View key={idx} style={styles.tableRow}>
                             <View style={styles.tableColLeft}>
                                 <Text style={[styles.text, { fontWeight: "bold" }]}>{item.name}</Text>
+                                {item.itemCode && (
+                                    <Text style={{ fontSize: 7, color: "#94a3b8", fontFamily: "Courier" }}>{item.itemCode}</Text>
+                                )}
                                 <Text style={{ fontSize: 8, color: "#64748b" }}>{item.startDate} to {item.endDate}</Text>
                             </View>
                             <Text style={[styles.text, styles.tableColCenter]}>{item.quantity}</Text>

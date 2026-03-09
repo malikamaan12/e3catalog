@@ -1,9 +1,20 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Zap } from "lucide-react";
+
+// Category slug → SKU prefix for auto-generation
+const CATEGORY_SKU_PREFIX: Record<string, string> = {
+    "staging": "STG", "exhibitions": "EXH", "structures": "STR",
+    "rigging-truss": "RIG", "lighting": "LGT", "audio": "AUD",
+    "led-displays": "LED", "power-electrical": "PWR", "climate-utilities": "CLM",
+    "furniture": "FRN", "decor": "DCR", "branding": "BRN",
+    "wayfinding": "WFD", "crowd-control": "CRD", "entertainment": "ENT",
+    "sports-equipment": "SPT", "event-technology": "EVT",
+    "logistics-equipment": "LOG", "safety-equipment": "SFT", "manpower": "MNP",
+};
 
 interface Category {
     id: string;
@@ -81,6 +92,7 @@ export default function AddProductPage() {
 
     // Form state
     const [form, setForm] = useState({
+        itemCode: "",
         name: "",
         categoryId: "",
         shortDescription: "",
@@ -146,6 +158,13 @@ export default function AddProductPage() {
         setForm((prev) => ({ ...prev, [field]: value }));
         setError("");
     };
+
+    const autoGenerateItemCode = useCallback(() => {
+        const cat = categories.find(c => c.id === form.categoryId);
+        const prefix = (cat ? CATEGORY_SKU_PREFIX[cat.slug] : null) || "ITM";
+        const suffix = String(Date.now()).slice(-4);
+        updateField("itemCode", `${prefix}-${suffix}`);
+    }, [form.categoryId, categories]);
 
     // ─── Media Upload ───
     const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -408,6 +427,29 @@ export default function AddProductPage() {
                         BASIC INFORMATION
                     </h2>
                     <div className="space-y-4">
+                        {/* Item Code / SKU */}
+                        <div>
+                            <label className="text-xs text-[var(--color-slate)] mb-1.5 block font-medium">
+                                Item Code / SKU
+                                <span className="ml-2 text-[var(--color-slate)] font-normal">(unique identifier, e.g. LGT-001)</span>
+                            </label>
+                            <div className="flex gap-2">
+                                <input
+                                    type="text"
+                                    value={form.itemCode}
+                                    onChange={(e) => updateField("itemCode", e.target.value.toUpperCase())}
+                                    placeholder="e.g. LGT-001"
+                                    className="flex-1 px-4 py-3 rounded-lg bg-[var(--color-navy-lighter)] border border-[var(--color-border-subtle)] text-[var(--color-warm-white)] placeholder:text-[var(--color-slate)] focus:border-[var(--color-gold)] focus:outline-none transition-colors text-sm font-mono tracking-wider" />
+                                <button
+                                    type="button"
+                                    onClick={autoGenerateItemCode}
+                                    title="Auto-generate from selected category"
+                                    className="px-4 py-3 rounded-lg bg-[var(--color-gold)]/10 border border-[var(--color-gold)]/30 text-[var(--color-gold)] hover:bg-[var(--color-gold)]/20 transition-all flex items-center gap-2 text-sm font-semibold whitespace-nowrap">
+                                    <Zap className="w-4 h-4" /> Auto
+                                </button>
+                            </div>
+                        </div>
+
                         <div>
                             <label className="text-xs text-[var(--color-slate)] mb-1.5 block font-medium">Product Name *</label>
                             <input type="text" value={form.name} onChange={(e) => updateField("name", e.target.value)}

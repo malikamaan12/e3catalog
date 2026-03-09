@@ -78,6 +78,7 @@ export async function POST(req: NextRequest) {
         requiresLicense: body.requiresLicense || false,
         requiresApproval: body.requiresApproval || false,
         adminNotes: body.adminNotes || null,
+        itemCode: body.itemCode?.trim() || null,
         createdAt: now,
         updatedAt: now,
     };
