@@ -1,82 +1,70 @@
-import { db } from './src/lib/db/index';
-import { categories } from './src/lib/db/schema';
+import pkg from 'pg';
+const { Pool } = pkg;
 import { v4 as uuidv4 } from 'uuid';
 
-const TREE = [
-    {
-        name: "Audio Visual & Technical Production",
-        slug: "audio-visual-production",
-        icon: "🎬",
-        description: "Professional AV equipment, LED displays, production gear, lighting, and rigging for any event scale.",
-        sort: 10,
-        children: [
-            { name: "LED Screens & Video Displays", slug: "led-screens-video-displays", icon: "📺", description: "LED walls, TV units, video processors, and display solutions.", sort: 1 },
-            { name: "Camera & Production Gear", slug: "camera-production-gear", icon: "📷", description: "Cameras, tripods, video switchers, monitors, and broadcast equipment.", sort: 2 },
-            { name: "Trussing & Rigging Equipment", slug: "trussing-rigging", icon: "⚙️", description: "Structural trussing, rigging motors, and hanging systems.", sort: 3 },
-            { name: "Pro Audio & PA Systems", slug: "pro-audio-pa-systems", icon: "🔊", description: "Microphones, speakers, amplifiers, line arrays, and mixing desks.", sort: 4 },
-            { name: "Stage Lighting & Special Effects", slug: "stage-lighting-special-effects", icon: "💡", description: "Moving heads, lasers, LED pars, smoke machines, and special effects.", sort: 5 },
-        ]
-    },
-    {
-        name: "IT & Event Technology",
-        slug: "it-event-technology",
-        icon: "💻",
-        description: "Corporate and conference-grade IT hardware including laptops, tablets, phones, and office peripherals.",
-        sort: 20,
-        children: [
-            { name: "Computers & Laptops", slug: "computers-laptops", icon: "🖥️", description: "Laptops, desktop workstations, and corporate computing solutions.", sort: 1 },
-            { name: "Mobile Devices & Tablets", slug: "mobile-devices-tablets", icon: "📱", description: "Tablets, iPads, smartphones, and mobile event tools.", sort: 2 },
-            { name: "Office & Event Hardware", slug: "office-event-hardware", icon: "🖨️", description: "Printers, photocopiers, badge printers, and office peripherals.", sort: 3 },
-        ]
-    },
-    {
-        name: "Staging, Structures & Custom Fabrication",
-        slug: "staging-structures-fabrication",
-        icon: "🏗️",
-        description: "Stages, platforms, exhibition kiosks, and bespoke fabrication services for any event footprint.",
-        sort: 30,
-        children: [
-            { name: "Stages & Platforms", slug: "stages-platforms", icon: "🎪", description: "Modular stages, elevated platforms, podiums, and performance risers.", sort: 1 },
-            { name: "Exhibition Booths & Kiosks", slug: "exhibition-booths-kiosks", icon: "🏠", description: "Branded exhibition stands, kiosks, shell scheme booths, and display structures.", sort: 2 },
-            { name: "Custom Set & Fabrication Services", slug: "custom-set-fabrication", icon: "🔧", description: "Bespoke fabrication, custom scenic sets, and made-to-order structures. Priced via custom quote.", sort: 3 },
-        ]
-    }
+const pool = new Pool({
+    host: "aws-1-ap-northeast-1.pooler.supabase.com",
+    port: 5432,
+    user: "postgres.kwswkoysskkxuezbfmyt",
+    password: "Malik12amaan@#",
+    database: "postgres",
+    ssl: { rejectUnauthorized: false },
+});
+
+const CATEGORIES = [
+    { name: "Staging", slug: "staging", icon: "🎪", description: "The physical foundation of the performance space, including modular platforms and custom stage decking.", sort: 10 },
+    { name: "Exhibitions", slug: "exhibitions", icon: "🏠", description: "Dedicated infrastructure for trade shows, encompassing custom exhibition booths and shell schemes.", sort: 20 },
+    { name: "Structures", slug: "structures", icon: "🏗️", description: "Large-scale temporary architectural builds, including tents, shade covers, and custom fabrication services.", sort: 30 },
+    { name: "Rigging & Truss", slug: "rigging-truss", icon: "⚙️", description: "Heavy-duty aluminum framework, motors, and overhead support systems required for hanging equipment safely.", sort: 40 },
+    { name: "Lighting", slug: "lighting", icon: "💡", description: "Stage wash, moving heads, and all atmospheric illumination equipment used to light the event space.", sort: 50 },
+    { name: "Audio", slug: "audio", icon: "🔊", description: "PA systems, line arrays, microphones, and all sound equipment that delivers audio across the venue.", sort: 60 },
+    { name: "LED & Displays", slug: "led-displays", icon: "📺", description: "Visual presentation hardware, including high-resolution LED video screens, projection mapping, and monitoring displays.", sort: 70 },
+    { name: "Power & Electrical", slug: "power-electrical", icon: "⚡", description: "The invisible energy backbone, featuring generators, heavy distribution cabling, and general electrical equipment for the site.", sort: 80 },
+    { name: "Climate & Utilities", slug: "climate-utilities", icon: "🌡️", description: "Essential environmental controls, including portable AC units, heating, and general site operation utilities.", sort: 90 },
+    { name: "Furniture", slug: "furniture", icon: "🪑", description: "Guest comfort and seating solutions, including VIP banquet chairs, cocktail tables, and lounge setups.", sort: 100 },
+    { name: "Decor", slug: "decor", icon: "🎨", description: "Atmospheric styling enhancements, such as scenic elements, drapery, and custom carpets.", sort: 110 },
+    { name: "Branding", slug: "branding", icon: "🖼️", description: "Physical sponsor displays, including custom step-and-repeat banners and printed event graphics.", sort: 120 },
+    { name: "Wayfinding", slug: "wayfinding", icon: "🪧", description: "Visual navigation tools, encompassing directional sign boards and interactive digital kiosks.", sort: 130 },
+    { name: "Crowd Control", slug: "crowd-control", icon: "🚧", description: "Perimeter and audience flow management, featuring heavy-duty Mojo barriers, site fencing, and stanchions.", sort: 140 },
+    { name: "Entertainment", slug: "entertainment", icon: "🎠", description: "Interactive and engaging attractions, including arcade games, inflatables, mechanical rides, and character mascots.", sort: 150 },
+    { name: "Sports Equipment", slug: "sports-equipment", icon: "⚽", description: "Gear for athletic activations, active zones, tournaments, and health & fitness equipment.", sort: 160 },
+    { name: "Event Technology", slug: "event-technology", icon: "💻", description: "Digital hardware for the production office and registration, including pre-configured laptops, iPads, printers, and RFID access devices.", sort: 170 },
+    { name: "Logistics Equipment", slug: "logistics-equipment", icon: "🚜", description: "Heavy lifting and site-movement gear, strictly limited to movement equipment like small trollies, jigs, lifts, pickups, and cranes.", sort: 180 },
+    { name: "Safety Equipment", slug: "safety-equipment", icon: "🦺", description: "Compliance and emergency hardware, including fire extinguishers and safety inspection equipment essential for meeting TUV standards.", sort: 190 },
+    { name: "Manpower", slug: "manpower", icon: "👷", description: "The human element required for execution, providing certified stage riggers, operators, and general logistics labor.", sort: 200 },
 ];
 
 async function seed() {
-    console.log("🌱 Seeding categories to Supabase...");
+    const client = await pool.connect();
+    try {
+        // Clear all product-related data and categories using CASCADE
+        console.log("🗑️  Clearing old products and categories (CASCADE)...");
+        await client.query(`
+            TRUNCATE TABLE 
+                product_media, product_tags, product_documents, 
+                safety_certificates, inventory_overrides, inventory_units,
+                products, categories
+            RESTART IDENTITY CASCADE
+        `);
 
-    for (const group of TREE) {
-        const parentId = uuidv4();
-        await db.insert(categories).values({
-            id: parentId,
-            name: group.name,
-            slug: group.slug,
-            icon: group.icon,
-            description: group.description,
-            sortOrder: group.sort,
-            active: true
-        }).onConflictDoNothing();
-
-        for (const child of group.children) {
-            await db.insert(categories).values({
-                id: uuidv4(),
-                parentId: parentId,
-                name: child.name,
-                slug: child.slug,
-                icon: child.icon,
-                description: child.description,
-                sortOrder: child.sort,
-                active: true
-            }).onConflictDoNothing();
+        console.log("🌱 Seeding 20 new categories...");
+        for (const cat of CATEGORIES) {
+            await client.query(
+                `INSERT INTO categories (id, name, slug, icon, description, sort_order, active, parent_id)
+                 VALUES ($1, $2, $3, $4, $5, $6, true, null)`,
+                [uuidv4(), cat.name, cat.slug, cat.icon, cat.description, cat.sort]
+            );
+            console.log(`  ✓ ${cat.name}`);
         }
-    }
 
-    console.log("✅ Seeding complete!");
-    process.exit(0);
+        console.log("\n✅ Done! 20 categories seeded.");
+    } finally {
+        client.release();
+        await pool.end();
+    }
 }
 
 seed().catch(err => {
-    console.error("❌ Seeding failed:", err);
+    console.error("❌ Seeding failed:", err.message);
     process.exit(1);
 });

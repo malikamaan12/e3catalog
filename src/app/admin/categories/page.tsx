@@ -14,22 +14,37 @@ interface Category {
     parentId: string | null;
 }
 
-// Map of category slugs to icon names to match catalog display exactly
+// Map of category slugs to Lucide icon names — must match DB icon values
 export const CATEGORY_ICON_MAP: Record<string, string> = {
-    staging: "Tent",
-    sound: "Speaker",
-    lighting: "Lightbulb",
-    power: "Zap",
-    trussing: "Component",
-    rigging: "Anchor",
-    video: "MonitorPlay",
-    sfx: "Sparkles",
-    backline: "Guitar",
-    "led-screens": "Tv",
+    "staging": "Layers",
+    "exhibitions": "Building2",
+    "structures": "Frame",
+    "rigging-truss": "Link2",
+    "lighting": "Lightbulb",
+    "audio": "Mic2",
+    "led-displays": "Monitor",
+    "power-electrical": "Zap",
+    "climate-utilities": "Wind",
+    "furniture": "Armchair",
+    "decor": "Palette",
+    "branding": "Flag",
+    "wayfinding": "Navigation",
+    "crowd-control": "Shield",
+    "entertainment": "Gamepad2",
+    "sports-equipment": "Trophy",
+    "event-technology": "Laptop2",
+    "logistics-equipment": "Truck",
+    "safety-equipment": "ShieldCheck",
+    "manpower": "HardHat",
 };
 
-// Fallback icon list for picker
-const ICONS = ["Tent", "Speaker", "Lightbulb", "Zap", "Component", "Anchor", "MonitorPlay", "Sparkles", "Guitar", "Tv", "Box"];
+// Icon picker — expanded professional set
+const ICONS = [
+    "Layers", "Building2", "Frame", "Link2", "Lightbulb", "Mic2", "Monitor",
+    "Zap", "Wind", "Armchair", "Palette", "Flag", "Navigation", "Shield",
+    "Gamepad2", "Trophy", "Laptop2", "Truck", "ShieldCheck", "HardHat",
+    "Box", "Speaker", "Camera", "Cpu", "Wifi", "Package", "BarChart2"
+];
 
 // Dynamic icon renderer
 const renderIcon = (iconName: string | null, slug: string) => {
