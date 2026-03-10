@@ -50,12 +50,14 @@ export function Navbar() {
         window.location.href = "/login";
     };
 
-    const isAnyAdmin = ["admin", "super_admin", "sales_rep", "warehouse_manager"].includes(user?.role);
+    const isAnyAdmin = ["admin", "super_admin", "sales_rep", "warehouse_manager", "vendor"].includes(user?.role);
     const isAdmin = user?.role === "admin" || user?.role === "super_admin";
     const isSuperAdmin = user?.role === "super_admin";
+    const isVendor = user?.role === "vendor";
     const isClient = user && !isAnyAdmin;
     const isSalesRepAdmin = ["admin", "super_admin", "sales_rep"].includes(user?.role);
-    const isWarehouseAdmin = ["admin", "super_admin", "warehouse_manager"].includes(user?.role);
+    const hasProductsAccess = ["admin", "super_admin", "sales_rep", "vendor"].includes(user?.role);
+    const hasInventoryAccess = ["admin", "super_admin", "warehouse_manager", "vendor"].includes(user?.role);
 
     const inDashboard = pathname.startsWith("/dashboard");
     const isCatalogVisible = getSetting("feature_catalog_visible", "true") === "true";
@@ -84,8 +86,8 @@ export function Navbar() {
                     {isAnyAdmin && (
                         <>
                             <NavLink href="/admin" label="Dashboard" exact />
-                            {isSalesRepAdmin && <NavLink href="/admin/products" label="Products" />}
-                            {isWarehouseAdmin && <NavLink href="/admin/inventory" label="Inventory" />}
+                            {hasProductsAccess && <NavLink href="/admin/products" label={isVendor ? "My Catalog" : "Products"} />}
+                            {hasInventoryAccess && <NavLink href="/admin/inventory" label="Inventory" />}
                             {isAnyAdmin && <NavLink href="/admin/bookings" label="Bookings" />}
                             {isSalesRepAdmin && <NavLink href="/admin/categories" label="Categories" />}
                             {isCatalogVisible && <NavLink href="/catalog" label="View Catalog" />}
@@ -144,7 +146,7 @@ export function Navbar() {
                                     <div className="px-4 py-2.5 border-b border-white/5 bg-white/5">
                                         <p className="text-[11px] font-medium text-[var(--color-warm-white)] truncate">{user.email}</p>
                                         <p className="text-[10px] font-extrabold text-[var(--color-gold)] mt-0.5 tracking-tighter uppercase whitespace-nowrap">
-                                            {isSuperAdmin ? "✨ SUPER ADMIN" : isAdmin ? "🛡️ ADMINISTRATOR" : "👤 CLIENT ACCOUNT"}
+                                            {isSuperAdmin ? "✨ SUPER ADMIN" : isAdmin ? "🛡️ ADMINISTRATOR" : isVendor ? "🏪 VENDOR ACCOUNT" : "👤 CLIENT ACCOUNT"}
                                         </p>
                                     </div>
                                     <div className="py-1">
@@ -214,8 +216,8 @@ export function Navbar() {
                         {isAnyAdmin && (
                             <>
                                 <MobileLink href="/admin" label="🏠 Dashboard" close={() => setMobileOpen(false)} />
-                                {isSalesRepAdmin && <MobileLink href="/admin/products" label="📦 Products" close={() => setMobileOpen(false)} />}
-                                {isWarehouseAdmin && <MobileLink href="/admin/inventory" label="🏗️ Inventory" close={() => setMobileOpen(false)} />}
+                                {hasProductsAccess && <MobileLink href="/admin/products" label={isVendor ? "📦 My Catalog" : "📦 Products"} close={() => setMobileOpen(false)} />}
+                                {hasInventoryAccess && <MobileLink href="/admin/inventory" label="🏗️ Inventory" close={() => setMobileOpen(false)} />}
                                 {isAnyAdmin && <MobileLink href="/admin/bookings" label="📅 Bookings" close={() => setMobileOpen(false)} />}
                                 {isSalesRepAdmin && <MobileLink href="/admin/categories" label="🏷️ Categories" close={() => setMobileOpen(false)} />}
                                 <hr className="border-white/10 my-2" />

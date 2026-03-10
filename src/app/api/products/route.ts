@@ -56,20 +56,56 @@ export async function GET(req: NextRequest) {
             });
         }
 
-        // Attach real-time availability to each product for the 🟢🟡🔴 indicator
-        const productsWithAvailability = await Promise.all(
-            result.map(async (prod: any) => {
-                const timeline = await getAvailabilityTimeline(prod.id, 1);
-                const totalUnits = prod.inventoryUnits?.length || 0;
-                const currentAvail = timeline.length > 0 ? timeline[0].available : totalUnits;
+        const productIds = result.map((p: any) => p.id);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const tomorrow = new Date(today);
+        tomorrow.setDate(today.getDate() + 1);
 
-                return {
-                    ...prod,
-                    totalUnits,
-                    currentAvailableUnits: currentAvail,
-                };
-            })
-        );
+        let activeBookings: any[] = [];
+        let activeOverrides: any[] = [];
+
+        if (productIds.length > 0) {
+            // Fetch all relevant bookings for these products that overlap TODAY
+            activeBookings = await db.query.bookings.findMany({
+                where: (b, { and, inArray, lte, gte }) => and(
+                    inArray(b.productId, productIds),
+                    inArray(b.status, ["approved", "booked"]),
+                    lte(b.startDate, tomorrow),
+                    gte(b.endDate, today),
+                )
+            });
+
+            // Fetch manual overrides
+            activeOverrides = await db.query.inventoryOverrides.findMany({
+                where: (o, { and, inArray, lte, gte }) => and(
+                    inArray(o.productId, productIds),
+                    lte(o.startDate, tomorrow),
+                    gte(o.endDate, today),
+                )
+            });
+        }
+
+        // Group booked units by productId
+        const bookedMap: Record<string, number> = {};
+        for (const b of activeBookings) {
+            bookedMap[b.productId] = (bookedMap[b.productId] || 0) + b.units;
+        }
+        for (const o of activeOverrides) {
+            bookedMap[o.productId] = (bookedMap[o.productId] || 0) + o.unitsOffline;
+        }
+
+        const productsWithAvailability = result.map((prod: any) => {
+            const totalUnits = prod.inventoryUnits?.length || 0;
+            const bookedUnits = bookedMap[prod.id] || 0;
+            const currentAvail = Math.max(0, totalUnits - bookedUnits);
+
+            return {
+                ...prod,
+                totalUnits,
+                currentAvailableUnits: currentAvail,
+            };
+        });
 
         return NextResponse.json(productsWithAvailability);
     } catch (e) {

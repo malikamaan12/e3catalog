@@ -1,4 +1,4 @@
-import { pgTable, varchar, integer, real, boolean, timestamp, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, varchar, integer, real, boolean, timestamp, jsonb, index } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
 // ─── Users ───
@@ -188,6 +188,11 @@ export const inventoryUnits = pgTable("inventory_units", {
     purchaseDate: timestamp("purchase_date"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => {
+    return {
+        productIdIdx: index("inventory_units_product_id_idx").on(table.productId),
+        statusIdx: index("inventory_units_status_idx").on(table.status),
+    };
 });
 
 // ─── Pricing Rules & Global Charges ───
@@ -307,6 +312,13 @@ export const bookings = pgTable("bookings", {
 
     addedByAdmin: boolean("added_by_admin").default(false),
     adminItemNote: varchar("admin_item_note", { length: 1000 }),
+}, (table) => {
+    return {
+        productIdIdx: index("bookings_product_id_idx").on(table.productId),
+        statusIdx: index("bookings_status_idx").on(table.status),
+        startDateIdx: index("bookings_start_date_idx").on(table.startDate),
+        endDateIdx: index("bookings_end_date_idx").on(table.endDate),
+    };
 });
 
 // ─── Cart Items ───
