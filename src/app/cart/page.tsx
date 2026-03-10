@@ -55,12 +55,12 @@ export default function CartPage() {
     const fetchCartAndUser = useCallback(async () => {
         try {
             // Fetch Cart
-            const res = await fetch("/api/cart");
+            const res = await fetch("/api/cart", { credentials: "include" });
             const data = await res.json();
             setItems(Array.isArray(data) ? data : []);
 
             // Fetch User
-            const userRes = await fetch("/api/auth/me");
+            const userRes = await fetch("/api/auth/me", { credentials: "include" });
             const userData = await userRes.json();
             if (userData.user) {
                 setUserRole(userData.user.role === "admin" ? "admin" : "client");
@@ -94,12 +94,12 @@ export default function CartPage() {
     useEffect(() => { fetchCartAndUser(); }, [fetchCartAndUser]);
 
     const removeItem = async (id: string) => {
-        await fetch(`/api/cart?id=${id}`, { method: "DELETE" });
+        await fetch(`/api/cart?id=${id}`, { method: "DELETE", credentials: "include" });
         fetchCartAndUser();
     };
 
     const clearCart = async () => {
-        await fetch("/api/cart", { method: "DELETE" });
+        await fetch("/api/cart", { method: "DELETE", credentials: "include" });
         fetchCartAndUser();
     };
 
@@ -109,6 +109,7 @@ export default function CartPage() {
         await fetch("/api/cart", {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
+            credentials: "include",
             body: JSON.stringify({ id, quantity: newQuantity })
         });
         fetchCartAndUser();
@@ -119,6 +120,7 @@ export default function CartPage() {
         await fetch("/api/cart", {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
+            credentials: "include",
             body: JSON.stringify({ id, ...editData })
         });
         setEditingItemId(null);

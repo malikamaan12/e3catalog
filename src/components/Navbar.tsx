@@ -43,6 +43,10 @@ export function Navbar() {
         refreshUser();
         // Close mobile menu on route change
         setMobileOpen(false);
+
+        // Listen for cart refresh events from other components (like Add to Cart button)
+        window.addEventListener("cartUpdated", refreshUser);
+        return () => window.removeEventListener("cartUpdated", refreshUser);
     }, [pathname, refreshUser]);
 
     const logout = async () => {

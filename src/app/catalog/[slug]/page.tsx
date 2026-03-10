@@ -150,6 +150,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
             await fetch("/api/cart", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
+                credentials: "include",
                 body: JSON.stringify({ productId: product.id, quantity, startDate, endDate }),
             });
             setCartAdded(true);

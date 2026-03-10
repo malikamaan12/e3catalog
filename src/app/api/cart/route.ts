@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { cartItems, products } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, or, inArray } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { v4 as uuid } from "uuid";
 import { getCurrentUser } from "@/lib/auth";
@@ -14,9 +14,17 @@ function getSessionId(req: NextRequest): string {
 export async function GET(req: NextRequest) {
     try {
         const sessionId = getSessionId(req);
+        const currentUser = await getCurrentUser().catch(() => null);
+
+        console.log("Cart GET request:", { sessionId, userId: currentUser?.id });
+
+        // Filter: items must match sessionId OR userId (if user is logged in)
+        const whereClause = currentUser?.id 
+            ? or(eq(cartItems.sessionId, sessionId), eq(cartItems.userId, currentUser.id))
+            : eq(cartItems.sessionId, sessionId);
 
         const items = await db.query.cartItems.findMany({
-            where: eq(cartItems.sessionId, sessionId),
+            where: whereClause,
             with: {
                 product: {
                     columns: {
@@ -33,6 +41,17 @@ export async function GET(req: NextRequest) {
                 },
             },
         });
+
+        // If we found items and user is logged in, ensure they all have their userId set
+        if (currentUser?.id && items.length > 0) {
+            const itemsToUpdate = items.filter(item => !item.userId);
+            if (itemsToUpdate.length > 0) {
+                console.log(`Syncing ${itemsToUpdate.length} cart items to userId: ${currentUser.id}`);
+                await db.update(cartItems)
+                    .set({ userId: currentUser.id })
+                    .where(inArray(cartItems.id, itemsToUpdate.map(i => i.id)));
+            }
+        }
 
         const response = NextResponse.json(items);
         response.cookies.set(SESSION_COOKIE, sessionId, {
@@ -66,12 +85,18 @@ export async function POST(req: NextRequest) {
         }
 
         const startD = new Date(startDate);
+        startD.setHours(0, 0, 0, 0); // Normalize to midnight
         const endD = new Date(endDate);
+        endD.setHours(0, 0, 0, 0); // Normalize to midnight
 
-        // Check if same product with same dates already in cart
+        // Unified existing check: match by (sessionId OR userId) AND (product + dates)
+        const matchClause = currentUser?.id 
+            ? or(eq(cartItems.sessionId, sessionId), eq(cartItems.userId, currentUser.id))
+            : eq(cartItems.sessionId, sessionId);
+
         const existing = await db.query.cartItems.findFirst({
             where: and(
-                eq(cartItems.sessionId, sessionId),
+                matchClause,
                 eq(cartItems.productId, productId),
                 eq(cartItems.startDate, startD),
                 eq(cartItems.endDate, endD),
@@ -79,7 +104,7 @@ export async function POST(req: NextRequest) {
         });
 
         if (existing) {
-            console.log("Updating existing cart item:", existing.id);
+            console.log("Updating existing cart item:", existing.id, "New Total:", existing.quantity + Number(quantity));
             // Update quantity
             await db
                 .update(cartItems)
@@ -90,7 +115,7 @@ export async function POST(req: NextRequest) {
                 .where(eq(cartItems.id, existing.id));
         } else {
             const newItemId = uuid();
-            console.log("Inserting new cart item:", newItemId);
+            console.log("Inserting new cart item:", newItemId, { productId, quantity, sessionId });
             await db.insert(cartItems).values({
                 id: newItemId,
                 sessionId,
