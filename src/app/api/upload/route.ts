@@ -13,6 +13,7 @@ export async function POST(req: NextRequest) {
         if (!process.env.S3_BUCKET_NAME) missingVars.push("S3_BUCKET_NAME");
 
         if (missingVars.length > 0) {
+            console.error("STORAGE CONFIG ERROR: Missing env vars:", missingVars.join(", "));
             return NextResponse.json(
                 { error: `Storage not configured. Missing environment variables: ${missingVars.join(", ")}` },
                 { status: 500 }
@@ -25,11 +26,16 @@ export async function POST(req: NextRequest) {
         let user = null;
         if (folder !== "kyc") {
             const authCheck = await requireAdmin(["super_admin", "admin", "vendor"]);
-            if (authCheck.error) return authCheck.error;
+            if (authCheck.error) {
+                console.error("UPLOAD AUTH ERROR:", JSON.stringify(authCheck.error));
+                return authCheck.error;
+            }
             user = authCheck.user;
+            console.log("Upload request from user:", { id: user.id, role: user.role });
         }
 
         if (!filename || !contentType) {
+            console.error("UPLOAD ERROR: Missing filename or contentType");
             return NextResponse.json({ error: "Filename and contentType are required" }, { status: 400 });
         }
 
@@ -44,20 +50,23 @@ export async function POST(req: NextRequest) {
         }
 
         const key = `${prefix}/${uniqueId}-${cleanName}`;
+        console.log("Generating presigned URL for key:", key, "contentType:", contentType);
 
         const result = await generatePresignedUploadUrl(key, contentType);
 
         if (result.error) {
-            return NextResponse.json({ error: result.error }, { status: 500 });
+            console.error("S3 Presigned URL error:", result.error);
+            return NextResponse.json({ error: "Failed to generate upload URL: " + result.error }, { status: 500 });
         }
 
+        console.log("Presigned URL generated successfully.");
         return NextResponse.json({
             url: result.url,
             key: result.key,
             publicUrl: getPublicCDNUrl(key),
         });
     } catch (err: any) {
-        console.error("Upload API error:", err);
-        return NextResponse.json({ error: "Failed to process upload request: " + err.message }, { status: 500 });
+        console.error("Upload API FATAL error:", err);
+        return NextResponse.json({ error: "Server-side upload error: " + err.message }, { status: 500 });
     }
 }

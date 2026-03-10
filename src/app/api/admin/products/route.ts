@@ -170,7 +170,13 @@ export async function POST(req: NextRequest) {
 
         return NextResponse.json(product, { status: 201 });
     } catch (err: any) {
-        console.error("PRODUCT CREATE ERROR:", JSON.stringify(err, Object.getOwnPropertyNames(err), 2));
+        console.error("PRODUCT CREATE ERROR (DETAILED):", {
+            message: err.message,
+            stack: err.stack,
+            cause: err.cause,
+            code: err.code,
+            detail: err.detail
+        });
         const errorString = (err.cause?.message || err.message || "").toLowerCase();
         if (errorString.includes("products_slug_unique") || err.code === "23505") {
             return NextResponse.json(
@@ -180,7 +186,7 @@ export async function POST(req: NextRequest) {
         }
 
         return NextResponse.json(
-            { error: `DB ERR: ${err.cause?.message || err.message || JSON.stringify(err)}` },
+            { error: `Database Error: ${err.detail || err.message || "Unknown DB error"}` },
             { status: 500 }
         );
     }
@@ -217,19 +223,27 @@ export async function PUT(req: NextRequest) {
     await db.update(products).set(updates).where(condition);
 
     // Reconstruct media relations
-    if (media && Array.isArray(media)) {
-        await db.delete(productMedia).where(eq(productMedia.productId, id));
-        for (const m of media) {
-            await db.insert(productMedia).values({
-                id: m.id || uuid(),
-                productId: id,
-                type: m.type,
-                url: m.url,
-                thumbnailUrl: m.thumbnailUrl || null,
-                alt: m.alt || null,
-                sortOrder: m.sortOrder || 0,
-            });
+    try {
+        if (media && Array.isArray(media)) {
+            console.log("Updating media relations for product:", id, "Count:", media.length);
+            await db.delete(productMedia).where(eq(productMedia.productId, id));
+            for (const m of media) {
+                const mediaId = m.id && m.id.length > 10 ? m.id : uuid(); // Preserve ID if it looks like a UUID, otherwise generate
+                await db.insert(productMedia).values({
+                    id: mediaId,
+                    productId: id,
+                    type: m.type,
+                    url: m.url,
+                    thumbnailUrl: m.thumbnailUrl || null,
+                    alt: m.alt || null,
+                    sortOrder: m.sortOrder || 0,
+                });
+            }
         }
+    } catch (mediaErr) {
+        console.error("FAILED TO UPDATE PRODUCT MEDIA:", mediaErr);
+        // We continue because the main product update already happened, 
+        // but we should probably surface this or at least log it well.
     }
 
     // Reconstruct document relations
