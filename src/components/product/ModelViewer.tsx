@@ -56,7 +56,7 @@ function DemoStage() {
 }
 
 function DynamicModel({ url }: { url: string }) {
-    const { scene } = useGLTF(url);
+    const { scene } = useGLTF(url, "https://www.gstatic.com/draco/versioned/decoders/1.5.7/");
     // Wrap primitive in <Center bottom> to align the bounding box floor to y=0
     return (
         <Center bottom>
@@ -64,6 +64,10 @@ function DynamicModel({ url }: { url: string }) {
         </Center>
     );
 }
+
+// Preload common model or the requested one if possible
+// useGLTF.preload(url) 
+
 
 export default function ModelViewer({ url }: { url?: string }) {
     return (

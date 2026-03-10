@@ -60,6 +60,7 @@
 :root {
   --background: #0a0f1e;
   --foreground: #f5f0e8;
+  color-scheme: dark;
 }
 
 /* ─── Base Styles ─── */

@@ -140,25 +140,31 @@ export function Navbar() {
                                     <span className="text-sm font-medium text-[var(--color-warm-white)]">{user.name?.split(" ")[0]}</span>
                                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="opacity-40 group-hover:rotate-180 transition-transform duration-300"><polyline points="6 9 12 15 18 9" /></svg>
                                 </button>
-                                <div className="absolute right-0 top-[calc(100%+8px)] w-56 rounded-xl glass border border-white/10 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 scale-95 group-hover:scale-100 origin-top-right shadow-2xl overflow-hidden py-1">
-                                    <div className="px-4 py-2.5 border-b border-white/5">
-                                        <p className="text-xs text-[var(--color-slate)] truncate">{user.email}</p>
-                                        <p className="text-[10px] font-bold text-[var(--color-gold)] mt-0.5">
-                                            {isSuperAdmin ? "SUPER ADMIN" : isAdmin ? "ADMINISTRATOR" : "CLIENT ACCOUNT"}
+                                <div className="absolute right-0 top-[calc(100%+8px)] w-56 rounded-xl glass border border-white/10 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 scale-95 group-hover:scale-100 origin-top-right shadow-2xl overflow-hidden py-1 z-[100] backdrop-blur-xl">
+                                    <div className="px-4 py-2.5 border-b border-white/5 bg-white/5">
+                                        <p className="text-[11px] font-medium text-[var(--color-warm-white)] truncate">{user.email}</p>
+                                        <p className="text-[10px] font-extrabold text-[var(--color-gold)] mt-0.5 tracking-tighter uppercase whitespace-nowrap">
+                                            {isSuperAdmin ? "✨ SUPER ADMIN" : isAdmin ? "🛡️ ADMINISTRATOR" : "👤 CLIENT ACCOUNT"}
                                         </p>
                                     </div>
-                                    {isAnyAdmin ? (
-                                        <Link href="/admin" className="block px-4 py-2.5 text-sm text-[var(--color-warm-white)] hover:bg-white/5 hover:text-[var(--color-gold)] transition-colors">Admin Dashboard</Link>
-                                    ) : (
-                                        <>
-                                            <Link href="/dashboard" className="block px-4 py-2.5 text-sm text-[var(--color-warm-white)] hover:bg-white/5 hover:text-[var(--color-gold)] transition-colors">My Dashboard</Link>
-                                            <Link href="/dashboard/quotes" className="block px-4 py-2.5 text-sm text-[var(--color-warm-white)] hover:bg-white/5 hover:text-[var(--color-gold)] transition-colors">My Quotes</Link>
-                                            <Link href="/dashboard/bookings" className="block px-4 py-2.5 text-sm text-[var(--color-warm-white)] hover:bg-white/5 hover:text-[var(--color-gold)] transition-colors">My Bookings</Link>
-                                            <Link href="/dashboard/profile" className="block px-4 py-2.5 text-sm text-[var(--color-warm-white)] hover:bg-white/5 hover:text-[var(--color-gold)] transition-colors">My Profile</Link>
-                                        </>
-                                    )}
+                                    <div className="py-1">
+                                        {isAnyAdmin ? (
+                                            <Link href="/admin" className="flex items-center gap-3 px-4 py-2.5 text-sm text-[var(--color-warm-white)] hover:bg-[var(--color-gold)]/10 hover:text-[var(--color-gold)] transition-all">
+                                                <div className="w-1.5 h-1.5 rounded-full bg-[var(--color-gold)]" />
+                                                Admin Dashboard
+                                            </Link>
+                                        ) : (
+                                            <>
+                                                <Link href="/dashboard" className="flex items-center gap-2 px-4 py-2.5 text-sm text-[var(--color-warm-white)] hover:bg-[var(--color-gold)]/10 hover:text-[var(--color-gold)] transition-all">My Dashboard</Link>
+                                                <Link href="/dashboard/quotes" className="flex items-center gap-2 px-4 py-2.5 text-sm text-[var(--color-warm-white)] hover:bg-[var(--color-gold)]/10 hover:text-[var(--color-gold)] transition-all">My Quotes</Link>
+                                                <Link href="/dashboard/bookings" className="flex items-center gap-2 px-4 py-2.5 text-sm text-[var(--color-warm-white)] hover:bg-[var(--color-gold)]/10 hover:text-[var(--color-gold)] transition-all">My Bookings</Link>
+                                                <Link href="/dashboard/profile" className="flex items-center gap-2 px-4 py-2.5 text-sm text-[var(--color-warm-white)] hover:bg-[var(--color-gold)]/10 hover:text-[var(--color-gold)] transition-all">My Profile</Link>
+                                            </>
+                                        )}
+                                    </div>
                                     <div className="border-t border-white/10 mt-1" />
-                                    <button onClick={logout} className="w-full text-left px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition-colors">
+                                    <button onClick={logout} className="w-full text-left px-4 py-2.5 text-sm font-semibold text-red-400 hover:bg-red-500/10 transition-colors flex items-center gap-2">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-red-400" />
                                         Sign Out
                                     </button>
                                 </div>

@@ -27,7 +27,8 @@ export function NotificationBell() {
             const res = await fetch("/api/notifications");
             if (res.ok) {
                 const data = await res.json();
-                setNotifications(data);
+                // API returns { notifications: items, unreadCount }
+                setNotifications(Array.isArray(data.notifications) ? data.notifications : Array.isArray(data) ? data : []);
             }
         } catch (error) {
             console.error("Failed to fetch notifications:", error);
@@ -74,14 +75,14 @@ export function NotificationBell() {
     };
 
     const markAllAsRead = async () => {
-        const unread = notifications.filter(n => !n.isRead);
+        const unread = Array.isArray(notifications) ? notifications.filter(n => !n.isRead) : [];
         for (const n of unread) {
             await fetch(`/api/notifications/${n.id}/read`, { method: "PATCH" });
         }
         setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
     };
 
-    const unreadCount = notifications.filter((n) => !n.isRead).length;
+    const unreadCount = Array.isArray(notifications) ? notifications.filter((n) => !n.isRead).length : 0;
 
     const getIcon = (type: string) => {
         switch (type) {

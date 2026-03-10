@@ -1,6 +1,17 @@
+"use client";
+
 import Link from "next/link";
+import { useSiteSettings } from "./SiteSettingsProvider";
 
 export function Footer() {
+    const { getSetting } = useSiteSettings();
+
+    const siteName = getSetting("site_name", "E3 Rentals");
+    const contactPhone = getSetting("contact_phone", "+971 4 555 0000");
+    const contactEmail = getSetting("contact_email", "info@e3rentals.com");
+    const contactLocation = getSetting("contact_location", "Dubai, UAE");
+    const footerTagline = getSetting("footer_tagline", "The digital operating system for event rentals. Enterprise-grade logistics, premium inventory.");
+
     return (
         <footer className="bg-[var(--color-surface)] border-t border-[var(--color-border-subtle)]">
             {/* CTA Banner */}
@@ -33,19 +44,19 @@ export function Footer() {
                         <div className="flex items-center gap-2 mb-4">
                             <img
                                 src="/logo.png"
-                                alt="E3 Rentals Logo"
+                                alt={`${siteName} Logo`}
                                 className="h-8 md:h-10 w-auto object-contain block"
                                 style={{ display: 'block' }}
                             />
                         </div>
                         <p className="text-sm text-[var(--color-slate)] leading-relaxed">
-                            The digital operating system for event rentals. Enterprise-grade logistics, premium inventory.
+                            {footerTagline}
                         </p>
                     </div>
 
                     {/* Equipment */}
                     <div>
-                        <h4 className="font-[family-name:var(--font-heading)] font-semibold text-sm tracking-wider mb-4 text-[var(--color-gold)]">EQUIPMENT</h4>
+                        <h4 className="font-[family-name:var(--font-heading)] font-semibold text-sm tracking-wider mb-4 text-[var(--color-gold)] uppercase">EQUIPMENT</h4>
                         <div className="flex flex-col gap-2">
                             <Link href="/catalog?category=staging-trusses" className="text-sm text-[var(--color-slate)] hover:text-[var(--color-warm-white)] transition-colors">Staging & Trusses</Link>
                             <Link href="/catalog?category=lighting" className="text-sm text-[var(--color-slate)] hover:text-[var(--color-warm-white)] transition-colors">Lighting</Link>
@@ -56,7 +67,7 @@ export function Footer() {
 
                     {/* Company */}
                     <div>
-                        <h4 className="font-[family-name:var(--font-heading)] font-semibold text-sm tracking-wider mb-4 text-[var(--color-gold)]">COMPANY</h4>
+                        <h4 className="font-[family-name:var(--font-heading)] font-semibold text-sm tracking-wider mb-4 text-[var(--color-gold)] uppercase">COMPANY</h4>
                         <div className="flex flex-col gap-2">
                             <span className="text-sm text-[var(--color-slate)]">About Us</span>
                             <span className="text-sm text-[var(--color-slate)]">Safety Standards</span>
@@ -67,19 +78,19 @@ export function Footer() {
 
                     {/* Contact */}
                     <div>
-                        <h4 className="font-[family-name:var(--font-heading)] font-semibold text-sm tracking-wider mb-4 text-[var(--color-gold)]">CONTACT</h4>
+                        <h4 className="font-[family-name:var(--font-heading)] font-semibold text-sm tracking-wider mb-4 text-[var(--color-gold)] uppercase">CONTACT</h4>
                         <div className="flex flex-col gap-2 text-sm text-[var(--color-slate)]">
-                            <span>+971 4 555 0000</span>
-                            <span>info@e3rentals.com</span>
-                            <span>Dubai, UAE</span>
+                            <span>{contactPhone}</span>
+                            <span>{contactEmail}</span>
+                            <span>{contactLocation}</span>
                         </div>
                     </div>
                 </div>
 
                 {/* Bottom */}
-                <div className="border-t border-[var(--color-border-subtle)] pt-6 flex flex-col md:flex-row items-center justify-between gap-4">
+                <div className="border-t border-[var(--color-border-subtle)] pt-6 flex flex-col md:row items-center justify-between gap-4">
                     <p className="text-xs text-[var(--color-slate)]">
-                        © 2026 E3 Rentals. All rights reserved.
+                        © {new Date().getFullYear()} {siteName}. All rights reserved.
                     </p>
                     <div className="flex items-center gap-6">
                         <span className="text-xs text-[var(--color-slate)]">TUV Certified</span>

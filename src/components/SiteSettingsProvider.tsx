@@ -27,8 +27,6 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
     useEffect(() => {
         const fetchSettings = async () => {
             try {
-                // Fetch from the public endpoint (we'll need to create this later)
-                // For now, we fallback to hardcoded defaults until the API is ready for public consumption
                 const res = await fetch("/api/settings");
                 if (res.ok) {
                     const data: Setting[] = await res.json();

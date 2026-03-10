@@ -175,45 +175,96 @@ function timeToMinutes(time: string): number {
 
 /**
  * Calculates a day-by-day availability timeline for the next N days.
- * Returns an array of available units per date.
- * Does not check time windows — returns the MINIMUM available stock for each day.
+ * 
+ * OPTIMIZED: Fetches all data in ONE batch and processes in-memory to avoid N+1 bottlenecks.
  */
 export async function getAvailabilityTimeline(productId: string, lookaheadDays: number = 30, startDate?: string) {
     const today = startDate ? parseISO(startDate) : new Date();
-    // Normalize to start of day
     today.setHours(0, 0, 0, 0);
 
-    const timeline: { date: string; available: number; booked: number; maintenance: number; total: number }[] = [];
+    const endDate = new Date(today);
+    endDate.setDate(today.getDate() + lookaheadDays);
 
-    // First, check product total units
+    // 1. Fetch Product and Physical Units
     const product = await db.query.products.findFirst({
         where: eq(products.id, productId),
         with: { inventoryUnits: true }
     });
 
-    if (!product) return timeline;
+    if (!product) return [];
 
-    // Loop through the days to check
+    const totalUnitsCount = product.inventoryUnits?.length || 0;
+    const installHours = product.installTime || 0;
+    const dismantleHours = product.dismantleTime || 0;
+
+    // 2. FETCH ALL DATA IN BULK
+    // Query all potentially overlapping bookings for the entire window
+    const allBookings = await db.query.bookings.findMany({
+        where: and(
+            eq(bookings.productId, productId),
+            inArray(bookings.status, ["approved", "booked"]),
+            lte(bookings.startDate, endDate),
+            gte(bookings.endDate, today),
+        ),
+    });
+
+    // Query all manual overrides
+    const overrides = await db.query.inventoryOverrides.findMany({
+        where: and(
+            eq(inventoryOverrides.productId, productId),
+            lte(inventoryOverrides.startDate, endDate),
+            gte(inventoryOverrides.endDate, today),
+        ),
+    });
+
+    // 3. DAILY AGGREGATION
+    // For a simple daily timeline, it's often faster to build a Map of days than to do complex sweeps if the range is small (30 days)
+    const dailyBooked = new Map<string, number>();
+    const dailyMaintenance = new Map<string, number>();
+
+    // Process each day in the timeline
+    const timeline: { date: string; available: number; booked: number; maintenance: number; total: number }[] = [];
+
     for (let i = 0; i < lookaheadDays; i++) {
         const currentDate = new Date(today);
         currentDate.setDate(today.getDate() + i);
         const dateStr = format(currentDate, "yyyy-MM-dd");
 
-        // Call the core engine for a 1-day block
-        // (This naturally handles the padding for install/dismantle buffers required even for a 1-day rental)
-        const dayCheck = await checkAvailability({
-            productId: productId,
-            startDate: dateStr,
-            endDate: dateStr,
-            quantity: 1, // Quantity doesn't matter for the raw unit count
-        });
+        // Start of day and end of day for this specific slot
+        const dayStart = currentDate;
+        const dayEnd = addHours(currentDate, 23.99);
+
+        // Calculate peak booked for THIS day specifically
+        // Any booking that overlaps (after adding its buffers) affects this day
+        let peakForDay = 0;
+        let maintenanceForDay = 0;
+
+        // Note: For extreme performance with large numbers of bookings, we'd use a sweep-line here.
+        // But for < 100 bookings per product, this direct check is very fast.
+        for (const booking of allBookings) {
+            const bookingEffStart = subHours(booking.startDate, booking.bufferBefore || 0);
+            const bookingEffEnd = addHours(booking.endDate, booking.bufferAfter || 0);
+
+            if (bookingEffStart <= dayEnd && bookingEffEnd >= dayStart) {
+                peakForDay += booking.units;
+            }
+        }
+
+        for (const over of overrides) {
+            if (over.startDate <= dayEnd && over.endDate >= dayStart) {
+                maintenanceForDay += over.unitsOffline;
+            }
+        }
+
+        const totalBooked = peakForDay + maintenanceForDay;
+        const available = Math.max(0, totalUnitsCount - totalBooked);
 
         timeline.push({
             date: dateStr,
-            available: dayCheck.unitsAvailable,
-            booked: dayCheck.unitsBooked,
-            maintenance: dayCheck.unitsMaintenance,
-            total: (product as any).inventoryUnits?.length || 0,
+            available,
+            booked: peakForDay,
+            maintenance: maintenanceForDay,
+            total: totalUnitsCount,
         });
     }
 

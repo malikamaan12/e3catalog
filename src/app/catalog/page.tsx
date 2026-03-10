@@ -104,8 +104,10 @@ function CatalogContent() {
             .then((data) => {
                 if (Array.isArray(data)) {
                     setProducts(data);
+                } else if (data && typeof data === 'object' && 'error' in data) {
+                    console.error("API Error:", data.error);
+                    setProducts([]);
                 } else {
-                    console.error("API Error or Invalid Data:", data);
                     setProducts([]);
                 }
                 setLoading(false);
@@ -116,10 +118,12 @@ function CatalogContent() {
             });
     }, [selectedCategory]);
 
-    const filteredProducts = Array.isArray(products) ? products.filter((p) =>
-        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.shortDescription?.toLowerCase().includes(searchQuery.toLowerCase())
-    ) : [];
+    const filteredProducts = Array.isArray(products)
+        ? products.filter((p) =>
+            p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            p.shortDescription?.toLowerCase().includes(searchQuery.toLowerCase())
+        )
+        : [];
 
     const handleCategorySelect = (slug: string) => {
         setSelectedCategory(slug);
@@ -169,7 +173,7 @@ function CatalogContent() {
                                 </button>
 
                                 {/* Parent groups */}
-                                {categoryTree.map((group) => {
+                                {Array.isArray(categoryTree) && categoryTree.map((group) => {
                                     const isGroupExpanded = expandedGroup === group.id;
                                     const isGroupSelected = selectedCategory === group.slug || group.children?.some(c => c.slug === selectedCategory);
                                     return (
@@ -219,7 +223,7 @@ function CatalogContent() {
                                 >
                                     <LayoutGrid className="w-3.5 h-3.5" /> All
                                 </button>
-                                {categoryTree.map((group) => (
+                                {Array.isArray(categoryTree) && categoryTree.map((group) => (
                                     <button
                                         key={group.id}
                                         onClick={() => handleCategorySelect(group.slug)}

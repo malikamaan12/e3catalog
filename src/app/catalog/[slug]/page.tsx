@@ -192,9 +192,9 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
         );
     }
 
-    const images = product.media.filter((m) => m.type === "image");
-    const model3d = product.media.find((m) => m.type === "model3d");
-    const video = product.media.find((m) => m.type === "video");
+    const images = Array.isArray(product.media) ? product.media.filter((m) => m.type === "image") : [];
+    const model3d = Array.isArray(product.media) ? product.media.find((m) => m.type === "model3d") : null;
+    const video = Array.isArray(product.media) ? product.media.find((m) => m.type === "video") : null;
 
     // Respect admin visibility flags
     const show3d = product.show3d !== false && !!model3d;
@@ -442,7 +442,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
                             )}
 
                             {/* Safety Certificates */}
-                            {product.safetyCertificates.length > 0 && (
+                            {Array.isArray(product.safetyCertificates) && product.safetyCertificates.length > 0 && (
                                 <div className="glass rounded-xl p-5 mb-6">
                                     <h3 className="font-[family-name:var(--font-heading)] font-semibold text-sm tracking-wider text-[var(--color-gold)] mb-4">SAFETY & COMPLIANCE</h3>
                                     <div className="space-y-3">
@@ -547,7 +547,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
                                     )}
 
                                     {/* Installation Guides Accordion */}
-                                    {product.installationGuides.length > 0 && (
+                                    {Array.isArray(product.installationGuides) && product.installationGuides.length > 0 && (
                                         <div className="space-y-4">
                                             {product.installationGuides.map((guide) => (
                                                 <div key={guide.id} className="rounded-xl bg-[var(--color-navy)] border border-[var(--color-border-subtle)] overflow-hidden">
