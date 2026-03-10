@@ -8,17 +8,17 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const categorySlug = searchParams.get("category");
 
-    // Fetch active vendors first
-    const activeVendorsList = await db.query.vendors.findMany({
-        where: eq(vendors.storeStatus, "active"),
-        columns: { id: true }
-    });
-    const activeVendorIds = activeVendorsList.map(v => v.id);
-
-    // Platform products (vendorId === null) should always be visible.
-
     try {
+        // Fetch active vendors first
+        const activeVendorsList = await db.query.vendors.findMany({
+            where: eq(vendors.storeStatus, "active"),
+            columns: { id: true }
+        }).catch(() => []);
+        
+        const activeVendorIds = activeVendorsList.map(v => v.id);
+
         let result;
+
 
         if (categorySlug) {
             const category = await db.query.categories.findFirst({

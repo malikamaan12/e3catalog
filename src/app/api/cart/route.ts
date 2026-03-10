@@ -12,34 +12,40 @@ function getSessionId(req: NextRequest): string {
 }
 
 export async function GET(req: NextRequest) {
-    const sessionId = getSessionId(req);
+    try {
+        const sessionId = getSessionId(req);
 
-    const items = await db.query.cartItems.findMany({
-        where: eq(cartItems.sessionId, sessionId),
-        with: {
-            product: {
-                columns: {
-                    id: true,
-                    name: true,
-                    slug: true,
-                    pricePerDay: true,
-                    pricePerHour: true,
-                    showPrice: true,
-                    thumbnailUrl: true,
-                    dimensions: true,
-                    unit: true,
+        const items = await db.query.cartItems.findMany({
+            where: eq(cartItems.sessionId, sessionId),
+            with: {
+                product: {
+                    columns: {
+                        id: true,
+                        name: true,
+                        slug: true,
+                        pricePerDay: true,
+                        pricePerHour: true,
+                        showPrice: true,
+                        thumbnailUrl: true,
+                        dimensions: true,
+                        unit: true,
+                    },
                 },
             },
-        },
-    });
+        });
 
-    const response = NextResponse.json(items);
-    response.cookies.set(SESSION_COOKIE, sessionId, {
-        httpOnly: true,
-        sameSite: "lax",
-        maxAge: 60 * 60 * 24 * 7, // 7 days
-    });
-    return response;
+        const response = NextResponse.json(items);
+        response.cookies.set(SESSION_COOKIE, sessionId, {
+            httpOnly: true,
+            sameSite: "lax",
+            path: "/",
+            maxAge: 60 * 60 * 24 * 7, // 7 days
+        });
+        return response;
+    } catch (err: any) {
+        console.error("CART GET ERROR:", err);
+        return NextResponse.json([], { status: 200 }); // Return empty array on error to prevent UI crash
+    }
 }
 
 export async function POST(req: NextRequest) {
@@ -117,40 +123,57 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-    const sessionId = getSessionId(req);
-    const { searchParams } = new URL(req.url);
-    const itemId = searchParams.get("id");
+    try {
+        const sessionId = getSessionId(req);
+        const { searchParams } = new URL(req.url);
+        const itemId = searchParams.get("id");
 
-    if (itemId) {
-        await db
-            .delete(cartItems)
-            .where(and(eq(cartItems.id, itemId), eq(cartItems.sessionId, sessionId)));
-    } else {
-        // Clear entire cart
-        await db.delete(cartItems).where(eq(cartItems.sessionId, sessionId));
+        if (itemId) {
+            await db
+                .delete(cartItems)
+                .where(and(eq(cartItems.id, itemId), eq(cartItems.sessionId, sessionId)));
+        } else {
+            // Clear entire cart
+            await db.delete(cartItems).where(eq(cartItems.sessionId, sessionId));
+        }
+
+        return NextResponse.json({ success: true });
+    } catch (err: any) {
+        console.error("CART DELETE ERROR:", err);
+        return NextResponse.json({ error: "Failed to delete from cart" }, { status: 500 });
     }
-
-    return NextResponse.json({ success: true });
 }
 
 export async function PATCH(req: NextRequest) {
-    const sessionId = getSessionId(req);
-    const body = await req.json();
-    const { id, quantity, startDate, endDate } = body;
+    try {
+        const sessionId = getSessionId(req);
+        const body = await req.json();
+        const { id, quantity, startDate, endDate } = body;
 
-    if (!id) {
-        return NextResponse.json({ error: "Missing item ID" }, { status: 400 });
+        if (!id) {
+            return NextResponse.json({ error: "Missing item ID" }, { status: 400 });
+        }
+
+        const updateData: any = {};
+        if (quantity !== undefined) updateData.quantity = Number(quantity);
+        
+        if (startDate) {
+            const sd = new Date(startDate);
+            if (!isNaN(sd.getTime())) updateData.startDate = sd;
+        }
+        if (endDate) {
+            const ed = new Date(endDate);
+            if (!isNaN(ed.getTime())) updateData.endDate = ed;
+        }
+
+        await db
+            .update(cartItems)
+            .set(updateData)
+            .where(and(eq(cartItems.id, id), eq(cartItems.sessionId, sessionId)));
+
+        return NextResponse.json({ success: true });
+    } catch (err: any) {
+        console.error("CART PATCH ERROR:", err);
+        return NextResponse.json({ error: "Failed to update cart" }, { status: 500 });
     }
-
-    const updateData: any = {};
-    if (quantity !== undefined) updateData.quantity = Number(quantity);
-    if (startDate) updateData.startDate = new Date(startDate);
-    if (endDate) updateData.endDate = new Date(endDate);
-
-    await db
-        .update(cartItems)
-        .set(updateData)
-        .where(and(eq(cartItems.id, id), eq(cartItems.sessionId, sessionId)));
-
-    return NextResponse.json({ success: true });
 }
