@@ -48,10 +48,18 @@ export async function checkAvailability(req: AvailabilityRequest): Promise<Avail
     const cleaningHours = product.cleaningTime || 0;
 
     // 2. Calculate effective date window with buffer
-    //    effectiveStart = requestedStart - installTime
-    //    effectiveEnd = requestedEnd + dismantleTime
-    const requestedStart = parseISO(req.startDate);
-    const requestedEnd = parseISO(req.endDate);
+    // Support both ISO strings and potentially other formats from various browsers
+    const parseDate = (d: any) => {
+        const parsed = new Date(d);
+        return isNaN(parsed.getTime()) ? parseISO(d) : parsed;
+    };
+
+    const requestedStart = parseDate(req.startDate);
+    const requestedEnd = parseDate(req.endDate);
+
+    if (isNaN(requestedStart.getTime()) || isNaN(requestedEnd.getTime())) {
+        throw new Error("Invalid date format provided for availability check.");
+    }
 
     const effectiveStart = subHours(requestedStart, installHours);
     const effectiveEnd = addHours(requestedEnd, dismantleHours);
@@ -66,7 +74,7 @@ export async function checkAvailability(req: AvailabilityRequest): Promise<Avail
     const overlappingBookings = await db.query.bookings.findMany({
         where: and(
             eq(bookings.productId, req.productId),
-            inArray(bookings.status, ["approved", "booked"]),
+            inArray(bookings.status, ["approved", "booked", "quote_accepted", "booking_requested"]),
             lte(bookings.startDate, effectiveEnd),
             gte(bookings.endDate, effectiveStart),
         ),
@@ -84,14 +92,20 @@ export async function checkAvailability(req: AvailabilityRequest): Promise<Avail
     let events: TimeEvent[] = [];
 
     for (const booking of overlappingBookings) {
-        let bookingEffectiveStart = subHours(booking.startDate, booking.bufferBefore || 0);
-        let bookingEffectiveEnd = addHours(booking.endDate, booking.bufferAfter || 0);
+        // CRITICAL: Ensure dates are Date objects before passing to date-fns.
+        // Drizzle/pg can return timestamps as strings, and date-fns would
+        // internally call e.toISOString() causing 'e.toISOString is not a function'.
+        const bStartDate = booking.startDate instanceof Date ? booking.startDate : new Date(booking.startDate);
+        const bEndDate = booking.endDate instanceof Date ? booking.endDate : new Date(booking.endDate);
+
+        let bookingEffectiveStart = subHours(bStartDate, booking.bufferBefore || 0);
+        let bookingEffectiveEnd = addHours(bEndDate, booking.bufferAfter || 0);
 
         // Advanced Multi-Shift Optimization
         // If the booking is same-day as the requested window and there is NO time overlap, we completely ignore it.
         if (req.startTime && req.endTime && booking.startTime && booking.endTime &&
-            format(booking.startDate, "yyyy-MM-dd") === format(booking.endDate, "yyyy-MM-dd") &&
-            req.startDate === format(booking.startDate, "yyyy-MM-dd")) {
+            format(bStartDate, "yyyy-MM-dd") === format(bEndDate, "yyyy-MM-dd") &&
+            req.startDate === format(bStartDate, "yyyy-MM-dd")) {
 
             const reqStartMinutes = timeToMinutes(req.startTime);
             const reqEndMinutes = timeToMinutes(req.endTime);
@@ -121,8 +135,10 @@ export async function checkAvailability(req: AvailabilityRequest): Promise<Avail
     });
 
     for (const over of overrides) {
-        const overStart = over.startDate < effectiveStart ? effectiveStart : over.startDate;
-        const overEnd = over.endDate > effectiveEnd ? effectiveEnd : over.endDate;
+        const oStart = new Date(over.startDate);
+        const oEnd = new Date(over.endDate);
+        const overStart = oStart < effectiveStart ? effectiveStart : oStart;
+        const overEnd = oEnd > effectiveEnd ? effectiveEnd : oEnd;
         events.push({ time: overStart, change: over.unitsOffline });
         events.push({ time: overEnd, change: -over.unitsOffline });
     }
@@ -179,7 +195,12 @@ function timeToMinutes(time: string): number {
  * OPTIMIZED: Fetches all data in ONE batch and processes in-memory to avoid N+1 bottlenecks.
  */
 export async function getAvailabilityTimeline(productId: string, lookaheadDays: number = 30, startDate?: string) {
-    const today = startDate ? parseISO(startDate) : new Date();
+    const parseDate = (d: any) => {
+        const parsed = new Date(d);
+        return isNaN(parsed.getTime()) ? parseISO(d) : parsed;
+    };
+
+    const today = startDate ? parseDate(startDate) : new Date();
     today.setHours(0, 0, 0, 0);
 
     const endDate = new Date(today);
@@ -202,7 +223,7 @@ export async function getAvailabilityTimeline(productId: string, lookaheadDays: 
     const allBookings = await db.query.bookings.findMany({
         where: and(
             eq(bookings.productId, productId),
-            inArray(bookings.status, ["approved", "booked"]),
+            inArray(bookings.status, ["approved", "booked", "quote_accepted", "booking_requested"]),
             lte(bookings.startDate, endDate),
             gte(bookings.endDate, today),
         ),
@@ -242,8 +263,12 @@ export async function getAvailabilityTimeline(productId: string, lookaheadDays: 
         // Note: For extreme performance with large numbers of bookings, we'd use a sweep-line here.
         // But for < 100 bookings per product, this direct check is very fast.
         for (const booking of allBookings) {
-            const bookingEffStart = subHours(booking.startDate, booking.bufferBefore || 0);
-            const bookingEffEnd = addHours(booking.endDate, booking.bufferAfter || 0);
+            // CRITICAL: Ensure dates are Date objects before passing to date-fns.
+            const bStartDate = booking.startDate instanceof Date ? booking.startDate : new Date(booking.startDate);
+            const bEndDate = booking.endDate instanceof Date ? booking.endDate : new Date(booking.endDate);
+
+            const bookingEffStart = subHours(bStartDate, booking.bufferBefore || 0);
+            const bookingEffEnd = addHours(bEndDate, booking.bufferAfter || 0);
 
             if (bookingEffStart <= dayEnd && bookingEffEnd >= dayStart) {
                 peakForDay += booking.units;
@@ -251,7 +276,10 @@ export async function getAvailabilityTimeline(productId: string, lookaheadDays: 
         }
 
         for (const over of overrides) {
-            if (over.startDate <= dayEnd && over.endDate >= dayStart) {
+            // CRITICAL: Ensure dates are Date objects.
+            const oStart = over.startDate instanceof Date ? over.startDate : new Date(over.startDate);
+            const oEnd = over.endDate instanceof Date ? over.endDate : new Date(over.endDate);
+            if (oStart <= dayEnd && oEnd >= dayStart) {
                 maintenanceForDay += over.unitsOffline;
             }
         }

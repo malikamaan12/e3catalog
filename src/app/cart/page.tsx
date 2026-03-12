@@ -22,6 +22,8 @@ interface CartItem {
         thumbnailUrl: string | null;
         dimensions: string | null;
         unit: string;
+        vendorId: string | null;
+        vendor: { id: string; companyName: string } | null;
     };
 }
 
@@ -234,92 +236,112 @@ export default function CartPage() {
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                            {/* Items */}
-                            <div className="lg:col-span-2 space-y-4">
-                                {items.map((item) => {
-                                    const days = calcDays(item.startDate, item.endDate);
-                                    const lineTotal = item.product.pricePerDay * item.quantity * days;
-                                    return (
-                                        <div key={item.id} className="card p-5">
-                                            <div className="flex gap-4">
-                                                <div className="w-20 h-20 shrink-0 rounded-lg bg-[var(--color-navy-lighter)] overflow-hidden">
-                                                    {item.product.thumbnailUrl ? (
-                                                        <div className="w-full h-full bg-cover bg-center" style={{ backgroundImage: `url(${item.product.thumbnailUrl})` }} />
-                                                    ) : (
-                                                        <div className="w-full h-full flex items-center justify-center text-[var(--color-slate)]">
-                                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
-                                                                <rect x="3" y="3" width="18" height="18" rx="2" />
-                                                            </svg>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <Link href={`/catalog/${item.product.slug}`} className="font-[family-name:var(--font-heading)] font-semibold text-[var(--color-warm-white)] hover:text-[var(--color-gold)] transition-colors line-clamp-1">
-                                                        {item.product.name}
-                                                    </Link>
-                                                    {item.product.dimensions && (
-                                                        <p className="text-xs text-[var(--color-slate)] mt-0.5">{item.product.dimensions}</p>
-                                                    )}
-                                                    {editingItemId === item.id ? (
-                                                        <div className="mt-3 p-4 bg-[var(--color-navy-dark)] rounded-lg border border-[var(--color-border-subtle)] space-y-3">
-                                                            <div className="flex flex-col sm:flex-row gap-4">
-                                                                <div className="flex-1">
-                                                                    <label className="block text-xs text-[var(--color-slate)] mb-1">Quantity</label>
-                                                                    <input type="number" min="1" value={editData.quantity} onChange={e => setEditData({ ...editData, quantity: Number(e.target.value) })} className="w-full bg-[var(--color-navy-light)] border border-white/10 rounded px-3 py-2 text-sm text-[var(--color-warm-white)]" />
-                                                                </div>
-                                                                <div className="flex-1">
-                                                                    <label className="block text-xs text-[var(--color-slate)] mb-1">Start Date</label>
-                                                                    <input type="date" value={editData.startDate} onChange={e => setEditData({ ...editData, startDate: e.target.value })} className="w-full bg-[var(--color-navy-light)] border border-white/10 rounded px-3 py-2 text-sm text-[var(--color-warm-white)]" />
-                                                                </div>
-                                                                <div className="flex-1">
-                                                                    <label className="block text-xs text-[var(--color-slate)] mb-1">End Date</label>
-                                                                    <input type="date" value={editData.endDate} onChange={e => setEditData({ ...editData, endDate: e.target.value })} className="w-full bg-[var(--color-navy-light)] border border-white/10 rounded px-3 py-2 text-sm text-[var(--color-warm-white)]" />
-                                                                </div>
-                                                            </div>
-                                                            <div className="flex gap-2 justify-end mt-2">
-                                                                <button onClick={() => setEditingItemId(null)} className="text-xs text-[var(--color-slate)] hover:text-white px-3 py-1.5 transition-colors">Cancel</button>
-                                                                <button onClick={() => saveEdit(item.id)} className="text-xs bg-[var(--color-gold)] text-[var(--color-navy)] font-medium rounded px-4 py-1.5 hover:bg-white transition-colors">Save Changes</button>
-                                                            </div>
-                                                        </div>
-                                                    ) : (
-                                                        <div className="flex flex-wrap items-center gap-3 md:gap-4 mt-3 text-sm text-[var(--color-slate)]">
-                                                            <div className="flex items-center gap-1 bg-[var(--color-navy-dark)] rounded overflow-hidden border border-white/5">
-                                                                <button onClick={() => updateQuantity(item.id, item.quantity, -1)} className="w-8 h-8 flex flex-col items-center justify-center hover:bg-white/5 disabled:opacity-30 text-lg leading-none" disabled={item.quantity <= 1}>−</button>
-                                                                <span className="px-2 text-center text-[var(--color-warm-white)] font-medium text-sm whitespace-nowrap min-w-[2rem]">{item.quantity} {item.product.unit}</span>
-                                                                <button onClick={() => updateQuantity(item.id, item.quantity, 1)} className="w-8 h-8 flex flex-col items-center justify-center hover:bg-white/5 text-lg leading-none">+</button>
-                                                            </div>
-                                                            {/* Rate — only shown if showPrice is true */}
-                                                            {item.product.showPrice ? (
-                                                                <span>× {item.product.pricePerDay.toLocaleString()} QAR/{(item.product.unit === 'unit' || !item.product.unit) ? 'day' : `${item.product.unit}/day`}</span>
-                                                            ) : (
-                                                                <span className="text-xs px-2 py-0.5 rounded bg-[var(--color-navy-lighter)] border border-white/10 text-[var(--color-slate)] italic">Price upon request</span>
-                                                            )}
-                                                            <span className="hidden sm:inline">·</span>
-                                                            <span>{days} day{days > 1 ? "s" : ""}</span>
-                                                            <span className="hidden sm:inline">·</span>
-                                                            <span>{item.startDate} → {item.endDate}</span>
-
-                                                            <button onClick={() => { setEditingItemId(item.id); setEditData({ quantity: item.quantity, startDate: item.startDate, endDate: item.endDate }); }} className="text-xs text-[var(--color-gold)] hover:text-white transition-colors ml-auto underline underline-offset-2">
-                                                                Edit Details
-                                                            </button>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                                <div className="flex flex-col items-end justify-between">
-                                                    {/* Line total — only if price is public */}
-                                                    {item.product.showPrice ? (
-                                                        <span className="font-bold gradient-text-gold">{(item.product.pricePerDay * item.quantity * days).toLocaleString()} QAR</span>
-                                                    ) : (
-                                                        <span className="text-xs text-[var(--color-slate)] italic">TBD</span>
-                                                    )}
-                                                    <button onClick={() => removeItem(item.id)} className="text-xs text-[var(--color-danger)] hover:underline mt-2">
-                                                        Remove
-                                                    </button>
-                                                </div>
-                                            </div>
+                            {/* Items grouped by Vendor */}
+                            <div className="lg:col-span-2 space-y-10">
+                                {Object.entries(
+                                    items.reduce((acc, item) => {
+                                        const vId = item.product.vendorId || "platform";
+                                        const vName = item.product.vendor?.companyName || "E3 Premium Rentals";
+                                        if (!acc[vId]) acc[vId] = { name: vName, items: [] };
+                                        acc[vId].items.push(item);
+                                        return acc;
+                                    }, {} as Record<string, { name: string; items: CartItem[] }>)
+                                ).map(([vendorId, group]) => (
+                                    <div key={vendorId} className="space-y-4">
+                                        <div className="flex items-center gap-3 px-1">
+                                            <div className="h-px flex-1 bg-white/10"></div>
+                                            <h2 className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-gold)] whitespace-nowrap">
+                                                Items from {group.name}
+                                            </h2>
+                                            <div className="h-px flex-1 bg-white/10"></div>
                                         </div>
-                                    );
-                                })}
+                                        
+                                        <div className="space-y-4">
+                                            {group.items.map((item) => {
+                                                const days = calcDays(item.startDate, item.endDate);
+                                                return (
+                                                    <div key={item.id} className="card p-5">
+                                                        <div className="flex gap-4">
+                                                            <div className="w-20 h-20 shrink-0 rounded-lg bg-[var(--color-navy-lighter)] overflow-hidden">
+                                                                {item.product.thumbnailUrl ? (
+                                                                    <div className="w-full h-full bg-cover bg-center" style={{ backgroundImage: `url(${item.product.thumbnailUrl})` }} />
+                                                                ) : (
+                                                                    <div className="w-full h-full flex items-center justify-center text-[var(--color-slate)]">
+                                                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
+                                                                            <rect x="3" y="3" width="18" height="18" rx="2" />
+                                                                        </svg>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                            <div className="flex-1 min-w-0">
+                                                                <Link href={`/catalog/${item.product.slug}`} className="font-[family-name:var(--font-heading)] font-semibold text-[var(--color-warm-white)] hover:text-[var(--color-gold)] transition-colors line-clamp-1">
+                                                                    {item.product.name}
+                                                                </Link>
+                                                                {item.product.dimensions && (
+                                                                    <p className="text-xs text-[var(--color-slate)] mt-0.5">{item.product.dimensions}</p>
+                                                                )}
+                                                                {editingItemId === item.id ? (
+                                                                    <div className="mt-3 p-4 bg-[var(--color-navy-dark)] rounded-lg border border-[var(--color-border-subtle)] space-y-3">
+                                                                        <div className="flex flex-col sm:flex-row gap-4">
+                                                                            <div className="flex-1">
+                                                                                <label className="block text-xs text-[var(--color-slate)] mb-1">Quantity</label>
+                                                                                <input type="number" min="1" value={editData.quantity} onChange={e => setEditData({ ...editData, quantity: Number(e.target.value) })} className="w-full bg-[var(--color-navy-light)] border border-white/10 rounded px-3 py-2 text-sm text-[var(--color-warm-white)]" />
+                                                                            </div>
+                                                                            <div className="flex-1">
+                                                                                <label className="block text-xs text-[var(--color-slate)] mb-1">Start Date</label>
+                                                                                <input type="date" value={editData.startDate} onChange={e => setEditData({ ...editData, startDate: e.target.value })} className="w-full bg-[var(--color-navy-light)] border border-white/10 rounded px-3 py-2 text-sm text-[var(--color-warm-white)]" />
+                                                                            </div>
+                                                                            <div className="flex-1">
+                                                                                <label className="block text-xs text-[var(--color-slate)] mb-1">End Date</label>
+                                                                                <input type="date" value={editData.endDate} onChange={e => setEditData({ ...editData, endDate: e.target.value })} className="w-full bg-[var(--color-navy-light)] border border-white/10 rounded px-3 py-2 text-sm text-[var(--color-warm-white)]" />
+                                                                            </div>
+                                                                        </div>
+                                                                        <div className="flex gap-2 justify-end mt-2">
+                                                                            <button onClick={() => setEditingItemId(null)} className="text-xs text-[var(--color-slate)] hover:text-white px-3 py-1.5 transition-colors">Cancel</button>
+                                                                            <button onClick={() => saveEdit(item.id)} className="text-xs bg-[var(--color-gold)] text-[var(--color-navy)] font-medium rounded px-4 py-1.5 hover:bg-white transition-colors">Save Changes</button>
+                                                                        </div>
+                                                                    </div>
+                                                                ) : (
+                                                                    <div className="flex flex-wrap items-center gap-3 md:gap-4 mt-3 text-sm text-[var(--color-slate)]">
+                                                                        <div className="flex items-center gap-1 bg-[var(--color-navy-dark)] rounded overflow-hidden border border-white/5">
+                                                                            <button onClick={() => updateQuantity(item.id, item.quantity, -1)} className="w-8 h-8 flex flex-col items-center justify-center hover:bg-white/5 disabled:opacity-30 text-lg leading-none" disabled={item.quantity <= 1}>−</button>
+                                                                            <span className="px-2 text-center text-[var(--color-warm-white)] font-medium text-sm whitespace-nowrap min-w-[2rem]">{item.quantity} {item.product.unit}</span>
+                                                                            <button onClick={() => updateQuantity(item.id, item.quantity, 1)} className="w-8 h-8 flex flex-col items-center justify-center hover:bg-white/5 text-lg leading-none">+</button>
+                                                                        </div>
+                                                                        {/* Rate — only shown if showPrice is true */}
+                                                                        {item.product.showPrice ? (
+                                                                            <span>× {item.product.pricePerDay.toLocaleString()} QAR/{(item.product.unit === 'unit' || !item.product.unit) ? 'day' : `${item.product.unit}/day`}</span>
+                                                                        ) : (
+                                                                            <span className="text-xs px-2 py-0.5 rounded bg-[var(--color-navy-lighter)] border border-white/10 text-[var(--color-slate)] italic">Price upon request</span>
+                                                                        )}
+                                                                        <span className="hidden sm:inline">·</span>
+                                                                        <span>{days} day{days > 1 ? "s" : ""}</span>
+                                                                        <span className="hidden sm:inline">·</span>
+                                                                        <span>{item.startDate} → {item.endDate}</span>
+                                                                        <button onClick={() => { setEditingItemId(item.id); setEditData({ quantity: item.quantity, startDate: item.startDate, endDate: item.endDate }); }} className="text-xs text-[var(--color-gold)] hover:text-white transition-colors ml-auto underline underline-offset-2">
+                                                                            Edit Details
+                                                                        </button>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                            <div className="flex flex-col items-end justify-between">
+                                                                {/* Line total — only if price is public */}
+                                                                {item.product.showPrice ? (
+                                                                    <span className="font-bold gradient-text-gold">{(item.product.pricePerDay * item.quantity * days).toLocaleString()} QAR</span>
+                                                                ) : (
+                                                                    <span className="text-xs text-[var(--color-slate)] italic">TBD</span>
+                                                                )}
+                                                                <button onClick={() => removeItem(item.id)} className="text-xs text-[var(--color-danger)] hover:underline mt-2">
+                                                                    Remove
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
 
                             {/* Summary */}

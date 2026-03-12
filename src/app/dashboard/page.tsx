@@ -1,6 +1,6 @@
 import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { bookings, products } from "@/lib/db/schema";
+import { bookings, products, vendors } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import DashboardClient from "./DashboardClient";
@@ -18,18 +18,25 @@ export default async function DashboardPage() {
 
     // Fetch all bookings for this user
     const userBookings = await db
-        .select({ booking: bookings, product: products })
+        .select({ booking: bookings, product: products, vendor: vendors })
         .from(bookings)
         .innerJoin(products, eq(bookings.productId, products.id))
+        .leftJoin(vendors, eq(products.vendorId, vendors.id))
         .where(eq(bookings.userId, user.id))
         .orderBy(desc(bookings.createdAt));
 
-    // Group into projects
-    const projectsMap = userBookings.reduce((acc, { booking, product }) => {
-        const key = booking.projectId || booking.id;
+    // Group into projects/vendor-split quotes
+    const projectsMap = userBookings.reduce((acc, { booking, product, vendor }) => {
+        const vendorId = booking.vendorId || "platform";
+        // Composite key ensures split quotes per vendor under the same project
+        const key = booking.projectId ? `${booking.projectId}::${vendorId}` : booking.id;
+
         if (!acc[key]) {
             acc[key] = {
                 id: key,
+                projectId: booking.projectId,
+                vendorId: vendorId,
+                vendorName: vendor?.companyName || "E3 Rentals",
                 projectName: booking.projectName || "Quote Request",
                 status: booking.status,
                 itemCount: 0,

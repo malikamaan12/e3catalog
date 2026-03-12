@@ -13,16 +13,25 @@ export async function GET(req: any) {
 
         let lookahead = 14;
         let actualStart = fromDate;
-        if (fromDate && toDate) {
-            const start = new Date(fromDate);
-            const end = new Date(toDate);
-            const diffTime = Math.abs(end.getTime() - start.getTime());
-            lookahead = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-            // Cap at 45 days for performance
-            if (lookahead > 45) lookahead = 45;
 
-            // Ensure we start from the earlier date if user swapped them
-            if (start > end) actualStart = toDate;
+        const parseDate = (d: any) => {
+            const parsed = new Date(d);
+            return isNaN(parsed.getTime()) ? null : parsed;
+        };
+
+        if (fromDate && toDate) {
+            const start = parseDate(fromDate);
+            const end = parseDate(toDate);
+            
+            if (start && end) {
+                const diffTime = Math.abs(end.getTime() - start.getTime());
+                lookahead = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+                // Cap at 45 days for performance
+                if (lookahead > 45) lookahead = 45;
+
+                // Ensure we start from the earlier date if user swapped them
+                if (start > end) actualStart = toDate;
+            }
         }
 
         const { user, error } = await requireAdmin(["admin", "super_admin", "sales_rep", "warehouse_manager", "vendor"]);
@@ -70,8 +79,9 @@ export async function GET(req: any) {
         matrixData.sort((a, b) => a.product.name.localeCompare(b.product.name));
 
         return NextResponse.json(matrixData);
-    } catch (error) {
-        console.error("Matrix generation error:", error);
-        return NextResponse.json({ error: "Failed to generate inventory matrix" }, { status: 500 });
+    } catch (matrixError: any) {
+        console.error("MATRIX API ERROR [CRITICAL]:", matrixError);
+        if (matrixError.stack) console.error(matrixError.stack);
+        return NextResponse.json({ error: matrixError.message || "Failed to generate inventory matrix" }, { status: 500 });
     }
 }

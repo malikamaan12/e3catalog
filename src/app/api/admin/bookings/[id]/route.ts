@@ -203,8 +203,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
                         projectName: existingBooking.projectName || "Your Rental Request",
                         projectId: existingBooking.projectId || existingBooking.id,
                         status,
-                        startDate: existingBooking.startDate.toISOString(),
-                        endDate: existingBooking.endDate.toISOString(),
+                        startDate: (existingBooking.startDate instanceof Date) ? existingBooking.startDate.toISOString() : new Date(existingBooking.startDate).toISOString(),
+                        endDate: (existingBooking.endDate instanceof Date) ? existingBooking.endDate.toISOString() : new Date(existingBooking.endDate).toISOString(),
                         totalPrice: existingBooking.totalPrice,
                         // Send admin notes to client only when quote is sent
                         adminNote: status === "quote_sent" ? (existingBooking.adminNotes ?? undefined) : undefined,

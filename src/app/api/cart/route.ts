@@ -37,6 +37,15 @@ export async function GET(req: NextRequest) {
                         thumbnailUrl: true,
                         dimensions: true,
                         unit: true,
+                        vendorId: true,
+                    },
+                    with: {
+                        vendor: {
+                            columns: {
+                                id: true,
+                                companyName: true,
+                            },
+                        },
                     },
                 },
             },

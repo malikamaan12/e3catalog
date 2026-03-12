@@ -19,6 +19,7 @@ interface Project {
     endDate: string | null;
     createdAt: string;
     products: string[];
+    vendorName: string;
 }
 
 interface UserData {
@@ -336,10 +337,17 @@ function QuoteCard({ project, getStatusConfig, formatDate, formatRelative }: {
                     <span className="text-[10px] text-[var(--color-slate)]">{formatRelative(project.createdAt)}</span>
                 </div>
 
-                {/* Title */}
-                <h3 className="text-base font-bold text-[var(--color-warm-white)] mb-3 line-clamp-2 flex-1">
-                    {project.projectName}
-                </h3>
+                {/* Title & Vendor */}
+                <div className="mb-3 flex-1 min-w-0">
+                    <h3 className="text-base font-bold text-[var(--color-warm-white)] line-clamp-2">
+                        {project.projectName}
+                    </h3>
+                    <div className="mt-1 flex items-center gap-1.5 overflow-hidden">
+                        <span className="text-[10px] font-bold text-[var(--color-gold)] uppercase tracking-wider bg-[var(--color-gold)]/10 px-1.5 py-0.5 rounded border border-[var(--color-gold)]/20 truncate">
+                            {project.vendorName}
+                        </span>
+                    </div>
+                </div>
 
                 {/* Meta */}
                 <div className="space-y-1.5 mb-4">

@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { chatMessages, users } from "@/lib/db/schema";
+import { chatMessages, users, bookings, vendors } from "@/lib/db/schema";
 import { eq, or, and, desc } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
@@ -78,18 +78,64 @@ export async function POST(req: NextRequest) {
         let finalReceiverId = receiverId;
 
         if (!["admin", "super_admin", "vendor", "sales_rep"].includes(user.role)) {
-            // If client is sending, find an admin to receive
+            // If client is sending, find an appropriate receiver
             if (!finalReceiverId) {
-                const [admin] = await db
-                    .select()
-                    .from(users)
-                    .where(eq(users.role, "admin"))
-                    .limit(1);
-
-                if (!admin) {
-                    return NextResponse.json({ error: "No admin available to receive messages" }, { status: 500 });
+                // 1. Try to route by Project/Vendor Composite ID
+                if (projectId && projectId.includes("::")) {
+                    const [pId, vId] = projectId.split("::");
+                    if (vId && vId !== "platform") {
+                        const vendor = await db.query.vendors.findFirst({
+                            where: eq(vendors.id, vId),
+                            with: { user: true }
+                        });
+                        if (vendor?.user?.id) {
+                            finalReceiverId = vendor.user.id;
+                        }
+                    }
                 }
-                finalReceiverId = admin.id;
+
+                // 2. Fallback to Project ID lookup if not yet found
+                if (!finalReceiverId && projectId) {
+                    const booking = await db.query.bookings.findFirst({
+                        where: or(eq(bookings.projectId, projectId), eq(bookings.id, projectId)),
+                    });
+
+                    if (booking?.vendorId) {
+                        const vendor = await db.query.vendors.findFirst({
+                            where: eq(vendors.id, booking.vendorId),
+                            with: { user: true }
+                        });
+                        if (vendor?.user?.id) {
+                            finalReceiverId = vendor.user.id;
+                        }
+                    }
+                }
+
+                // 3. Fallback to Super Admin or Admin
+                if (!finalReceiverId) {
+                    const [admin] = await db
+                        .select()
+                        .from(users)
+                        .where(or(eq(users.role, "super_admin"), eq(users.role, "admin")))
+                        .limit(1);
+
+                    if (!admin) {
+                        // Ultimate fallback: any user who is NOT a client (last resort)
+                        const [anyStaff] = await db
+                            .select()
+                            .from(users)
+                            .where(or(eq(users.role, "sales_rep"), eq(users.role, "warehouse_manager")))
+                            .limit(1);
+                        
+                        if (anyStaff) {
+                            finalReceiverId = anyStaff.id;
+                        } else {
+                            return NextResponse.json({ error: "No support staff available to receive messages" }, { status: 500 });
+                        }
+                    } else {
+                        finalReceiverId = admin.id;
+                    }
+                }
             }
         } else {
             // Admin must provide a receiverId

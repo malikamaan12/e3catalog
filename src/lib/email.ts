@@ -213,6 +213,79 @@ export async function sendQuoteStatusEmail(opts: {
     }
 }
 
+export async function sendVendorNotificationEmail(opts: {
+    to: string;
+    vendorName: string;
+    customerName: string;
+    projectName: string;
+    projectId: string;
+}) {
+    if (!process.env.RESEND_API_KEY || process.env.RESEND_API_KEY === "re_placeholder") {
+        console.log(`[VENDOR EMAIL SKIPPED] No API Key. Would notify ${opts.vendorName} (${opts.to}) about ${opts.projectName}`);
+        return;
+    }
+
+    const ctaUrl = `${BASE_URL}/admin/vendor/requests`; // Future vendor portal
+    const accentColor = "#d4a843";
+
+    const html = `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#0a0f1e;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+    <div style="max-width:600px;margin:0 auto;padding:32px 16px;">
+        <div style="text-align:center;margin-bottom:32px;">
+            <div style="display:inline-block;background:linear-gradient(135deg,#d4a843,#f5c842);border-radius:12px;padding:12px 16px;margin-bottom:16px;">
+                <span style="font-size:24px;font-weight:900;color:#0a0f1e;letter-spacing:2px;">E3 VENDOR</span>
+            </div>
+        </div>
+        <div style="background:#0f1729;border:1px solid #1e293b;border-radius:16px;overflow:hidden;">
+            <div style="background:${accentColor}18;border-bottom:1px solid ${accentColor}30;padding:24px 28px;text-align:center;">
+                <div style="font-size:40px;margin-bottom:8px;">🔔</div>
+                <h1 style="margin:0;color:#f1f5f9;font-size:22px;font-weight:700;">New Quote Request</h1>
+                <p style="margin:8px 0 0;color:#94a3b8;font-size:14px;line-height:1.6;">A new request has been submitted for your equipment.</p>
+            </div>
+            <div style="padding:28px;">
+                <p style="margin:0 0 20px;color:#cbd5e1;font-size:15px;">Hi <strong style="color:#f1f5f9;">${opts.vendorName}</strong>,</p>
+                <div style="background:#1e293b;border-radius:10px;padding:16px 20px;">
+                    <table style="width:100%;border-collapse:collapse;">
+                        <tr>
+                            <td style="padding:8px 0;color:#94a3b8;font-size:13px;">Project</td>
+                            <td style="padding:8px 0;color:#f1f5f9;font-size:13px;font-weight:600;text-align:right;">${opts.projectName}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding:8px 0;color:#94a3b8;font-size:13px;">Customer</td>
+                            <td style="padding:8px 0;color:#f1f5f9;font-size:13px;font-weight:600;text-align:right;">${opts.customerName}</td>
+                        </tr>
+                    </table>
+                </div>
+                <div style="margin-top:32px;text-align:center;">
+                    <a href="${ctaUrl}" style="display:inline-block;background:${accentColor};color:#0a0f1e;font-weight:700;font-size:14px;padding:14px 32px;border-radius:10px;text-decoration:none;letter-spacing:0.5px;">
+                        View Requests →
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div style="margin-top:24px;text-align:center;color:#475569;font-size:12px;line-height:1.8;">
+            <p style="margin:4px 0 0;">© ${new Date().getFullYear()} E3 Rentals. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>`;
+
+    try {
+        const resend = getResend();
+        await resend.emails.send({
+            from: FROM,
+            to: opts.to,
+            subject: `🔔 New Quote Request: ${opts.projectName}`,
+            html,
+        });
+        console.log(`[VENDOR EMAIL SENT] → ${opts.to}`);
+    } catch (err) {
+        console.error("[VENDOR EMAIL ERROR]", err);
+    }
+}
+
 function buildEmailHTMLWithId(opts: {
     to: string;
     customerName: string;

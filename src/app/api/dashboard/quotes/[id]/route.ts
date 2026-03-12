@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { bookings, products } from "@/lib/db/schema";
+import { bookings, products, vendors } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
@@ -11,25 +11,36 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
         if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
         const { id } = await params;
+        let queryProjectId = id;
+        let queryVendorId: string | undefined = undefined;
 
-        // Fetch all bookings that match either the direct booking ID (if un-grouped) or the projectId
+        if (id.includes("::")) {
+            [queryProjectId, queryVendorId] = id.split("::");
+        }
+
         const userBookings = await db
             .select({
                 booking: bookings,
-                product: products
+                product: products,
+                vendor: vendors
             })
             .from(bookings)
             .innerJoin(products, eq(bookings.productId, products.id))
+            .leftJoin(vendors, eq(products.vendorId, vendors.id))
             .where(
                 and(
                     eq(bookings.userId, user.id),
-                    // SQLite doesn't have an easy OR without bringing in extra imports, so we do it in JS if needed.
-                    // But Drizzle has "or". Let's import it.
+                    // Match either the direct booking ID or the projectId
+                    // and if vendorId is specified, match that too
                 )
             );
 
-        // Filter in memory for compatibility
-        const quoteItems = userBookings.filter(b => b.booking.projectId === id || b.booking.id === id);
+        // Filter for compatibility and specificity
+        const quoteItems = userBookings.filter(b => {
+            const matchesId = b.booking.projectId === queryProjectId || b.booking.id === queryProjectId;
+            const matchesVendor = !queryVendorId || (b.booking.vendorId || "platform") === queryVendorId;
+            return matchesId && matchesVendor;
+        });
 
         if (quoteItems.length === 0) {
             return NextResponse.json({ error: "Quote not found or unauthorized" }, { status: 404 });
@@ -108,6 +119,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
         return NextResponse.json({
             id: projectId,
             projectName,
+            vendorName: quoteItems[0].vendor?.companyName || "E3 Rentals",
             status,
             createdAt: firstBooking.createdAt,
             notes: firstBooking.notes,
@@ -144,11 +156,22 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         const body = await request.json();
         const { status, clientNotes } = body;
 
+        let queryProjectId = id;
+        let queryVendorId: string | undefined = undefined;
+
+        if (id.includes("::")) {
+            [queryProjectId, queryVendorId] = id.split("::");
+        }
+
         // Verify ownership
         const userBookings = await db.query.bookings.findMany({
             where: and(eq(bookings.userId, user.id))
         });
-        const projectBookings = userBookings.filter(b => b.projectId === id || b.id === id);
+        const projectBookings = userBookings.filter(b => {
+            const matchesId = b.projectId === queryProjectId || b.id === queryProjectId;
+            const matchesVendor = !queryVendorId || (b.vendorId || "platform") === queryVendorId;
+            return matchesId && matchesVendor;
+        });
 
         if (projectBookings.length === 0) {
             return NextResponse.json({ error: "Quote not found or unauthorized" }, { status: 404 });
@@ -180,8 +203,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
                 projectName: firstBooking.projectName || "Your Rental Request",
                 projectId: firstBooking.projectId || firstBooking.id,
                 status,
-                startDate: firstBooking.startDate.toISOString(),
-                endDate: firstBooking.endDate.toISOString(),
+                startDate: (firstBooking.startDate instanceof Date) ? firstBooking.startDate.toISOString() : new Date(firstBooking.startDate).toISOString(),
+                endDate: (firstBooking.endDate instanceof Date) ? firstBooking.endDate.toISOString() : new Date(firstBooking.endDate).toISOString(),
                 totalPrice: firstBooking.totalPrice,
             });
         }

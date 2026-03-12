@@ -63,6 +63,8 @@ const STATUS_LABELS: Record<string, string> = {
     quote_sent: "📨 Quote Sent / Bargaining",
     changes_requested: "🔄 Revision",
     approved: "✅ Approved (Locked)",
+    quote_accepted: "🤝 Quote Accepted",
+    booking_requested: "⚡ Booking Requested",
     booked: "🎯 Booked / Completed",
     cancelled: "❌ Cancelled",
     undelivered: "📉 Undelivered",

@@ -31,6 +31,7 @@ interface Project {
     id: string;
     projectName: string;
     status: string;
+    vendorName?: string;
 }
 
 interface ClientChatWindowProps {
@@ -225,7 +226,7 @@ export default function ClientChatWindow({ currentUser, projects }: ClientChatWi
                             >
                                 {projects.map((p) => (
                                     <option key={p.id} value={p.id} className="bg-[var(--color-navy-lighter)] text-white">
-                                        {p.projectName}
+                                        {p.projectName} {p.vendorName ? `(${p.vendorName})` : ""}
                                     </option>
                                 ))}
                             </select>

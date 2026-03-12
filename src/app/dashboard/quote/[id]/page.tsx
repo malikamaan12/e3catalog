@@ -28,6 +28,7 @@ interface QuoteItem {
 interface QuoteDetail {
     id: string;
     projectName: string;
+    vendorName: string;
     status: string;
     createdAt: string;
     notes: string | null;
@@ -224,6 +225,7 @@ export default function DashboardQuotePage({ params }: { params: Promise<{ id: s
                         </a>
                     </h1>
                     <p className="text-[var(--color-slate)] text-sm">
+                        Vendor: <span className="text-[var(--color-gold)] font-semibold">{quote.vendorName}</span> · 
                         Submitted on {new Date(quote.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}
                     </p>
                 </div>

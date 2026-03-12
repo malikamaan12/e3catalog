@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { signToken, getCurrentUser } from "@/lib/auth";
 import { cookies } from "next/headers";
 import { v4 as uuid } from "uuid";
+import { sendVendorNotificationEmail } from "@/lib/email";
 
 export async function POST(req: NextRequest) {
     try {
@@ -25,7 +26,15 @@ export async function POST(req: NextRequest) {
         const items = await db.query.cartItems.findMany({
             where: eq(cartItems.sessionId, sessionId),
             with: {
-                product: true,
+                product: {
+                    with: {
+                        vendor: {
+                            with: {
+                                user: true,
+                            },
+                        },
+                    },
+                },
             },
         });
 
@@ -98,60 +107,82 @@ export async function POST(req: NextRequest) {
             if (existingBookings.length > 0) {
                 finalProjectName = existingBookings[0].projectName || finalProjectName;
 
-                // Also update the status of existing items in the project to "changes_requested"
-                // since the user appended to their quote request
                 await db.update(bookings)
                     .set({ status: "changes_requested", updatedAt: new Date() })
                     .where(eq(bookings.projectId, projectId));
             }
         }
 
-        const bookingPromises = items.map(async (item) => {
-            // Buffer times (default 0 if null)
-            const bufferBefore = item.product.installTime || 0;
-            const bufferAfter = item.product.dismantleTime || 0;
+        // Group items by vendor for grouped processing/notifications
+        const groupedByVendor = items.reduce((acc, item) => {
+            const vId = item.product.vendorId || "platform";
+            if (!acc[vId]) acc[vId] = [];
+            acc[vId].push(item);
+            return acc;
+        }, {} as Record<string, typeof items>);
 
-            // Calculate product-level extra charges based on quantity requested
-            const pkgFee = (item.product.packagingFee || 0) * item.quantity;
-            const hndFee = (item.product.handlingFee || 0) * item.quantity;
-            const setFee = (item.product.setupFee || 0) * item.quantity;
-            const totalCustomFee = pkgFee + hndFee + setFee;
+        // Execute as a single transaction
+        await db.transaction(async (tx) => {
+            for (const [vendorId, vendorItems] of Object.entries(groupedByVendor)) {
+                for (const item of vendorItems) {
+                    const bufferBefore = item.product.installTime || 0;
+                    const bufferAfter = item.product.dismantleTime || 0;
 
-            await db.insert(bookings).values({
-                id: uuid(),
-                productId: item.productId,
-                userId: targetUserId, // Link to the user payload
-                projectId: activeProjectId,
-                projectName: finalProjectName,
-                units: item.quantity,
-                startDate: new Date(item.startDate),
-                endDate: new Date(item.endDate),
-                startTime: item.startTime,
-                endTime: item.endTime,
-                status: "request", // Set initial state
-                bufferBefore,
-                bufferAfter,
-                customerName,
-                customerEmail: normalizedEmail,
-                customerPhone,
-                notes,
-                // Default empty financials, admin will fill these
-                totalPrice: 0,
-                discount: 0,
-                logisticsCost: 0,
-                additionalChargeName: totalCustomFee > 0 ? "Setup & Handling Fees" : null,
-                additionalChargeAmount: totalCustomFee,
-                additionalChargeType: "fixed",
-                vendorId: item.product.vendorId, // Enforce Tenant Map
-                createdAt: new Date(),
-                updatedAt: new Date(),
-            });
+                    const pkgFee = (item.product.packagingFee || 0) * item.quantity;
+                    const hndFee = (item.product.handlingFee || 0) * item.quantity;
+                    const setFee = (item.product.setupFee || 0) * item.quantity;
+                    const totalCustomFee = pkgFee + hndFee + setFee;
+
+                    await tx.insert(bookings).values({
+                        id: uuid(),
+                        productId: item.productId,
+                        userId: targetUserId,
+                        projectId: activeProjectId,
+                        projectName: finalProjectName,
+                        units: item.quantity,
+                        startDate: new Date(item.startDate),
+                        endDate: new Date(item.endDate),
+                        startTime: item.startTime,
+                        endTime: item.endTime,
+                        status: "request",
+                        bufferBefore,
+                        bufferAfter,
+                        customerName,
+                        customerEmail: normalizedEmail,
+                        customerPhone,
+                        notes,
+                        totalPrice: 0,
+                        discount: 0,
+                        logisticsCost: 0,
+                        additionalChargeName: totalCustomFee > 0 ? "Setup & Handling Fees" : null,
+                        additionalChargeAmount: totalCustomFee,
+                        additionalChargeType: "fixed",
+                        vendorId: item.product.vendorId,
+                        createdAt: new Date(),
+                        updatedAt: new Date(),
+                    });
+                }
+            }
+
+            // Clear cart after successful transaction
+            await tx.delete(cartItems).where(eq(cartItems.sessionId, sessionId));
         });
 
-        await Promise.all(bookingPromises);
-
-        // Clear cart after successful conversion to quote request
-        await db.delete(cartItems).where(eq(cartItems.sessionId, sessionId));
+        // Trigger notifications after successful database commit
+        for (const [vendorId, vendorItems] of Object.entries(groupedByVendor)) {
+            const vendor = vendorItems[0].product.vendor;
+            const vendorEmail = vendor?.user?.email;
+            if (vendorEmail) {
+                // We don't await this to keep the response snappy
+                sendVendorNotificationEmail({
+                    to: vendorEmail,
+                    vendorName: vendor.companyName,
+                    customerName,
+                    projectName: finalProjectName,
+                    projectId: activeProjectId,
+                }).catch(err => console.error("Vendor notification failed:", err));
+            }
+        }
 
         return NextResponse.json({ success: true, message: "Quote requested successfully" });
 

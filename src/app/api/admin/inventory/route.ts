@@ -1,9 +1,10 @@
-import { db } from "@/lib/db";
+import { db, pool } from "@/lib/db";
 import { inventoryOverrides, products } from "@/lib/db/schema";
 import { desc, eq, and, inArray } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
 import { requireAdmin } from "@/lib/requireAdmin";
+import { parseISO, isValid } from "date-fns";
 
 export async function GET() {
     try {
@@ -36,9 +37,19 @@ export async function GET() {
                 product: { columns: { name: true } },
             },
         });
-        return NextResponse.json(overrides);
-    } catch (e: unknown) {
-        return NextResponse.json({ error: (e as Error).message }, { status: 500 });
+
+        // Deeply defensive map for return
+        const safeOverrides = overrides.map(o => ({
+            ...o,
+            startDate: o.startDate instanceof Date ? o.startDate.toISOString() : String(o.startDate),
+            endDate: o.endDate instanceof Date ? o.endDate.toISOString() : String(o.endDate),
+            createdAt: o.createdAt instanceof Date ? o.createdAt.toISOString() : String(o.createdAt),
+        }));
+
+        return NextResponse.json(safeOverrides);
+    } catch (inventoryGetError: any) {
+        console.error("Inventory GET Error:", inventoryGetError);
+        return NextResponse.json({ error: inventoryGetError.message || "Internal server error" }, { status: 500 });
     }
 }
 
@@ -56,12 +67,22 @@ export async function POST(req: NextRequest) {
 
         const body = await req.json();
 
-        // Basic validation
-        if (!body.productId || !body.startDate || !body.endDate || !body.unitsOffline || !body.reason) {
-            return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+        // Safe Date Parsing — parseISO returns a proper Date object from a string like "2026-03-15"
+        const startDateObj = parseISO(String(body.startDate));
+        const endDateObj = parseISO(String(body.endDate));
+
+        if (!isValid(startDateObj) || !isValid(endDateObj)) {
+            return NextResponse.json({ error: "Invalid date format provided for inventory override." }, { status: 400 });
         }
 
-        // Verify product ownership
+        // Pre-format as ISO strings – pass raw strings to pg to bypass Drizzle's
+        // timestamp serializer which internally calls `e.toISOString()` and crashes
+        // when the date value is not a proper JS Date object.
+        const startDateStr = startDateObj.toISOString();
+        const endDateStr = endDateObj.toISOString();
+        const createdAtStr = new Date().toISOString();
+
+        // Product ownership verification
         if (!isSuperAdmin) {
             const prod = await db.query.products.findFirst({
                 where: and(eq(products.id, body.productId), eq(products.vendorId, targetVendorId))
@@ -71,27 +92,43 @@ export async function POST(req: NextRequest) {
             }
         }
 
-        const newOverride = {
-            id: uuidv4(),
-            productId: body.productId,
-            startDate: body.startDate,
-            endDate: body.endDate,
-            unitsOffline: Number(body.unitsOffline),
-            reason: body.reason,
-            createdAt: new Date(),
-        };
+        const newOverrideId = uuidv4();
 
-        await db.insert(inventoryOverrides).values(newOverride);
+        // Raw parameterized SQL to bypass Drizzle's ORM type coercion for timestamps.
+        // Drizzle internally calls `e.toISOString()` on timestamp column values,
+        // which crashes when the pg driver returns dates as strings.
+        await pool.query(
+            `INSERT INTO inventory_overrides (id, product_id, start_date, end_date, units_offline, reason, created_at)
+             VALUES ($1, $2, $3::timestamptz, $4::timestamptz, $5, $6, $7::timestamptz)`,
+            [newOverrideId, body.productId, startDateStr, endDateStr, Number(body.unitsOffline), String(body.reason), createdAtStr]
+        );
 
-        // Fetch the created override with product relations to return
+        // Fetch the created record
         const created = await db.query.inventoryOverrides.findFirst({
-            where: eq(inventoryOverrides.id, newOverride.id),
-            with: { product: true }
+            where: eq(inventoryOverrides.id, newOverrideId),
+            with: { product: { columns: { name: true } } }
         });
 
-        return NextResponse.json(created, { status: 201 });
-    } catch (e: any) {
-        return NextResponse.json({ error: e.message }, { status: 500 });
+        if (!created) throw new Error("Failed to retrieve created override");
+
+        // Return fully safe, manually constructed response
+        const safeResponse = {
+            id: created.id,
+            productId: created.productId,
+            startDate: created.startDate instanceof Date ? created.startDate.toISOString() : String(created.startDate),
+            endDate: created.endDate instanceof Date ? created.endDate.toISOString() : String(created.endDate),
+            unitsOffline: created.unitsOffline,
+            reason: created.reason,
+            createdAt: created.createdAt instanceof Date ? created.createdAt.toISOString() : String(created.createdAt),
+            product: created.product ? { name: created.product.name } : null,
+        };
+
+        return NextResponse.json(safeResponse, { status: 201 });
+
+    } catch (inventoryError: any) {
+        console.error("Inventory POST Error Deep Trace:", inventoryError);
+        if (inventoryError.stack) console.error(inventoryError.stack);
+        return NextResponse.json({ error: inventoryError.message || "Internal server error" }, { status: 500 });
     }
 }
 
@@ -124,7 +161,9 @@ export async function DELETE(req: NextRequest) {
 
         await db.delete(inventoryOverrides).where(eq(inventoryOverrides.id, id));
         return NextResponse.json({ success: true });
-    } catch (e: any) {
-        return NextResponse.json({ error: e.message }, { status: 500 });
+    } catch (inventoryDeleteError: any) {
+        console.error("Inventory DELETE Error:", inventoryDeleteError);
+        return NextResponse.json({ error: inventoryDeleteError.message || "Internal server error" }, { status: 500 });
     }
 }
+
