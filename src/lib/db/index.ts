@@ -16,9 +16,17 @@ function getDbConfig() {
 
 const pool = new Pool({
     ...getDbConfig(),
-    connectionTimeoutMillis: 10000,
-    idleTimeoutMillis: 30000,
-    max: 5,
+    // Supabase Session Pooler drops idle connections after ~25s.
+    // We must release connections before that to avoid "Failed query" on reuse.
+    connectionTimeoutMillis: 10000,  // fail fast if can't connect
+    idleTimeoutMillis: 10000,        // release idle connections before Supabase drops them (was 30s — too long)
+    max: 10,                         // allow more concurrent connections
+    allowExitOnIdle: false,          // keep pool alive in serverless context
+});
+
+// Prevent unhandled pool errors from crashing the process
+pool.on("error", (err) => {
+    console.error("[DB POOL ERROR]", err.message);
 });
 
 export const db = drizzle(pool, { schema });
