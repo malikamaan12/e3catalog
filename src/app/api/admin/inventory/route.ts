@@ -1,6 +1,6 @@
 import { db, pool } from "@/lib/db";
-import { inventoryOverrides, products } from "@/lib/db/schema";
-import { desc, eq, and, inArray } from "drizzle-orm";
+import { inventoryOverrides, products, inventoryUnits } from "@/lib/db/schema";
+import { desc, eq, and, inArray, lte, gte } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
 import { requireAdmin } from "@/lib/requireAdmin";
@@ -91,6 +91,51 @@ export async function POST(req: NextRequest) {
                 return NextResponse.json({ error: "Forbidden: Product does not belong to you." }, { status: 403 });
             }
         }
+
+        // ── Stock Capacity Validation ─────────────────────────────────────────────
+        // Fetch total physical units for this product
+        const physicalUnits = await db.query.inventoryUnits.findMany({
+            where: eq(inventoryUnits.productId, body.productId),
+            columns: { id: true }
+        });
+        const totalUnitsInStock = physicalUnits.length;
+
+        if (totalUnitsInStock === 0) {
+            return NextResponse.json({ error: "This product has no inventory units configured. Add inventory units first." }, { status: 400 });
+        }
+
+        const requestedOffline = Number(body.unitsOffline);
+
+        if (requestedOffline < 1) {
+            return NextResponse.json({ error: "Units offline must be at least 1." }, { status: 400 });
+        }
+
+        if (requestedOffline > totalUnitsInStock) {
+            return NextResponse.json({
+                error: `Cannot take ${requestedOffline} unit${requestedOffline > 1 ? "s" : ""} offline. This product only has ${totalUnitsInStock} unit${totalUnitsInStock > 1 ? "s" : ""} in total stock.`
+            }, { status: 400 });
+        }
+
+        // Check how many units are already locked by overlapping overrides in this date range
+        const overlappingOverrides = await db.query.inventoryOverrides.findMany({
+            where: and(
+                eq(inventoryOverrides.productId, body.productId),
+                lte(inventoryOverrides.startDate, endDateObj),
+                gte(inventoryOverrides.endDate, startDateObj),
+            ),
+            columns: { unitsOffline: true }
+        });
+
+        const alreadyOffline = overlappingOverrides.reduce((sum, o) => sum + o.unitsOffline, 0);
+        const totalAfterNew = alreadyOffline + requestedOffline;
+
+        if (totalAfterNew > totalUnitsInStock) {
+            const remaining = Math.max(0, totalUnitsInStock - alreadyOffline);
+            return NextResponse.json({
+                error: `Cannot lock ${requestedOffline} unit${requestedOffline > 1 ? "s" : ""}. ${alreadyOffline} unit${alreadyOffline > 1 ? "s are" : " is"} already blocked in this date range. Maximum you can lock: ${remaining}.`
+            }, { status: 400 });
+        }
+        // ─────────────────────────────────────────────────────────────────────────
 
         const newOverrideId = uuidv4();
 

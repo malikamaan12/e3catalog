@@ -405,14 +405,42 @@ export default function InventoryAdminPage() {
                                     </div>
 
                                     <div>
-                                        <label className="block text-sm font-medium text-[var(--color-slate)] mb-1">Units Offline</label>
+                                        <label className="block text-sm font-medium text-[var(--color-slate)] mb-1">
+                                            Units Offline
+                                            {productId && (() => {
+                                                const sel = products.find(p => p.id === productId);
+                                                return sel ? (
+                                                    <span className="ml-2 text-xs text-[var(--color-gold)] font-normal">
+                                                        Max: {sel.totalUnits} {sel.unit}
+                                                    </span>
+                                                ) : null;
+                                            })()}
+                                        </label>
                                         <input
                                             type="number"
                                             min="1"
+                                            max={productId ? (products.find(p => p.id === productId)?.totalUnits ?? undefined) : undefined}
                                             value={unitsOffline}
                                             onChange={(e) => setUnitsOffline(e.target.value)}
                                             className="w-full px-4 py-2 bg-[var(--color-navy-lighter)] border border-[var(--color-border-subtle)] rounded-lg text-sm text-[var(--color-warm-white)] focus:outline-none focus:border-[var(--color-gold)]"
                                         />
+                                        {productId && (() => {
+                                            const sel = products.find(p => p.id === productId);
+                                            if (!sel) return null;
+                                            const val = Number(unitsOffline);
+                                            if (val > sel.totalUnits) {
+                                                return (
+                                                    <p className="text-xs text-red-400 mt-1">
+                                                        ⚠ Exceeds total stock of {sel.totalUnits} {sel.unit}
+                                                    </p>
+                                                );
+                                            }
+                                            return (
+                                                <p className="text-xs text-[var(--color-slate)] mt-1">
+                                                    {sel.totalUnits - val} unit{sel.totalUnits - val !== 1 ? "s" : ""} would remain available
+                                                </p>
+                                            );
+                                        })()}
                                     </div>
 
                                     <div>
