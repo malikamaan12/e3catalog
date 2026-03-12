@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
-import { bookings } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
+import { bookings, users } from "@/lib/db/schema";
+import { eq, and, inArray } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/requireAdmin";
 
@@ -23,7 +23,23 @@ export async function GET() {
             },
         },
         orderBy: (bookings, { desc }) => [desc(bookings.createdAt)],
-    });
+    }) as any[];
+    
+    // Fallback: If userId is missing, try to find it via customerEmail
+    const missingUserIdEmails = Array.from(new Set(
+        rawBookings
+            .filter((b: any) => !b.userId && b.customerEmail)
+            .map((b: any) => b.customerEmail.toLowerCase())
+    )) as string[];
+
+    const emailToIdMap = new Map<string, string>();
+    if (missingUserIdEmails.length > 0) {
+        const foundUsers = await db.query.users.findMany({
+            where: inArray(users.email, missingUserIdEmails),
+            columns: { id: true, email: true }
+        }) as any[];
+        foundUsers.forEach((u: any) => emailToIdMap.set(u.email.toLowerCase(), u.id));
+    }
 
     // Group by projectId if available, otherwise by id
     const grouped = rawBookings.reduce((acc: any, booking: any) => {
@@ -38,7 +54,7 @@ export async function GET() {
                 customerName: booking.customerName,
                 customerEmail: booking.customerEmail,
                 customerPhone: booking.customerPhone,
-                userId: booking.userId,
+                userId: booking.userId || (booking.customerEmail ? emailToIdMap.get(booking.customerEmail.toLowerCase()) : null),
                 startDate: booking.startDate,
                 endDate: booking.endDate,
                 createdAt: booking.createdAt,

@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { bookings, products, notifications } from "@/lib/db/schema";
+import { bookings, products, notifications, users } from "@/lib/db/schema";
 import { eq, or } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
@@ -22,10 +22,23 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
                     columns: { name: true, slug: true, thumbnailUrl: true, pricePerDay: true },
                 },
             },
-        });
+        }) as any[];
 
         if (!bookingItems || bookingItems.length === 0) {
             return NextResponse.json({ error: "Booking not found" }, { status: 404 });
+        }
+
+        // Fallback for userId if missing on booking record
+        if (bookingItems.length > 0 && !bookingItems[0].userId && bookingItems[0].customerEmail) {
+            const foundUser = await db.query.users.findFirst({
+                where: eq(users.email, bookingItems[0].customerEmail.toLowerCase()),
+                columns: { id: true }
+            });
+            if (foundUser) {
+                bookingItems.forEach(item => {
+                    item.userId = foundUser.id;
+                });
+            }
         }
 
         if (!isSuperAdmin) {
