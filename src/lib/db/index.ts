@@ -2,11 +2,13 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import * as schema from "./schema";
 
-// Always use individual connection params — avoids URL encoding issues & always uses IPv4 Session Pooler
+// Always use individual connection params — avoids URL encoding issues
+// IMPORTANT: Use port 6543 for Supabase Transaction Pooler (not 5432 Session Pooler)
+// Transaction Pooler is required for serverless environments like Vercel.
 function getDbConfig() {
     return {
         host: process.env.DB_HOST || "aws-1-ap-northeast-1.pooler.supabase.com",
-        port: parseInt(process.env.DB_PORT || "5432"),
+        port: parseInt(process.env.DB_PORT || "6543"),  // 6543 = Transaction Pooler (serverless-safe)
         user: process.env.DB_USER || "postgres.kwswkoysskkxuezbfmyt",
         password: process.env.DB_PASSWORD || "Malik12amaan@#",
         database: process.env.DB_NAME || "postgres",
@@ -16,12 +18,10 @@ function getDbConfig() {
 
 const pool = new Pool({
     ...getDbConfig(),
-    // Supabase Session Pooler drops idle connections after ~25s.
-    // We must release connections before that to avoid "Failed query" on reuse.
     connectionTimeoutMillis: 10000,  // fail fast if can't connect
-    idleTimeoutMillis: 10000,        // release idle connections before Supabase drops them (was 30s — too long)
-    max: 10,                         // allow more concurrent connections
-    allowExitOnIdle: false,          // keep pool alive in serverless context
+    idleTimeoutMillis: 10000,        // release idle connections quickly
+    max: 3,                          // keep it small for serverless
+    allowExitOnIdle: false,
 });
 
 // Prevent unhandled pool errors from crashing the process

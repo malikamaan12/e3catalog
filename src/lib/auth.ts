@@ -37,11 +37,16 @@ export async function getCurrentUser() {
     const session = await getSession();
     if (!session) return null;
 
-    const [user] = await db
-        .select()
-        .from(users)
-        .where(eq(users.id, session.id))
-        .limit(1);
+    try {
+        const [user] = await db
+            .select()
+            .from(users)
+            .where(eq(users.id, session.id))
+            .limit(1);
 
-    return user || null;
+        return user || null;
+    } catch (dbErr) {
+        console.error("[DB] getCurrentUser failed — returning null:", (dbErr as Error).message);
+        return null;
+    }
 }
