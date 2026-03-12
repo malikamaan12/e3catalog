@@ -140,7 +140,17 @@ export default function AdminChatSystem({
             if (!res.ok) throw new Error("Not found");
             const data = await res.json();
             if (data && !data.error) {
-                setQuoteDetails(data);
+                const isArray = Array.isArray(data);
+                const firstItem = isArray ? data[0] : data;
+                setQuoteDetails({
+                    id: firstItem.projectId || firstItem.id,
+                    projectName: firstItem.projectName || firstItem.product?.name || "Booking",
+                    status: firstItem.status,
+                    totalPrice: isArray ? data.reduce((acc: number, item: any) => acc + (item.totalPrice || 0), 0) : firstItem.totalPrice,
+                    startDate: firstItem.startDate,
+                    endDate: firstItem.endDate,
+                    items: isArray ? data : [data]
+                });
             } else {
                 alert("Quote not found. Please check the ID.");
                 setViewingQuoteId(null);
