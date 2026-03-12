@@ -115,7 +115,7 @@ export async function PATCH(req: NextRequest) {
         }
     }
 
-    updates.updatedAt = new Date().toISOString();
+    updates.updatedAt = new Date();
     await db.update(bookings).set(updates).where(eq(bookings.id, id));
 
     const updated = await db.query.bookings.findFirst({

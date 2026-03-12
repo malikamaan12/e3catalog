@@ -18,7 +18,7 @@ export default async function AdminChatPage({ searchParams }: { searchParams: Pr
             </div>
 
             <AdminChatSystem 
-                adminUser={user} 
+                adminUser={{ id: user.id }} 
                 initialUserId={params.userId}
                 initialQuoteId={params.quoteId}
             />
