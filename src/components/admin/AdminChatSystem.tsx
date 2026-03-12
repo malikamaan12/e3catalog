@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import {
     Search, Send, User, MessageCircle, FileText,
     ExternalLink, CheckCircle, Clock, Package,
-    ChevronRight, MoreVertical, Phone, Mail, Check, CheckCheck,
+    ChevronRight, MoreVertical, Phone, Mail, Check, CheckCheck, ArrowRight,
     Paperclip, Image as ImageIcon, Film, File as FileIcon, Smile, Plus, X
 } from "lucide-react";
 import Link from "next/link";
@@ -308,7 +308,7 @@ export default function AdminChatSystem({
                 body: JSON.stringify({
                     content: content,
                     receiverId: selectedConv.userId,
-                    projectId: messages.findLast(m => !!m.projectId)?.projectId || null,
+                    projectId: [...messages].reverse().find(m => !!m.projectId)?.projectId || null,
                 }),
             });
 
@@ -355,7 +355,7 @@ export default function AdminChatSystem({
                 body: JSON.stringify({
                     content: `Sent an attachment: ${fileData.name}`,
                     receiverId: selectedConv.userId,
-                    projectId: messages.findLast(m => !!m.projectId)?.projectId || null,
+                    projectId: [...messages].reverse().find(m => !!m.projectId)?.projectId || null,
                     attachmentUrl: fileData.url,
                     attachmentType: fileData.type,
                     attachmentName: fileData.name
@@ -503,9 +503,12 @@ export default function AdminChatSystem({
                                     />
                                     <Search className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-[var(--color-slate)] pointer-events-none" />
                                 </div>
-                                {messages.findLast(m => !!m.projectId) && (
+                                {([...messages].reverse().find(m => !!m.projectId)) && (
                                     <button
-                                        onClick={() => setViewingQuoteId(messages.findLast(m => !!m.projectId)!.projectId)}
+                                        onClick={() => {
+                                            const lastProjectMsg = [...messages].reverse().find(m => !!m.projectId);
+                                            if (lastProjectMsg) setViewingQuoteId(lastProjectMsg.projectId);
+                                        }}
                                         className="flex items-center gap-1 md:gap-2 px-2 md:px-3 py-1.5 glass border border-[var(--color-gold)]/30 text-[var(--color-gold)] rounded-lg text-[10px] md:text-xs font-bold hover:bg-[var(--color-gold)]/10 transition-all"
                                     >
                                         <Package className="w-3 md:w-3.5 h-3 md:h-3.5" />
@@ -612,7 +615,7 @@ export default function AdminChatSystem({
                                     type="text"
                                     value={newMessage}
                                     onChange={(e) => setNewMessage(e.target.value)}
-                                    placeholder={`Message ${selectedConv.name}...`}
+                                    placeholder={`Message ${selectedConv?.name}...`}
                                     className="flex-1 bg-[var(--color-navy)] border border-white/10 rounded-xl px-4 py-3 text-sm text-[var(--color-warm-white)] focus:border-[var(--color-gold)] focus:outline-none transition-all shadow-inner"
                                 />
 
@@ -664,19 +667,19 @@ export default function AdminChatSystem({
 
                             <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
                                 <div className="mb-6">
-                                    <h4 className="text-sm font-bold text-[var(--color-warm-white)] mb-1">{quoteDetails.projectName}</h4>
+                                    <h4 className="text-sm font-bold text-[var(--color-warm-white)] mb-1">{quoteDetails?.projectName}</h4>
                                     <div className="flex flex-col gap-1 mb-4">
                                         <div className="flex items-center gap-2">
-                                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${quoteDetails.status === 'approved' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-[var(--color-gold)]/10 text-[var(--color-gold)] border-[var(--color-gold)]/20'
+                                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${quoteDetails?.status === 'approved' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-[var(--color-gold)]/10 text-[var(--color-gold)] border-[var(--color-gold)]/20'
                                                 }`}>
-                                                {quoteDetails.status.toUpperCase()}
+                                                {quoteDetails?.status?.toUpperCase()}
                                             </span>
                                             <span className="text-[10px] text-[var(--color-slate)]">
-                                                {quoteDetails.id.split('-')[0].toUpperCase()}
+                                                {quoteDetails?.id?.split('-')[0].toUpperCase()}
                                             </span>
                                         </div>
                                         <span className="text-[10px] text-[var(--color-slate)]">
-                                            {quoteDetails.startDate} — {quoteDetails.endDate}
+                                            {quoteDetails?.startDate} — {quoteDetails?.endDate}
                                         </span>
                                     </div>
 
@@ -722,17 +725,17 @@ export default function AdminChatSystem({
 
                             <div className="text-center mb-8">
                                 <div className="w-20 h-20 rounded-2xl bg-[var(--color-gold)]/10 border border-white/10 flex items-center justify-center overflow-hidden mx-auto mb-4">
-                                    {selectedConv.image ? (
+                                    {selectedConv?.image ? (
                                         <img src={selectedConv.image} alt={selectedConv.name} className="w-full h-full object-cover" />
                                     ) : (
                                         <User className="w-10 h-10 text-[var(--color-gold)]" />
                                     )}
                                 </div>
-                                <h4 className="text-base font-bold text-[var(--color-warm-white)] mb-1">{selectedConv.name}</h4>
-                                <p className="text-xs text-[var(--color-slate)] mb-4">{selectedConv.companyName || "Individual Client"}</p>
+                                <h4 className="text-base font-bold text-[var(--color-warm-white)] mb-1">{selectedConv?.name}</h4>
+                                <p className="text-xs text-[var(--color-slate)] mb-4">{selectedConv?.companyName || "Individual Client"}</p>
 
                                 <div className="flex justify-center gap-2">
-                                    <a href={`mailto:${selectedConv.email}`} className="p-2 glass border border-white/10 rounded-lg text-[var(--color-slate)] hover:text-[var(--color-gold)] transition-all">
+                                    <a href={`mailto:${selectedConv?.email}`} className="p-2 glass border border-white/10 rounded-lg text-[var(--color-slate)] hover:text-[var(--color-gold)] transition-all">
                                         <Mail className="w-4 h-4" />
                                     </a>
                                     <button className="p-2 glass border border-white/10 rounded-lg text-[var(--color-slate)] hover:text-[var(--color-gold)] transition-all">
@@ -844,22 +847,3 @@ export default function AdminChatSystem({
     );
 }
 
-function ArrowRight(props: any) {
-    return (
-        <svg
-            {...props}
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-        >
-            <path d="M5 12h14" />
-            <path d="m12 5 7 7-7 7" />
-        </svg>
-    )
-}
