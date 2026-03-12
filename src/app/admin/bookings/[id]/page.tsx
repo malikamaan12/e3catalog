@@ -2,7 +2,11 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronDown, ArrowLeft, MoreVertical, Package, ExternalLink, Mail, Phone, Clock, Download } from "lucide-react";
+import { 
+    ChevronDown, ArrowLeft, MoreVertical, Package, 
+    ExternalLink, Mail, Phone, Clock, Download, MessageCircle 
+} from "lucide-react";
+import Link from "next/link";
 
 interface BookingItem {
     id: string;
@@ -12,6 +16,7 @@ interface BookingItem {
     addedByAdmin?: boolean;
     adminItemNote?: string | null;
     product: {
+        id: string;
         name: string;
         slug: string;
         thumbnailUrl: string | null;
@@ -56,6 +61,7 @@ interface Booking {
     customNotes: string | null;
     fulfillmentStatus: string | null;
     warehouseNotes: string | null;
+    userId: string | null;
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -346,7 +352,18 @@ export default function BookingDetailsPage({ params }: { params: Promise<{ id: s
                     {/* Client & Project Details sub-grid */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="glass rounded-2xl p-6 shadow-sm border border-white/5">
-                            <h3 className="font-semibold text-[var(--color-warm-white)] mb-4 border-b border-white/10 pb-2 text-sm uppercase tracking-wide">Client Details</h3>
+                            <div className="flex justify-between items-start mb-4 border-b border-white/10 pb-2">
+                                <h3 className="font-semibold text-[var(--color-warm-white)] text-sm uppercase tracking-wide">Client Details</h3>
+                                {booking.userId && (
+                                    <Link 
+                                        href={`/admin/chat?userId=${booking.userId}&quoteId=${booking.id}`}
+                                        className="text-[10px] font-bold text-[var(--color-gold)] hover:text-white flex items-center gap-1 bg-[var(--color-gold)]/10 py-1 px-2.5 rounded-full transition-colors border border-[var(--color-gold)]/20"
+                                    >
+                                        <MessageCircle className="w-3 h-3" />
+                                        Chat
+                                    </Link>
+                                )}
+                            </div>
                             <h4 className="text-xs font-medium text-[var(--color-slate)] mb-1 uppercase tracking-wider">Project / Event Name</h4>
                             <p className="text-lg font-bold text-[var(--color-warm-white)]">{booking.projectName}</p>
 

@@ -54,6 +54,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
             customerName: firstItem.customerName,
             customerEmail: firstItem.customerEmail,
             customerPhone: firstItem.customerPhone,
+            userId: firstItem.userId,
             startDate: firstItem.startDate,
             endDate: firstItem.endDate,
             createdAt: firstItem.createdAt,

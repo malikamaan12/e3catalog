@@ -38,6 +38,7 @@ export async function GET() {
                 customerName: booking.customerName,
                 customerEmail: booking.customerEmail,
                 customerPhone: booking.customerPhone,
+                userId: booking.userId,
                 startDate: booking.startDate,
                 endDate: booking.endDate,
                 createdAt: booking.createdAt,

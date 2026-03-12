@@ -5,7 +5,7 @@ import {
     Search, Send, User, MessageCircle, FileText,
     ExternalLink, CheckCircle, Clock, Package,
     ChevronRight, MoreVertical, Phone, Mail, Check, CheckCheck,
-    Paperclip, Image as ImageIcon, Film, File as FileIcon, Smile
+    Paperclip, Image as ImageIcon, Film, File as FileIcon, Smile, Plus, X
 } from "lucide-react";
 import Link from "next/link";
 
@@ -56,7 +56,15 @@ interface BookingDetails {
     items: any[];
 }
 
-export default function AdminChatSystem({ adminUser }: { adminUser: any }) {
+export default function AdminChatSystem({ 
+    adminUser,
+    initialUserId,
+    initialQuoteId
+}: { 
+    adminUser: any;
+    initialUserId?: string;
+    initialQuoteId?: string;
+}) {
     const [conversations, setConversations] = useState<Conversation[]>([]);
     const [selectedConv, setSelectedConv] = useState<Conversation | null>(null);
     const [messages, setMessages] = useState<Message[]>([]);
@@ -70,6 +78,10 @@ export default function AdminChatSystem({ adminUser }: { adminUser: any }) {
     const [uploading, setUploading] = useState(false);
     const [showStickers, setShowStickers] = useState(false);
     const [mobileState, setMobileState] = useState<"list" | "chat">("list");
+    const [searchModalOpen, setSearchModalOpen] = useState(false);
+    const [userSearchQuery, setUserSearchQuery] = useState("");
+    const [userSearchResults, setUserSearchResults] = useState<any[]>([]);
+    const [isNewChatPlaceholder, setIsNewChatPlaceholder] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -105,6 +117,22 @@ export default function AdminChatSystem({ adminUser }: { adminUser: any }) {
         }
     }, [viewingQuoteId]);
 
+    // Handle initial selection from props
+    useEffect(() => {
+        if (initialUserId && conversations.length > 0) {
+            const conv = conversations.find(c => c.userId === initialUserId);
+            if (conv) {
+                setSelectedConv(conv);
+            }
+        }
+    }, [initialUserId, conversations]);
+
+    useEffect(() => {
+        if (initialQuoteId) {
+            setViewingQuoteId(initialQuoteId);
+        }
+    }, [initialQuoteId]);
+
     const fetchQuoteDetails = async (id: string) => {
         setLoadingQuote(true);
         try {
@@ -124,6 +152,83 @@ export default function AdminChatSystem({ adminUser }: { adminUser: any }) {
         } finally {
             setLoadingQuote(false);
         }
+    };
+    
+    // User search for new chat
+    useEffect(() => {
+        if (userSearchQuery.length < 2) {
+            setUserSearchResults([]);
+            return;
+        }
+        const t = setTimeout(() => {
+            fetch(`/api/admin/users/search?q=${encodeURIComponent(userSearchQuery)}`)
+                .then(r => r.json())
+                .then(data => setUserSearchResults(data || []))
+                .catch(() => setUserSearchResults([]));
+        }, 300);
+        return () => clearTimeout(t);
+    }, [userSearchQuery]);
+
+    // Handle initial selection from props
+    useEffect(() => {
+        if (initialUserId && conversations.length > 0) {
+            const conv = conversations.find(c => c.userId === initialUserId);
+            if (conv) {
+                setSelectedConv(conv);
+                setIsNewChatPlaceholder(false);
+            } else if (!selectedConv || selectedConv.userId !== initialUserId) {
+                // If not found in conversations, fetch user details to start a new chat
+                fetch(`/api/admin/users/${initialUserId}`)
+                    .then(r => r.json())
+                    .then(user => {
+                        if (user && !user.error) {
+                            setSelectedConv({
+                                userId: user.id,
+                                name: user.name,
+                                email: user.email,
+                                companyName: user.companyName,
+                                image: user.image || null,
+                                lastMessage: "Start a new conversation...",
+                                lastMessageAt: new Date().toISOString(),
+                                unreadCount: 0,
+                                lastMessageSenderId: "",
+                                lastMessageIsRead: true
+                            });
+                            setIsNewChatPlaceholder(true);
+                        }
+                    });
+            }
+        }
+    }, [initialUserId, conversations]);
+
+    useEffect(() => {
+        if (initialQuoteId) {
+            setViewingQuoteId(initialQuoteId);
+        }
+    }, [initialQuoteId]);
+
+    const handleSelectFoundUser = (user: any) => {
+        const existing = conversations.find(c => c.userId === user.id);
+        if (existing) {
+            setSelectedConv(existing);
+            setIsNewChatPlaceholder(false);
+        } else {
+            setSelectedConv({
+                userId: user.id,
+                name: user.name,
+                email: user.email,
+                companyName: user.companyName,
+                image: user.image || null,
+                lastMessage: "Start a new conversation...",
+                lastMessageAt: new Date().toISOString(),
+                unreadCount: 0,
+                lastMessageSenderId: "",
+                lastMessageIsRead: true
+            });
+            setIsNewChatPlaceholder(true);
+        }
+        setSearchModalOpen(false);
+        setUserSearchQuery("");
     };
 
     const fetchRecentQuotes = async () => {
@@ -283,6 +388,13 @@ export default function AdminChatSystem({ adminUser }: { adminUser: any }) {
                 <div className="p-4 border-b border-white/10">
                     <div className="flex items-center justify-between mb-4">
                         <h2 className="text-lg font-bold text-[var(--color-warm-white)] font-[family-name:var(--font-heading)]">Messages</h2>
+                        <button 
+                            onClick={() => setSearchModalOpen(true)}
+                            className="p-1.5 rounded-lg bg-[var(--color-gold)]/10 text-[var(--color-gold)] hover:bg-[var(--color-gold)]/20 transition-all border border-[var(--color-gold)]/30"
+                            title="New Chat"
+                        >
+                            <Plus className="w-4 h-4" />
+                        </button>
                     </div>
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--color-slate)]" />
@@ -668,6 +780,64 @@ export default function AdminChatSystem({ adminUser }: { adminUser: any }) {
                             </div>
                         </div>
                     )}
+                </div>
+            )}
+
+            {/* New Chat Search Modal */}
+            {searchModalOpen && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onClick={() => setSearchModalOpen(false)}>
+                    <div className="glass rounded-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+                        <div className="p-4 border-b border-white/10 flex items-center justify-between bg-white/5">
+                            <h3 className="font-bold text-[var(--color-warm-white)]">Start New Conversation</h3>
+                            <button onClick={() => setSearchModalOpen(false)} className="text-[var(--color-slate)] hover:text-white">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        <div className="p-4">
+                            <div className="relative mb-4">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--color-slate)]" />
+                                <input
+                                    autoFocus
+                                    type="text"
+                                    placeholder="Search by name, email, or company..."
+                                    value={userSearchQuery}
+                                    onChange={(e) => setUserSearchQuery(e.target.value)}
+                                    className="w-full bg-[var(--color-navy)] border border-white/10 rounded-xl pl-10 pr-4 py-3 text-sm text-[var(--color-warm-white)] focus:border-[var(--color-gold)] outline-none shadow-inner"
+                                />
+                            </div>
+
+                            <div className="max-h-60 overflow-y-auto custom-scrollbar space-y-1">
+                                {userSearchResults.length > 0 ? (
+                                    userSearchResults.map((user: any) => (
+                                        <button
+                                            key={user.id}
+                                            onClick={() => handleSelectFoundUser(user)}
+                                            className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-white/10 transition-colors text-left group"
+                                        >
+                                            <div className="w-10 h-10 rounded-full bg-[var(--color-gold)]/20 border border-white/10 flex items-center justify-center shrink-0">
+                                                <User className="w-5 h-5 text-[var(--color-gold)]" />
+                                            </div>
+                                            <div className="min-w-0">
+                                                <p className="text-sm font-bold text-[var(--color-warm-white)] group-hover:text-[var(--color-gold)] transition-colors truncate">{user.name}</p>
+                                                <p className="text-[10px] text-[var(--color-slate)] truncate">
+                                                    {user.email} {user.companyName ? `• ${user.companyName}` : ""}
+                                                </p>
+                                            </div>
+                                            <ChevronRight className="w-4 h-4 text-[var(--color-slate)] ml-auto opacity-0 group-hover:opacity-100 transition-all" />
+                                        </button>
+                                    ))
+                                ) : userSearchQuery.length >= 2 ? (
+                                    <div className="py-8 text-center text-xs text-[var(--color-slate)]">
+                                        No clients found matching "{userSearchQuery}"
+                                    </div>
+                                ) : (
+                                    <div className="py-8 text-center text-xs text-[var(--color-slate)] opacity-60">
+                                        Type at least 2 characters to search...
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>

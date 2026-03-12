@@ -2,8 +2,10 @@ import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import AdminChatSystem from "@/components/admin/AdminChatSystem";
 
-export default async function AdminChatPage() {
+export default async function AdminChatPage({ searchParams }: { searchParams: Promise<{ userId?: string; quoteId?: string }> }) {
     const user = await getCurrentUser();
+    const params = await searchParams;
+    
     if (!user || !["admin", "super_admin", "vendor", "sales_rep"].includes(user.role)) {
         redirect("/login");
     }
@@ -15,7 +17,11 @@ export default async function AdminChatPage() {
                 <p className="text-[var(--color-slate)] text-sm">Real-time chat with clients regarding their quotes and bookings.</p>
             </div>
 
-            <AdminChatSystem adminUser={user} />
+            <AdminChatSystem 
+                adminUser={user} 
+                initialUserId={params.userId}
+                initialQuoteId={params.quoteId}
+            />
         </div>
     );
 }

@@ -18,6 +18,8 @@ import {
     Plus
 } from "lucide-react";
 import ManualBookingFlow from "@/components/admin/ManualBookingFlow";
+import Link from "next/link";
+import { MessageCircle } from "lucide-react";
 
 interface Booking {
     id: string;
@@ -35,6 +37,7 @@ interface Booking {
     createdAt: string;
     product: { name: string; slug: string; thumbnailUrl: string | null };
     items: any[];
+    userId: string | null;
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -346,13 +349,24 @@ export default function AdminBookingsPage() {
 
                                     {/* Quick Action */}
                                     <div className="flex justify-end pt-3">
-                                        <a
-                                            href={`/admin/bookings/${booking.id}`}
-                                            className="text-xs px-4 py-2 rounded-lg glass hover:bg-white hover:bg-opacity-10 transition-colors font-medium text-[var(--color-warm-white)] w-full text-center"
-                                            onClick={(e) => e.stopPropagation()}
-                                        >
-                                            Review & Manage Quotes →
-                                        </a>
+                                        <div className="flex gap-2 w-full">
+                                            <Link
+                                                href={`/admin/bookings/${booking.id}`}
+                                                className="text-xs px-4 py-2 rounded-lg glass hover:bg-white hover:bg-opacity-10 transition-colors font-medium text-[var(--color-warm-white)] flex-1 text-center"
+                                                onClick={(e) => e.stopPropagation()}
+                                            >
+                                                Manage →
+                                            </Link>
+                                            {booking.userId && (
+                                                <Link
+                                                    href={`/admin/chat?userId=${booking.userId}&quoteId=${booking.id}`}
+                                                    className="p-2 rounded-lg glass border border-[var(--color-gold)]/30 text-[var(--color-gold)] hover:bg-[var(--color-gold)]/10 transition-colors"
+                                                    onClick={(e) => e.stopPropagation()}
+                                                >
+                                                    <MessageCircle className="w-4 h-4" />
+                                                </Link>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             ))}
@@ -401,13 +415,24 @@ export default function AdminBookingsPage() {
                                                 )}
                                             </td>
                                             <td className="px-6 py-4 text-right">
-                                                <a
-                                                    href={`/admin/bookings/${booking.id}`}
-                                                    className="inline-block text-xs px-3 py-1.5 rounded glass hover:bg-white/10 transition-colors font-medium border border-white/10 text-[var(--color-warm-white)]"
-                                                    onClick={(e) => e.stopPropagation()}
-                                                >
-                                                    Manage →
-                                                </a>
+                                                <div className="flex items-center justify-end gap-2">
+                                                    <Link
+                                                        href={`/admin/bookings/${booking.id}`}
+                                                        className="inline-block text-xs px-3 py-1.5 rounded glass hover:bg-white/10 transition-colors font-medium border border-white/10 text-[var(--color-warm-white)]"
+                                                        onClick={(e) => e.stopPropagation()}
+                                                    >
+                                                        Manage →
+                                                    </Link>
+                                                    {booking.userId && (
+                                                        <Link
+                                                            href={`/admin/chat?userId=${booking.userId}&quoteId=${booking.id}`}
+                                                            className="p-1.5 rounded glass border border-[var(--color-gold)]/30 text-[var(--color-gold)] hover:bg-[var(--color-gold)]/10 transition-colors"
+                                                            onClick={(e) => e.stopPropagation()}
+                                                        >
+                                                            <MessageCircle className="w-4 h-4" />
+                                                        </Link>
+                                                    )}
+                                                </div>
                                             </td>
                                         </tr>
                                     ))}
