@@ -296,6 +296,61 @@ const styles = StyleSheet.create({
         height: 1,
         backgroundColor: "#e2e8f0",
         marginVertical: 10,
+    },
+    // Signature Block Styles
+    signatureContainer: {
+        marginTop: 60,
+        flexDirection: "row",
+        justifyContent: "space-between",
+        borderTopWidth: 1,
+        borderTopColor: "#e2e8f0",
+        paddingTop: 40,
+    },
+    signatureBlock: {
+        width: "30%",
+        alignItems: "center",
+    },
+    signatureLine: {
+        width: "100%",
+        height: 1,
+        backgroundColor: "#94a3b8",
+        marginBottom: 8,
+    },
+    signatureLabel: {
+        fontSize: 9,
+        color: "#64748b",
+        fontWeight: "bold",
+        textTransform: "uppercase",
+    },
+    bankDetailsBox: {
+        backgroundColor: "#f8fafc",
+        padding: 16,
+        borderRadius: 8,
+        borderLeftWidth: 4,
+        borderLeftColor: "#22c55e", // Green accent for payments
+        marginTop: 20,
+        marginBottom: 20,
+    },
+    bankDetailsTitle: {
+        fontSize: 10,
+        fontWeight: "bold",
+        color: "#0f172a",
+        marginBottom: 8,
+        textTransform: "uppercase",
+    },
+    bankDetailsRow: {
+        flexDirection: "row",
+        marginBottom: 4,
+    },
+    bankDetailsLabel: {
+        width: 100,
+        fontSize: 9,
+        color: "#64748b",
+    },
+    bankDetailsValue: {
+        fontSize: 9,
+        color: "#0f172a",
+        fontWeight: "bold",
     }
 });
 
@@ -337,6 +392,14 @@ interface QuotePDFProps extends React.ComponentProps<typeof Document> {
     };
     termsAndConditions: string[];
     customNotes?: string;
+    bankDetails?: {
+        bankName: string;
+        accountName: string;
+        accountNumber: string;
+        iban: string;
+        swift: string;
+    } | null;
+    paymentTerms?: string | null;
 }
 
 export function QuotePDFTemplate({
@@ -352,6 +415,8 @@ export function QuotePDFTemplate({
     financials,
     termsAndConditions,
     customNotes,
+    bankDetails,
+    paymentTerms,
     ...documentProps
 }: QuotePDFProps) {
 
@@ -588,15 +653,68 @@ export function QuotePDFTemplate({
                     <Text style={styles.grandTotalValue}>{financials.grandTotal.toFixed(2)}</Text>
                 </View>
 
+                {/* BANK DETAILS INJECTION */}
+                {bankDetails && (
+                    <View style={styles.bankDetailsBox}>
+                        <Text style={styles.bankDetailsTitle}>Bank Details for Payment</Text>
+                        <View style={styles.bankDetailsRow}>
+                            <Text style={styles.bankDetailsLabel}>Bank Name:</Text>
+                            <Text style={styles.bankDetailsValue}>{bankDetails.bankName || "N/A"}</Text>
+                        </View>
+                        <View style={styles.bankDetailsRow}>
+                            <Text style={styles.bankDetailsLabel}>Account Name:</Text>
+                            <Text style={styles.bankDetailsValue}>{bankDetails.accountName || "N/A"}</Text>
+                        </View>
+                        <View style={styles.bankDetailsRow}>
+                            <Text style={styles.bankDetailsLabel}>Account Number:</Text>
+                            <Text style={styles.bankDetailsValue}>{bankDetails.accountNumber || "N/A"}</Text>
+                        </View>
+                        {bankDetails.iban && (
+                            <View style={styles.bankDetailsRow}>
+                                <Text style={styles.bankDetailsLabel}>IBAN:</Text>
+                                <Text style={styles.bankDetailsValue}>{bankDetails.iban}</Text>
+                            </View>
+                        )}
+                        {bankDetails.swift && (
+                            <View style={styles.bankDetailsRow}>
+                                <Text style={styles.bankDetailsLabel}>SWIFT Code:</Text>
+                                <Text style={styles.bankDetailsValue}>{bankDetails.swift}</Text>
+                            </View>
+                        )}
+                        {paymentTerms && (
+                            <View style={[styles.bankDetailsRow, { marginTop: 8 }]}>
+                                <Text style={styles.bankDetailsLabel}>Payment Terms:</Text>
+                                <Text style={styles.bankDetailsValue}>{paymentTerms}</Text>
+                            </View>
+                        )}
+                    </View>
+                )}
+
                 {/* TERMS AND CONDITIONS */}
                 {termsAndConditions && termsAndConditions.length > 0 && (
-                    <View style={styles.termsBox}>
+                    <View style={[styles.termsBox, { marginTop: bankDetails ? 0 : 40 }]}>
                         <Text style={[styles.label, { marginBottom: 8, color: "#0f172a" }]}>Commercial Terms & Conditions</Text>
                         {termsAndConditions.map((term, idx) => (
                             <Text key={idx} style={styles.termsText}>{idx + 1}. {term}</Text>
                         ))}
                     </View>
                 )}
+
+                {/* PHYSICAL SIGNATURE BLOCK */}
+                <View style={styles.signatureContainer} wrap={false}>
+                    <View style={styles.signatureBlock}>
+                        <View style={styles.signatureLine} />
+                        <Text style={styles.signatureLabel}>Authorized Signature</Text>
+                    </View>
+                    <View style={styles.signatureBlock}>
+                        <View style={styles.signatureLine} />
+                        <Text style={styles.signatureLabel}>Date</Text>
+                    </View>
+                    <View style={styles.signatureBlock}>
+                        <View style={styles.signatureLine} />
+                        <Text style={styles.signatureLabel}>Company Stamp</Text>
+                    </View>
+                </View>
 
                 {renderFooter()}
             </Page>

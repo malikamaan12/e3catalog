@@ -79,9 +79,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             })
         );
 
-        // 4. Optional: Detect primary vendor for letterhead
+        // 4. Optional: Detect primary vendor for letterhead and bank details
         let primaryVendorHeader = null;
         let primaryVendorFooter = null;
+        let pBankDetails = null;
+        let pPaymentTerms = null;
 
         const vendorIds = [...new Set(hydratedItems.map((i: any) => i.vendorId).filter(Boolean))];
         if (vendorIds.length === 1) {
@@ -91,6 +93,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             if (vProfile) {
                 primaryVendorHeader = getAbsoluteUrl(vProfile.letterheadHeaderUrl);
                 primaryVendorFooter = getAbsoluteUrl(vProfile.letterheadFooterUrl);
+                
+                if (vProfile.bankName && vProfile.accountNumber) {
+                    pBankDetails = {
+                        bankName: vProfile.bankName,
+                        accountName: vProfile.accountName || "",
+                        accountNumber: vProfile.accountNumber,
+                        iban: vProfile.iban || "",
+                        swift: vProfile.swift || "",
+                    };
+                }
+                pPaymentTerms = vProfile.paymentTerms || null;
             }
         }
 
@@ -119,6 +132,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
                 tax: 0,
                 grandTotal: booking.totalPrice || grandTotal,
             },
+            bankDetails: pBankDetails,
+            paymentTerms: pPaymentTerms,
             termsAndConditions: termsAndConditions || [
                 "Strictly 100% advance payment required to confirm booking.",
                 "Any damages to the equipment will be charged at full replacement value.",
@@ -218,12 +233,26 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
         let primaryVendorHeader = null;
         let primaryVendorFooter = null;
+        let pBankDetails = null;
+        let pPaymentTerms = null;
+
         const vendorIds = [...new Set(hydratedItems.map((i: any) => i.vendorId).filter(Boolean))];
         if (vendorIds.length === 1) {
             const vProfile = await db.query.vendors.findFirst({ where: eq(vendors.id, vendorIds[0] as string) });
             if (vProfile) {
                 primaryVendorHeader = getAbsoluteUrl(vProfile.letterheadHeaderUrl);
                 primaryVendorFooter = getAbsoluteUrl(vProfile.letterheadFooterUrl);
+
+                if (vProfile.bankName && vProfile.accountNumber) {
+                    pBankDetails = {
+                        bankName: vProfile.bankName,
+                        accountName: vProfile.accountName || "",
+                        accountNumber: vProfile.accountNumber,
+                        iban: vProfile.iban || "",
+                        swift: vProfile.swift || "",
+                    };
+                }
+                pPaymentTerms = vProfile.paymentTerms || null;
             }
         }
 
@@ -250,6 +279,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
                 tax: 0,
                 grandTotal: booking.totalPrice || grandTotal,
             },
+            bankDetails: pBankDetails,
+            paymentTerms: pPaymentTerms,
             termsAndConditions: [
                 "Strictly 100% advance payment required to confirm booking.",
                 "Any damages to the equipment will be charged at full replacement value.",
