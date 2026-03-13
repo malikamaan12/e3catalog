@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { sendQuoteStatusEmail } from "@/lib/email";
+import { processBookingCommissions } from "@/lib/finance";
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
     try {
@@ -207,6 +208,11 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
                     isRead: false,
                     createdAt: new Date()
                 });
+
+                // Generate financial splits once approved
+                if (status === "approved") {
+                    await processBookingCommissions(id);
+                }
 
                 // ── Email Notification ──────────────────────────────────────
                 // Fetch the user's email

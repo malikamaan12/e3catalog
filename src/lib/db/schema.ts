@@ -321,6 +321,28 @@ export const bookings = pgTable("bookings", {
     };
 });
 
+// ─── Financial Ledger / Commission Engine ───
+export const vendorLedgers = pgTable("vendor_ledgers", {
+    id: varchar("id", { length: 255 }).primaryKey(),
+    vendorId: varchar("vendor_id", { length: 255 }).notNull().references(() => vendors.id),
+    bookingId: varchar("booking_id", { length: 255 }).notNull().references(() => bookings.id),
+    projectId: varchar("project_id", { length: 255 }),
+    amount: real("amount").notNull(),            // Vendor's total item value (subtotal)
+    commissionRate: real("commission_rate").notNull(), // The % taken by the platform (e.g. 20)
+    platformFee: real("platform_fee").notNull(), // E3's cut in currency
+    vendorPayout: real("vendor_payout").notNull(), // Vendor's net
+    status: varchar("status", { length: 50 }).notNull().default("pending_payout"), // pending_payout | paid | disputed
+    notes: varchar("notes", { length: 1000 }),   // Admin details over payout transfers
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => {
+    return {
+        vendorIdIdx: index("vendor_ledgers_vendor_id_idx").on(table.vendorId),
+        bookingIdIdx: index("vendor_ledgers_booking_id_idx").on(table.bookingId),
+        statusIdx: index("vendor_ledgers_status_idx").on(table.status),
+    };
+});
+
 // ─── Cart Items ───
 export const cartItems = pgTable("cart_items", {
     id: varchar("id", { length: 255 }).primaryKey(),
@@ -427,6 +449,17 @@ export const cartItemsRelations = relations(cartItems, ({ one }) => ({
     }),
 }));
 
+export const vendorLedgersRelations = relations(vendorLedgers, ({ one }) => ({
+    vendor: one(vendors, {
+        fields: [vendorLedgers.vendorId],
+        references: [vendors.id],
+    }),
+    booking: one(bookings, {
+        fields: [vendorLedgers.bookingId],
+        references: [bookings.id],
+    }),
+}));
+
 export const usersRelations = relations(users, ({ many }) => ({
     bookings: many(bookings),
     cartItems: many(cartItems),
@@ -443,6 +476,7 @@ export const vendorsRelations = relations(vendors, ({ one, many }) => ({
         references: [users.id]
     }),
     products: many(products),
+    ledgers: many(vendorLedgers),
 }));
 
 export const systemLogsRelations = relations(systemLogs, ({ one }) => ({

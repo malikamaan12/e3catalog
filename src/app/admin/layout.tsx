@@ -16,7 +16,8 @@ import {
     Lock,
     Building,
     Users,
-    CreditCard
+    CreditCard,
+    CalendarDays
 } from "lucide-react";
 import NotificationBell from "@/components/NotificationBell";
 
@@ -32,6 +33,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         { href: "/admin/inventory", label: "Inventory", icon: Warehouse, roles: ["admin", "super_admin", "warehouse_manager", "vendor"] },
         { href: "/admin/categories", label: "Categories", icon: Tags, roles: ["admin", "super_admin", "sales_rep"] },
         { href: "/admin/bookings", label: "Bookings", icon: CalendarCheck, roles: ["admin", "super_admin", "sales_rep", "warehouse_manager", "vendor"] },
+        { href: "/admin/calendar", label: "Calendar", icon: CalendarDays, roles: ["admin", "super_admin", "sales_rep", "warehouse_manager", "vendor"] },
         { href: "/admin/chat", label: "Messages", icon: MessageSquareMore, hasBadge: true, roles: ["admin", "super_admin", "sales_rep", "vendor"] },
         { href: "/admin/vendor/profile", label: "Company Profile", icon: Building, roles: ["vendor"] },
         { href: "/admin/vendor/team", label: "Team Management", icon: Users, roles: ["vendor"] },
