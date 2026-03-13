@@ -500,3 +500,71 @@ export async function sendSafetyDigestEmail(opts: {
         console.error("[DIGEST ERROR]", err);
     }
 }
+
+// ─── Post-Event Reviews Email ──────────────────────────────────────────────
+
+export async function sendReviewRequestEmail(opts: {
+    to: string;
+    customerName: string;
+    bookingId: string;
+    productName: string;
+    vendorName: string;
+}) {
+    if (!process.env.RESEND_API_KEY || process.env.RESEND_API_KEY === "re_placeholder") {
+        console.log(`[REVIEW EMAIL SKIPPED] No API Key. Would notify ${opts.to} to review ${opts.productName}.`);
+        return;
+    }
+
+    const ctaUrl = `${BASE_URL}/review/${opts.bookingId}`;
+    const accentColor = "#d4a843"; // E3 Gold
+
+    const html = `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#0a0f1e;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+    <div style="max-width:600px;margin:0 auto;padding:32px 16px;">
+        <div style="text-align:center;margin-bottom:32px;">
+            <div style="display:inline-block;background:linear-gradient(135deg,#d4a843,#f5c842);border-radius:12px;padding:12px 16px;margin-bottom:16px;">
+                <span style="font-size:24px;font-weight:900;color:#0a0f1e;letter-spacing:2px;">E3 RENTALS</span>
+            </div>
+        </div>
+        <div style="background:#0f1729;border:1px solid #1e293b;border-radius:16px;overflow:hidden;">
+            <div style="background:${accentColor}18;border-bottom:1px solid ${accentColor}30;padding:24px 28px;text-align:center;">
+                <div style="font-size:40px;margin-bottom:8px;">⭐</div>
+                <h1 style="margin:0;color:#f1f5f9;font-size:22px;font-weight:700;">How was your rental?</h1>
+                <p style="margin:8px 0 0;color:#94a3b8;font-size:14px;line-height:1.6;">Your feedback builds our vendor ecosystem.</p>
+            </div>
+            <div style="padding:28px;">
+                <p style="margin:0 0 20px;color:#cbd5e1;font-size:15px;">Hi <strong style="color:#f1f5f9;">${opts.customerName}</strong>,</p>
+                <p style="margin:0 0 24px;color:#cbd5e1;font-size:14px;line-height:1.6;">Thank you for renting with E3! We hope the <strong style="color:#f1f5f9;">${opts.productName}</strong> provided by <strong style="color:#f1f5f9;">${opts.vendorName}</strong> met your expectations.</p>
+                
+                <p style="margin:0 0 24px;color:#cbd5e1;font-size:14px;line-height:1.6;">As a decentralized marketplace, your verification directly influences which suppliers rank highest. Please take 30 seconds to rate the equipment condition and vendor delivery.</p>
+                
+                <div style="margin-top:32px;text-align:center;">
+                    <a href="${ctaUrl}" style="display:inline-block;background:${accentColor};color:#0a0f1e;font-weight:700;font-size:14px;padding:14px 32px;border-radius:10px;text-decoration:none;letter-spacing:0.5px;">
+                        Leave a Verified Review →
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div style="margin-top:24px;text-align:center;color:#475569;font-size:12px;line-height:1.8;">
+            <p style="margin:0;">Questions? Contact us at <a href="mailto:info@e3rentals.com" style="color:#d4a843;text-decoration:none;">info@e3rentals.com</a></p>
+            <p style="margin:4px 0 0;">© ${new Date().getFullYear()} E3 Rentals. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>`;
+
+    try {
+        const resend = getResend();
+        await resend.emails.send({
+            from: FROM,
+            to: opts.to,
+            subject: `⭐ How was your rental from ${opts.vendorName}?`,
+            html,
+        });
+        console.log(`[REVIEW EMAIL SENT] → ${opts.to}`);
+    } catch (err) {
+        console.error("[REVIEW EMAIL ERROR]", err);
+    }
+}

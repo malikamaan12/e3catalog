@@ -38,8 +38,13 @@ export async function GET(req: NextRequest) {
                     id: true, name: true, slug: true, shortDescription: true,
                     showPrice: true, priceType: true, priceRangeMax: true, pricePerDay: true, pricePerHour: true,
                     unit: true, thumbnailUrl: true, categoryId: true, dimensions: true, vendorId: true, itemCode: true,
+                    averageRating: true, reviewCount: true,
                 },
-                with: { category: { columns: { name: true, slug: true } }, inventoryUnits: { columns: { id: true } } },
+                with: { 
+                    category: { columns: { name: true, slug: true } }, 
+                    inventoryUnits: { columns: { id: true } },
+                    vendor: { columns: { companyName: true, scoreRating: true, scoreCondition: true, scoreDelivery: true } }
+                },
             });
         } else {
             result = await db.query.products.findMany({
@@ -51,8 +56,13 @@ export async function GET(req: NextRequest) {
                     id: true, name: true, slug: true, shortDescription: true,
                     showPrice: true, priceType: true, priceRangeMax: true, pricePerDay: true, pricePerHour: true,
                     unit: true, thumbnailUrl: true, categoryId: true, dimensions: true, vendorId: true, itemCode: true,
+                    averageRating: true, reviewCount: true,
                 },
-                with: { category: { columns: { name: true, slug: true } }, inventoryUnits: { columns: { id: true } } },
+                with: { 
+                    category: { columns: { name: true, slug: true } }, 
+                    inventoryUnits: { columns: { id: true } },
+                    vendor: { columns: { companyName: true, scoreRating: true, scoreCondition: true, scoreDelivery: true } }
+                },
             });
         }
 
@@ -105,6 +115,17 @@ export async function GET(req: NextRequest) {
                 totalUnits,
                 currentAvailableUnits: currentAvail,
             };
+        });
+
+        // The Vendor Reliability Algorithm Ranking
+        productsWithAvailability.sort((a, b) => {
+            const scoreA = a.vendor?.scoreRating || 0;
+            const scoreB = b.vendor?.scoreRating || 0;
+            if (scoreB !== scoreA) {
+                return scoreB - scoreA;
+            }
+            // Tie-breaker: Product Average Rating
+            return (b.averageRating || 0) - (a.averageRating || 0);
         });
 
         return NextResponse.json(productsWithAvailability);

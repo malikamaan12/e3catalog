@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/safety-checks",
       "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/post-event-reviews",
+      "schedule": "0 12 * * *"
     }
   ]
 }

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import { Star } from "lucide-react";
 
 interface ProductCardProps {
     slug: string;
@@ -18,6 +19,9 @@ interface ProductCardProps {
     priceRangeMax?: number | null;
     unit?: string;
     itemCode?: string | null;
+    averageRating?: number | null;
+    reviewCount?: number | null;
+    vendor?: { companyName: string; scoreRating: number | null } | null;
 }
 
 export function ProductCard({
@@ -37,6 +41,9 @@ export function ProductCard({
     priceRangeMax,
     unit,
     itemCode,
+    averageRating,
+    reviewCount,
+    vendor,
 }: ProductCardProps) {
     // If we don't have currentAvailableUnits (old API), fallback to totalUnits
     const available = currentAvailableUnits !== undefined ? currentAvailableUnits : totalUnits;
@@ -111,10 +118,24 @@ export function ProductCard({
                                 {itemCode}
                             </p>
                         )}
+                        {vendor && (
+                            <p className="text-[10px] text-[var(--color-slate)] mt-1 truncate">
+                                By {vendor.companyName}
+                            </p>
+                        )}
                     </div>
-                    <div className="flex items-center gap-1.5 shrink-0 mt-1">
-                        <span className="text-[10px] text-[var(--color-slate)] font-medium tracking-wide uppercase">{availabilityLabel}</span>
-                        <div className={`dot-${availabilityStatus}`} />
+                    <div className="flex flex-col items-end shrink-0 mt-1 gap-1">
+                        <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] text-[var(--color-slate)] font-medium tracking-wide uppercase">{availabilityLabel}</span>
+                            <div className={`dot-${availabilityStatus}`} />
+                        </div>
+                        {(reviewCount && reviewCount > 0) ? (
+                            <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-[var(--color-gold)]/10 border border-[var(--color-gold)]/20">
+                                <Star className="w-3 h-3 text-[var(--color-gold)] fill-[var(--color-gold)]" />
+                                <span className="text-[10px] font-bold text-[var(--color-gold)]">{Number(averageRating).toFixed(1)}</span>
+                                <span className="text-[9px] text-[var(--color-gold)]/70">({reviewCount})</span>
+                            </div>
+                        ) : null}
                     </div>
                 </div>
 

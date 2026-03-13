@@ -165,6 +165,8 @@ export const products = pgTable("products", {
     requiresApproval: boolean("requires_approval").default(false),
     featured: boolean("featured").default(false),
     viewCount: integer("view_count").default(0), // Added for Catalog Demand Analytics
+    averageRating: real("average_rating").default(5.0),
+    reviewCount: integer("review_count").default(0),
     adminNotes: varchar("admin_notes", { length: 1000 }), // Internal use only
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
@@ -384,6 +386,7 @@ export const productsRelations = relations(products, ({ one, many }) => ({
     inventoryOverrides: many(inventoryOverrides),
     inventoryUnits: many(inventoryUnits),
     productTags: many(productTags),
+    reviews: many(reviews),
 }));
 
 export const productTagsRelations = relations(productTags, ({ one }) => ({
@@ -437,6 +440,10 @@ export const bookingsRelations = relations(bookings, ({ one }) => ({
         fields: [bookings.productId],
         references: [products.id],
     }),
+    review: one(reviews, {
+        fields: [bookings.id],
+        references: [reviews.bookingId]
+    })
 }));
 
 export const cartItemsRelations = relations(cartItems, ({ one }) => ({
@@ -469,6 +476,7 @@ export const usersRelations = relations(users, ({ many }) => ({
     receivedMessages: many(chatMessages, { relationName: "receivedMessages" }),
     systemLogs: many(systemLogs),
     vendorProfile: many(vendors),
+    reviews: many(reviews),
 }));
 
 export const vendorsRelations = relations(vendors, ({ one, many }) => ({
@@ -478,6 +486,7 @@ export const vendorsRelations = relations(vendors, ({ one, many }) => ({
     }),
     products: many(products),
     ledgers: many(vendorLedgers),
+    reviews: many(reviews),
 }));
 
 export const systemLogsRelations = relations(systemLogs, ({ one }) => ({
@@ -570,5 +579,40 @@ export const chatMessagesRelations = relations(chatMessages, ({ one }) => ({
         fields: [chatMessages.receiverId],
         references: [users.id],
         relationName: "receivedMessages",
+    }),
+}));
+
+// ─── Verified Reviews ───
+export const reviews = pgTable("reviews", {
+    id: varchar("id", { length: 255 }).primaryKey(),
+    bookingId: varchar("booking_id", { length: 255 }).notNull().references(() => bookings.id).unique(),
+    productId: varchar("product_id", { length: 255 }).notNull().references(() => products.id),
+    vendorId: varchar("vendor_id", { length: 255 }).references(() => vendors.id), // Can be null if platform-owned
+    userId: varchar("user_id", { length: 255 }).references(() => users.id), // The client who left the review
+    customerName: varchar("customer_name", { length: 255 }).notNull(),
+    rating: integer("rating").notNull(), // 1 to 5
+    conditionScore: integer("condition_score"), // 1 to 5
+    deliveryScore: integer("delivery_score"), // 1 to 5
+    comment: varchar("comment", { length: 2000 }),
+    isVerified: boolean("is_verified").default(true),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const reviewsRelations = relations(reviews, ({ one }) => ({
+    booking: one(bookings, {
+        fields: [reviews.bookingId],
+        references: [bookings.id],
+    }),
+    product: one(products, {
+        fields: [reviews.productId],
+        references: [products.id],
+    }),
+    vendor: one(vendors, {
+        fields: [reviews.vendorId],
+        references: [vendors.id],
+    }),
+    user: one(users, {
+        fields: [reviews.userId],
+        references: [users.id],
     }),
 }));
