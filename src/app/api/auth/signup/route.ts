@@ -19,7 +19,7 @@ export async function POST(req: Request) {
         const normalizedEmail = email.trim().toLowerCase();
 
         // Check if user exists
-        const existingUsers = await db.select().from(users).where(eq(users.email, normalizedEmail)).limit(1);
+        const existingUsers = await db.select({ id: users.id }).from(users).where(eq(users.email, normalizedEmail)).limit(1);
 
         if (existingUsers.length > 0) {
             return NextResponse.json(

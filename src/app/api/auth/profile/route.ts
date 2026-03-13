@@ -8,7 +8,24 @@ export async function GET() {
     const user = await getCurrentUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const [row] = await db.select().from(users).where(eq(users.id, user.id));
+    const [row] = await db.select({
+        id: users.id,
+        name: users.name,
+        email: users.email,
+        image: users.image,
+        phoneNumber: users.phoneNumber,
+        companyName: users.companyName,
+        registrationNo: users.registrationNo,
+        location: users.location,
+        address: users.address,
+        designation: users.designation,
+        alternatePhone: users.alternatePhone,
+        pocName: users.pocName,
+        pocPhone: users.pocPhone,
+        pocEmail: users.pocEmail,
+        pocDesignation: users.pocDesignation,
+        projectContacts: users.projectContacts,
+    }).from(users).where(eq(users.id, user.id));
     if (!row) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
     return NextResponse.json({

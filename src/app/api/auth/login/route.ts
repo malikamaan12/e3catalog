@@ -19,7 +19,15 @@ export async function POST(req: Request) {
 
         // Fallback to phone number for users auto-registered before password field was added
         const [user] = await db
-            .select()
+            .select({
+                id: users.id,
+                email: users.email,
+                name: users.name,
+                role: users.role,
+                status: users.status,
+                password: users.password,
+                phoneNumber: users.phoneNumber,
+            })
             .from(users)
             .where(
                 and(
