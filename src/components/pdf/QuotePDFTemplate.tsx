@@ -128,6 +128,174 @@ const styles = StyleSheet.create({
         fontSize: 8,
         color: "#64748b",
         lineHeight: 1.4,
+    },
+    // Premium Product Showcase Styles
+    heroSection: {
+        marginBottom: 16,
+    },
+    productHeroImageLarge: {
+        width: "100%",
+        height: 280,
+        objectFit: "cover",
+        borderRadius: 8,
+    },
+    productTitleBox: {
+        marginTop: 12,
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+    },
+    productTitle: {
+        fontSize: 22,
+        fontWeight: "bold",
+        color: "#0f172a",
+        flex: 1,
+    },
+    itemCode: {
+        fontSize: 10,
+        color: "#64748b",
+        fontFamily: "Courier",
+        backgroundColor: "#f1f5f9",
+        paddingVertical: 4,
+        paddingHorizontal: 8,
+        borderRadius: 4,
+    },
+    badgeContainer: {
+        flexDirection: "row",
+        flexWrap: "wrap",
+        marginBottom: 12,
+    },
+    badge: {
+        backgroundColor: "#e0f2fe",
+        paddingVertical: 4,
+        paddingHorizontal: 8,
+        borderRadius: 4,
+        marginRight: 6,
+        marginBottom: 6,
+    },
+    badgeText: {
+        fontSize: 8,
+        color: "#0284c7",
+        fontWeight: "bold",
+        textTransform: "uppercase",
+    },
+    mathBox: {
+        backgroundColor: "#f8fafc",
+        padding: 12,
+        borderRadius: 6,
+        borderLeftWidth: 3,
+        borderLeftColor: "#3b82f6",
+    },
+    mathRow: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        marginBottom: 6,
+    },
+    mathText: {
+        fontSize: 10,
+        color: "#64748b",
+    },
+    mathValue: {
+        fontSize: 10,
+        fontWeight: "bold",
+        color: "#334155",
+    },
+    qrBox: {
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 12,
+        backgroundColor: "#ffffff",
+        borderWidth: 1,
+        borderColor: "#e2e8f0",
+        borderRadius: 6,
+    },
+    qrImage: {
+        width: 80,
+        height: 80,
+        marginBottom: 8,
+    },
+    qrPlaceholder: {
+        width: 80,
+        height: 80,
+        backgroundColor: "#f1f5f9",
+        justifyContent: "center",
+        alignItems: "center",
+        marginBottom: 8,
+        borderRadius: 4,
+    },
+    qrPlaceholderText: {
+        fontSize: 8,
+        color: "#94a3b8",
+        textAlign: "center",
+    },
+    qrLinkText: {
+        fontSize: 8,
+        color: "#64748b",
+    },
+    // Final Page Premium Styles
+    summaryHeaderBox: {
+        backgroundColor: "#f8fafc",
+        padding: 16,
+        borderRadius: 8,
+        marginBottom: 24,
+        borderLeftWidth: 4,
+        borderLeftColor: "#3b82f6",
+    },
+    tableContainer: {
+        borderWidth: 1,
+        borderColor: "#e2e8f0",
+        borderRadius: 8,
+        overflow: "hidden",
+        marginBottom: 24,
+    },
+    premiumTableHeader: {
+        flexDirection: "row",
+        backgroundColor: "#f1f5f9",
+        paddingVertical: 10,
+        paddingHorizontal: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: "#cbd5e1",
+    },
+    premiumTableRow: {
+        flexDirection: "row",
+        paddingVertical: 12,
+        paddingHorizontal: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: "#f1f5f9",
+    },
+    totalsContainer: {
+        width: "60%",
+        alignSelf: "flex-end",
+        backgroundColor: "#f8fafc",
+        padding: 16,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: "#e2e8f0",
+        marginBottom: 10,
+    },
+    totalsRow: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        marginBottom: 8,
+    },
+    totalsLabel: {
+        fontSize: 10,
+        color: "#64748b",
+        flex: 2,
+        textAlign: "right",
+        paddingRight: 10,
+    },
+    totalsValue: {
+        fontSize: 10,
+        color: "#334155",
+        flex: 1,
+        textAlign: "right",
+        fontWeight: "bold",
+    },
+    divider: {
+        height: 1,
+        backgroundColor: "#e2e8f0",
+        marginVertical: 10,
     }
 });
 
@@ -153,6 +321,11 @@ interface QuotePDFProps extends React.ComponentProps<typeof Document> {
         endDate: string;
         pricePerDay: number;
         totalLinePrice: number;
+        material?: string;
+        certifications?: string[];
+        smartTags?: string[];
+        qrCodeUrl?: string;
+        modelLink?: string;
     }>;
     financials: {
         subtotal: number;
@@ -248,19 +421,39 @@ export function QuotePDFTemplate({
                 <Page key={idx} size="A4" style={styles.page} wrap={false}>
                     {renderHeader()}
 
-                    <Text style={[styles.title, { fontSize: 20 }]}>{item.name}</Text>
-                    {item.itemCode && (
-                        <Text style={{ fontSize: 9, color: "#94a3b8", fontFamily: "Courier", marginBottom: 8 }}>Item Code: {item.itemCode}</Text>
-                    )}
+                    {/* HERO & TITLE SECTION */}
+                    <View style={styles.heroSection}>
+                        {item.thumbnailUrl && (
+                            <Image src={item.thumbnailUrl} style={styles.productHeroImageLarge} />
+                        )}
+                        <View style={styles.productTitleBox}>
+                            <Text style={styles.productTitle}>{item.name}</Text>
+                            {item.itemCode && (
+                                <Text style={styles.itemCode}>ITEM CODE: {item.itemCode}</Text>
+                            )}
+                        </View>
+                    </View>
 
-                    {item.thumbnailUrl && (
-                        <Image src={item.thumbnailUrl} style={styles.productHeroImage} />
-                    )}
+                    {/* BADGES / CERTIFICATIONS */}
+                    <View style={styles.badgeContainer}>
+                        {(item.smartTags && item.smartTags.length > 0) && item.smartTags.map((tag, tIdx) => (
+                            <View key={`tag-${tIdx}`} style={[styles.badge, { backgroundColor: "#fef3c7" }]}>
+                                <Text style={[styles.badgeText, { color: "#d97706" }]}>{tag}</Text>
+                            </View>
+                        ))}
+                        {(item.certifications && item.certifications.length > 0) && item.certifications.map((cert, cIdx) => (
+                            <View key={`cert-${cIdx}`} style={styles.badge}>
+                                <Text style={styles.badgeText}>{cert}</Text>
+                            </View>
+                        ))}
+                    </View>
 
+                    {/* DESCRIPTION */}
                     <View style={styles.section}>
                         <Text style={styles.text}>{item.shortDescription}</Text>
                     </View>
 
+                    {/* SPECIFICATIONS GRID */}
                     <View style={styles.specBox}>
                         <View style={styles.grid2}>
                             <View style={styles.col}>
@@ -271,20 +464,45 @@ export function QuotePDFTemplate({
                                 <Text style={styles.value}>{item.weight || "N/A"}</Text>
                             </View>
                             <View style={styles.col}>
-                                <Text style={styles.label}>Power Requirements</Text>
+                                <Text style={styles.label}>Power</Text>
                                 <Text style={styles.value}>{item.powerRequirements || "None"}</Text>
+
+                                <Text style={styles.label}>Material</Text>
+                                <Text style={styles.value}>{item.material || "Standard"}</Text>
                             </View>
                         </View>
                     </View>
 
                     <View style={styles.grid2}>
-                        <View style={styles.col}>
-                            <Text style={styles.label}>Rental Period</Text>
-                            <Text style={styles.value}>{item.startDate} to {item.endDate}</Text>
+                        {/* RENTAL MATH */}
+                        <View style={[styles.col, styles.mathBox]}>
+                            <Text style={styles.label}>Rental Breakdown</Text>
+                            <View style={styles.mathRow}>
+                                <Text style={styles.mathText}>Quantity Requested:</Text>
+                                <Text style={styles.mathValue}>{item.quantity} Units</Text>
+                            </View>
+                            <View style={styles.mathRow}>
+                                <Text style={styles.mathText}>Rental Duration:</Text>
+                                <Text style={styles.mathValue}>{item.startDate} to {item.endDate}</Text>
+                            </View>
+                            <View style={styles.mathRow}>
+                                <Text style={styles.mathText}>Line Item Total:</Text>
+                                <Text style={[styles.mathValue, { color: "#0f172a" }]}>{item.totalLinePrice.toFixed(2)} QAR</Text>
+                            </View>
                         </View>
-                        <View style={styles.col}>
-                            <Text style={styles.label}>Requested Quantity</Text>
-                            <Text style={styles.value}>{item.quantity} Units</Text>
+                        
+                        {/* SMART MEDIA (QR) */}
+                        <View style={[styles.col, styles.qrBox]}>
+                            {item.qrCodeUrl ? (
+                                <Image src={item.qrCodeUrl} style={styles.qrImage} />
+                            ) : (
+                                <View style={styles.qrPlaceholder}>
+                                    <Text style={styles.qrPlaceholderText}>SCAN FOR{"\n"}3D VIEW</Text>
+                                </View>
+                            )}
+                            <Text style={styles.qrLinkText}>
+                                {item.modelLink || "Interactive Media Available"}
+                            </Text>
                         </View>
                     </View>
 
@@ -296,67 +514,86 @@ export function QuotePDFTemplate({
             <Page size="A4" style={styles.page}>
                 {renderHeader()}
 
-                <Text style={styles.title}>Financial Summary</Text>
+                <View style={styles.summaryHeaderBox}>
+                    <Text style={[styles.title, { marginBottom: 4 }]}>Commercial Summary</Text>
+                    <Text style={styles.text}>Comprehensive breakdown of rental equipment, logistics, and additional services.</Text>
+                </View>
 
-                <View style={styles.section}>
+                {/* PREMIUM TABLE */}
+                <View style={styles.tableContainer}>
                     {/* Header Row */}
-                    <View style={styles.tableHeaderRow}>
-                        <Text style={[styles.label, styles.tableColLeft]}>Description</Text>
+                    <View style={styles.premiumTableHeader}>
+                        <Text style={[styles.label, styles.tableColLeft]}>Equipment Details</Text>
+                        <Text style={[styles.label, styles.tableColCenter]}>Duration</Text>
                         <Text style={[styles.label, styles.tableColCenter]}>Qty</Text>
-                        <Text style={[styles.label, styles.tableColRight]}>Daily Rate</Text>
                         <Text style={[styles.label, styles.tableColRight]}>Line Total</Text>
                     </View>
 
                     {/* Line Items */}
                     {items.map((item, idx) => (
-                        <View key={idx} style={styles.tableRow}>
+                        <View key={idx} style={styles.premiumTableRow}>
                             <View style={styles.tableColLeft}>
-                                <Text style={[styles.text, { fontWeight: "bold" }]}>{item.name}</Text>
+                                <Text style={[styles.text, { fontWeight: "bold", color: "#0f172a" }]}>{item.name}</Text>
                                 {item.itemCode && (
-                                    <Text style={{ fontSize: 7, color: "#94a3b8", fontFamily: "Courier" }}>{item.itemCode}</Text>
+                                    <Text style={{ fontSize: 7, color: "#64748b", fontFamily: "Courier", marginTop: 2 }}>REF: {item.itemCode}</Text>
                                 )}
-                                <Text style={{ fontSize: 8, color: "#64748b" }}>{item.startDate} to {item.endDate}</Text>
                             </View>
-                            <Text style={[styles.text, styles.tableColCenter]}>{item.quantity}</Text>
-                            <Text style={[styles.text, styles.tableColRight]}>{item.pricePerDay.toFixed(2)}</Text>
-                            <Text style={[styles.text, styles.tableColRight]}>{item.totalLinePrice.toFixed(2)} QAR</Text>
+                            <Text style={[styles.text, styles.tableColCenter, { fontSize: 8 }]}>{item.startDate} - {item.endDate}</Text>
+                            <Text style={[styles.text, styles.tableColCenter, { fontWeight: "bold" }]}>{item.quantity}</Text>
+                            <Text style={[styles.text, styles.tableColRight, { fontWeight: "bold", color: "#0f172a" }]}>{item.totalLinePrice.toFixed(2)} QAR</Text>
                         </View>
                     ))}
                 </View>
 
-                <View style={{ width: "60%", alignSelf: "flex-end", marginTop: 20 }}>
-                    <View style={[styles.tableRow, { borderBottomWidth: 0 }]}>
-                        <Text style={[styles.text, { flex: 2, textAlign: "right" }]}>Equipment Subtotal:</Text>
-                        <Text style={[styles.text, { flex: 1, textAlign: "right", fontWeight: "bold" }]}>{financials.subtotal.toFixed(2)} QAR</Text>
+                {/* DETAILED TOTALS */}
+                <View style={styles.totalsContainer}>
+                    <View style={styles.totalsRow}>
+                        <Text style={styles.totalsLabel}>Equipment Subtotal:</Text>
+                        <Text style={styles.totalsValue}>{financials.subtotal.toFixed(2)} QAR</Text>
                     </View>
-                    <View style={[styles.tableRow, { borderBottomWidth: 0 }]}>
-                        <Text style={[styles.text, { flex: 2, textAlign: "right" }]}>Logistics & Transport:</Text>
-                        <Text style={[styles.text, { flex: 1, textAlign: "right" }]}>{financials.logisticsCost.toFixed(2)} QAR</Text>
+                    <View style={styles.totalsRow}>
+                        <Text style={styles.totalsLabel}>Logistics & Transport:</Text>
+                        <Text style={styles.totalsValue}>{financials.logisticsCost.toFixed(2)} QAR</Text>
                     </View>
-                    <View style={[styles.tableRow, { borderBottomWidth: 0 }]}>
-                        <Text style={[styles.text, { flex: 2, textAlign: "right" }]}>Setup & Labor:</Text>
-                        <Text style={[styles.text, { flex: 1, textAlign: "right" }]}>{financials.setupLaborCost.toFixed(2)} QAR</Text>
+                    <View style={styles.totalsRow}>
+                        <Text style={styles.totalsLabel}>Setup & Labor:</Text>
+                        <Text style={styles.totalsValue}>{financials.setupLaborCost.toFixed(2)} QAR</Text>
                     </View>
                     {financials.discount > 0 && (
-                        <View style={[styles.tableRow, { borderBottomWidth: 0 }]}>
-                            <Text style={[styles.text, { flex: 2, textAlign: "right", color: "#ef4444" }]}>Discount Applied:</Text>
-                            <Text style={[styles.text, { flex: 1, textAlign: "right", color: "#ef4444" }]}>-{financials.discount.toFixed(2)} QAR</Text>
+                        <View style={styles.totalsRow}>
+                            <Text style={[styles.totalsLabel, { color: "#ef4444" }]}>Discount Applied:</Text>
+                            <Text style={[styles.totalsValue, { color: "#ef4444" }]}>-{financials.discount.toFixed(2)} QAR</Text>
                         </View>
                     )}
+                    {(financials.tax && financials.tax > 0) ? (
+                        <View style={styles.totalsRow}>
+                            <Text style={styles.totalsLabel}>Taxes / VAT:</Text>
+                            <Text style={styles.totalsValue}>{financials.tax.toFixed(2)} QAR</Text>
+                        </View>
+                    ) : null}
+                    
+                    <View style={styles.divider} />
+                    
+                    <View style={[styles.totalsRow, { marginBottom: 0, alignItems: "center" }]}>
+                        <Text style={[styles.totalsLabel, { color: "#0f172a", fontWeight: "bold", fontSize: 12 }]}>Payable Subtotal:</Text>
+                        <Text style={[styles.totalsValue, { color: "#0f172a", fontSize: 12 }]}>
+                            {(financials.grandTotal || 0).toFixed(2)} QAR
+                        </Text>
+                    </View>
                 </View>
 
-                {/* GRAND TOTAL */}
-                <View style={styles.grandTotalBox}>
-                    <Text style={styles.grandTotalLabel}>Grand Total (Qatari Riyals)</Text>
-                    <Text style={styles.grandTotalValue}>{financials.grandTotal.toFixed(2)} QAR</Text>
+                {/* GRAND TOTAL CALLOUT */}
+                <View style={[styles.grandTotalBox, { marginTop: 0 }]}>
+                    <Text style={styles.grandTotalLabel}>Total Proposal Value (QAR)</Text>
+                    <Text style={styles.grandTotalValue}>{financials.grandTotal.toFixed(2)}</Text>
                 </View>
 
                 {/* TERMS AND CONDITIONS */}
                 {termsAndConditions && termsAndConditions.length > 0 && (
                     <View style={styles.termsBox}>
-                        <Text style={[styles.label, { marginBottom: 8 }]}>Terms & Conditions</Text>
+                        <Text style={[styles.label, { marginBottom: 8, color: "#0f172a" }]}>Commercial Terms & Conditions</Text>
                         {termsAndConditions.map((term, idx) => (
-                            <Text key={idx} style={styles.termsText}>• {term}</Text>
+                            <Text key={idx} style={styles.termsText}>{idx + 1}. {term}</Text>
                         ))}
                     </View>
                 )}
