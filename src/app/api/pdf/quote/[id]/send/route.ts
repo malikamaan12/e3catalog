@@ -74,7 +74,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
                     vendorId: product?.vendorId,
                     smartTags: ["Premium Grade", "Inspected"],
                     certifications: ["TUV Certified"],
-                    qrCodeUrl: getAbsoluteUrl("/dummy-qr.png"),
+                    qrCodeUrl: product ? `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(getAbsoluteUrl(`/${product.slug}`) || "")}` : undefined,
                     modelLink: "View 3D Model Online"
                 };
             })

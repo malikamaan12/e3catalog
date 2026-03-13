@@ -73,7 +73,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
                     vendorId: product?.vendorId,
                     smartTags: ["Premium Grade", "Inspected"], // Adding dummy tags for visual effect or swap with real ones if added to DB
                     certifications: ["TUV Certified"], // Same for certifications
-                    qrCodeUrl: getAbsoluteUrl("/dummy-qr.png"), // Simulated QR
+                    qrCodeUrl: product ? `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(getAbsoluteUrl(`/${product.slug}`) || "")}` : undefined,
                     modelLink: "View 3D Model Online"
                 };
             })
@@ -225,7 +225,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
                     vendorId: product?.vendorId,
                     smartTags: ["Premium Grade", "Inspected"],
                     certifications: ["TUV Certified"],
-                    qrCodeUrl: getAbsoluteUrl("/dummy-qr.png"),
+                    qrCodeUrl: product ? `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(getAbsoluteUrl(`/${product.slug}`) || "")}` : undefined,
                     modelLink: "View 3D Model Online"
                 };
             })
