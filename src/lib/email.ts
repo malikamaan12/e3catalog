@@ -365,3 +365,138 @@ function buildEmailHTMLWithId(opts: {
 </body>
 </html>`;
 }
+
+// ─── Safety Compliance Emails ────────────────────────────────────────────────
+
+export async function sendSafetyAlertEmail(opts: {
+    to: string;
+    vendorName: string;
+    expiringCerts: Array<{ productName: string, certName: string, daysLeft: number, expiryDate: string }>;
+}) {
+    if (!process.env.RESEND_API_KEY || process.env.RESEND_API_KEY === "re_placeholder") {
+        console.log(`[SAFETY EMAIL SKIPPED] No API Key. Would notify ${opts.vendorName} (${opts.to}) about ${opts.expiringCerts.length} expiring certs.`);
+        return;
+    }
+
+    const ctaUrl = `${BASE_URL}/admin/products`;
+    const accentColor = "#EF4444"; // Red for safety alert
+
+    const certRowsHtml = opts.expiringCerts.map(c => `
+        <div style="background:#1e293b;border-left:3px solid ${c.daysLeft <= 0 ? '#ef4444' : '#fbbf24'};border-radius:0 8px 8px 0;padding:16px 20px;margin-bottom:12px;">
+            <p style="margin:0 0 4px;font-size:12px;text-transform:uppercase;letter-spacing:1px;color:${c.daysLeft <= 0 ? '#ef4444' : '#fbbf24'};font-weight:700;">
+                ${c.daysLeft < 0 ? 'EXPIRED' : c.daysLeft === 0 ? 'EXPIRES TODAY' : `EXPIRES IN ${c.daysLeft} DAYS`}
+            </p>
+            <p style="margin:0 0 4px;color:#f1f5f9;font-size:16px;font-weight:600;">${c.productName}</p>
+            <p style="margin:0;color:#cbd5e1;font-size:14px;">${c.certName} (Valid until ${new Date(c.expiryDate).toLocaleDateString()})</p>
+        </div>
+    `).join("");
+
+    const html = `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#0a0f1e;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+    <div style="max-width:600px;margin:0 auto;padding:32px 16px;">
+        <div style="text-align:center;margin-bottom:32px;">
+            <div style="display:inline-block;background:linear-gradient(135deg,#d4a843,#f5c842);border-radius:12px;padding:12px 16px;margin-bottom:16px;">
+                <span style="font-size:24px;font-weight:900;color:#0a0f1e;letter-spacing:2px;">E3 SAFETY ENGINE</span>
+            </div>
+        </div>
+        <div style="background:#0f1729;border:1px solid #1e293b;border-radius:16px;overflow:hidden;">
+            <div style="background:${accentColor}18;border-bottom:1px solid ${accentColor}30;padding:24px 28px;text-align:center;">
+                <div style="font-size:40px;margin-bottom:8px;">⚠️</div>
+                <h1 style="margin:0;color:#f1f5f9;font-size:22px;font-weight:700;">Attention Required: Safety Compliance</h1>
+                <p style="margin:8px 0 0;color:#94a3b8;font-size:14px;line-height:1.6;">One or more of your product safety certificates require attention.</p>
+            </div>
+            <div style="padding:28px;">
+                <p style="margin:0 0 20px;color:#cbd5e1;font-size:15px;">Hi <strong style="color:#f1f5f9;">${opts.vendorName}</strong>,</p>
+                <p style="margin:0 0 24px;color:#cbd5e1;font-size:14px;line-height:1.6;">Our compliance engine has detected that the following safety certificates are either expiring soon or have already expired. Please update these certificates immediately to avoid having your items delisted from active proposals.</p>
+                
+                ${certRowsHtml}
+
+                <div style="margin-top:32px;text-align:center;">
+                    <a href="${ctaUrl}" style="display:inline-block;background:${accentColor};color:#ffffff;font-weight:700;font-size:14px;padding:14px 32px;border-radius:10px;text-decoration:none;letter-spacing:0.5px;">
+                        Update Certificates →
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>`;
+
+    try {
+        const resend = getResend();
+        await resend.emails.send({
+            from: FROM,
+            to: opts.to,
+            subject: `⚠️ ACTION REQUIRED: ${opts.expiringCerts.length} Safety Certificates Expiring`,
+            html,
+        });
+        console.log(`[SAFETY ALERT SENT] → ${opts.to}`);
+    } catch (err) {
+        console.error("[SAFETY ALERT ERROR]", err);
+    }
+}
+
+export async function sendSafetyDigestEmail(opts: {
+    to: string;
+    totalExpiring: number;
+    vendorImpactCount: number;
+}) {
+    if (!process.env.RESEND_API_KEY || process.env.RESEND_API_KEY === "re_placeholder") {
+        console.log(`[DIGEST EMAIL SKIPPED] No API Key. Would notify ${opts.to} about ${opts.totalExpiring} expiring certs.`);
+        return;
+    }
+
+    const ctaUrl = `${BASE_URL}/admin/products`;
+    const accentColor = "#3B82F6"; // Blue for admin digest
+
+    const html = `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#0a0f1e;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+    <div style="max-width:600px;margin:0 auto;padding:32px 16px;">
+        <div style="background:#0f1729;border:1px solid #1e293b;border-radius:16px;overflow:hidden;">
+            <div style="background:${accentColor}18;border-bottom:1px solid ${accentColor}30;padding:24px 28px;text-align:center;">
+                <div style="font-size:40px;margin-bottom:8px;">📊</div>
+                <h1 style="margin:0;color:#f1f5f9;font-size:22px;font-weight:700;">Platform Safety Digest</h1>
+                <p style="margin:8px 0 0;color:#94a3b8;font-size:14px;line-height:1.6;">Daily Compliance Overview</p>
+            </div>
+            <div style="padding:28px;">
+                <p style="margin:0 0 20px;color:#cbd5e1;font-size:15px;">Automated compliance scan complete.</p>
+                <div style="background:#1e293b;border-radius:10px;padding:16px 20px;">
+                    <table style="width:100%;border-collapse:collapse;">
+                        <tr>
+                            <td style="padding:8px 0;color:#94a3b8;font-size:13px;">Certificates Flagged</td>
+                            <td style="padding:8px 0;color:#ef4444;font-size:16px;font-weight:700;text-align:right;">${opts.totalExpiring}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding:8px 0;color:#94a3b8;font-size:13px;">Vendors Impacted</td>
+                            <td style="padding:8px 0;color:#f1f5f9;font-size:14px;font-weight:600;text-align:right;">${opts.vendorImpactCount}</td>
+                        </tr>
+                    </table>
+                </div>
+                <div style="margin-top:32px;text-align:center;">
+                    <a href="${ctaUrl}" style="display:inline-block;background:${accentColor};color:#ffffff;font-weight:700;font-size:14px;padding:14px 32px;border-radius:10px;text-decoration:none;letter-spacing:0.5px;">
+                        View Compliance Dashboard →
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>`;
+
+    try {
+        const resend = getResend();
+        await resend.emails.send({
+            from: FROM,
+            to: opts.to,
+            subject: `📊 Platform Safety Digest: ${opts.totalExpiring} Certificates Expiring`,
+            html,
+        });
+        console.log(`[DIGEST SENT] → ${opts.to}`);
+    } catch (err) {
+        console.error("[DIGEST ERROR]", err);
+    }
+}

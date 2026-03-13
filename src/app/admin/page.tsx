@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
-import { products, bookings } from "@/lib/db/schema";
-import { inArray, eq, sql, and, gte, lte } from "drizzle-orm";
-import { PackageOpen, CalendarRange, TrendingUp, AlertCircle, Store } from "lucide-react";
+import { products, bookings, safetyCertificates } from "@/lib/db/schema";
+import { inArray, eq, sql, and, gte, lte, or } from "drizzle-orm";
+import { PackageOpen, CalendarRange, TrendingUp, AlertCircle, Store, ShieldAlert } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
 
 export default async function AdminDashboard() {
@@ -69,6 +69,29 @@ export default async function AdminDashboard() {
 
     const revenueAmount = monthlyRevenue || 0;
 
+    // 5. Compliance Expiry Scan (30 days out)
+    const thirtyDaysFromNow = new Date();
+    thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+
+    const expiringCerts = await db
+        .select({
+            id: safetyCertificates.id,
+            certName: safetyCertificates.certName,
+            expiryDate: safetyCertificates.expiryDate,
+            productId: products.id,
+            productName: products.name
+        })
+        .from(safetyCertificates)
+        .innerJoin(products, eq(safetyCertificates.productId, products.id))
+        .where(
+            and(
+                targetVendorId ? eq(products.vendorId, targetVendorId) : sql`1=1`,
+                lte(safetyCertificates.expiryDate, thirtyDaysFromNow)
+            )
+        )
+        .orderBy(safetyCertificates.expiryDate)
+        .limit(5);
+
     return (
         <div>
             <h1 className="font-[family-name:var(--font-heading)] text-2xl md:text-3xl font-bold text-[var(--color-warm-white)] mb-2">
@@ -126,6 +149,40 @@ export default async function AdminDashboard() {
                     </Link>
                 )}
             </div>
+
+            {/* Compliance Warnings Widget */}
+            {expiringCerts.length > 0 && (
+                <div className="mt-10">
+                    <h2 className="font-[family-name:var(--font-heading)] text-lg font-semibold text-[var(--color-warm-white)] mb-4 flex items-center gap-2">
+                        <ShieldAlert className="w-5 h-5 text-red-500" />
+                        Safety & Compliance Warnings
+                    </h2>
+                    <div className="glass rounded-xl border border-red-500/20 overflow-hidden bg-red-500/5">
+                        <div className="divide-y divide-red-500/10">
+                            {expiringCerts.map((cert) => {
+                                const isExpired = new Date(cert.expiryDate) < new Date();
+                                const daysLeft = Math.ceil((new Date(cert.expiryDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+                                return (
+                                    <div key={cert.id} className="p-4 flex items-center justify-between hover:bg-black/20 transition-colors">
+                                        <div>
+                                            <div className="flex items-center gap-3 mb-1">
+                                                <span className={`text-xs font-bold px-2 py-0.5 rounded uppercase tracking-wider ${isExpired ? 'bg-red-500 text-white' : 'bg-yellow-500 text-black'}`}>
+                                                    {isExpired ? 'Expired' : `Expiring in ${daysLeft} days`}
+                                                </span>
+                                                <h3 className="font-semibold text-white text-sm">{cert.productName}</h3>
+                                            </div>
+                                            <p className="text-xs text-[var(--color-slate)]">Certificate: <span className="text-white/80">{cert.certName}</span></p>
+                                        </div>
+                                        <Link href={`/admin/products/${cert.productId}`} className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-semibold rounded-lg transition-colors border border-red-500/20">
+                                            Update Document
+                                        </Link>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
