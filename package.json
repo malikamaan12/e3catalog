@@ -37,6 +37,7 @@
     "react-dom": "19.2.3",
     "react-hot-toast": "^2.6.0",
     "react-intersection-observer": "^10.0.3",
+    "recharts": "^3.8.0",
     "resend": "^6.9.3",
     "three": "^0.183.1",
     "uuid": "^13.0.0"

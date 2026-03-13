@@ -164,6 +164,7 @@ export const products = pgTable("products", {
     requiresLicense: boolean("requires_license").default(false),
     requiresApproval: boolean("requires_approval").default(false),
     featured: boolean("featured").default(false),
+    viewCount: integer("view_count").default(0), // Added for Catalog Demand Analytics
     adminNotes: varchar("admin_notes", { length: 1000 }), // Internal use only
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),

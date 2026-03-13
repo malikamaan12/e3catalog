@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { products } from "@/lib/db/schema";
-import { eq, or } from "drizzle-orm";
+import { eq, or, sql } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
@@ -23,6 +23,14 @@ export async function GET(
     if (!product) {
         return NextResponse.json({ error: "Product not found" }, { status: 404 });
     }
+
+    // Increment View Count asynchronously
+    // We don't need to await this to block the response
+    db.update(products)
+        .set({ viewCount: sql`${products.viewCount} + 1` })
+        .where(eq(products.id, product.id))
+        .execute()
+        .catch(console.error);
 
     // Exclude internal notes from public API
     const { adminNotes, ...publicProduct } = product as any;
