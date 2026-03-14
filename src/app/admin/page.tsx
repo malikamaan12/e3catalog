@@ -6,6 +6,7 @@ import { PackageOpen, CalendarRange, TrendingUp, AlertCircle, Store, ShieldAlert
 import { getCurrentUser } from "@/lib/auth";
 
 export default async function AdminDashboard() {
+    try {
     const user = await getCurrentUser();
     const isSuperAdmin = user?.role === 'super_admin' || user?.role === 'admin';
     const targetVendorId = isSuperAdmin ? null : (user as any)?.vendorId;
@@ -185,4 +186,18 @@ export default async function AdminDashboard() {
             )}
         </div>
     );
+    } catch (error) {
+        console.error("[ADMIN DASHBOARD] Server-side error:", error);
+        return (
+            <div>
+                <h1 className="font-[family-name:var(--font-heading)] text-2xl md:text-3xl font-bold text-[var(--color-warm-white)] mb-2">
+                    Admin Dashboard
+                </h1>
+                <div className="glass rounded-xl p-8 text-center border border-red-500/20 bg-red-500/5 mt-6">
+                    <p className="text-[var(--color-warm-white)] font-semibold mb-2">Dashboard is temporarily unavailable</p>
+                    <p className="text-sm text-[var(--color-slate)]">There was an issue loading the dashboard data. Please refresh the page or try again in a moment.</p>
+                </div>
+            </div>
+        );
+    }
 }

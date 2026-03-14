@@ -16,7 +16,7 @@ export async function GET() {
 
         if (vendorId) {
             try {
-                const vendorRecords = await db.select().from(vendors).where(eq(vendors.id, vendorId)).limit(1);
+                const vendorRecords = await db.select({ kycStatus: vendors.kycStatus }).from(vendors).where(eq(vendors.id, vendorId)).limit(1);
                 if (vendorRecords.length > 0) {
                     kycStatus = vendorRecords[0].kycStatus;
                 }

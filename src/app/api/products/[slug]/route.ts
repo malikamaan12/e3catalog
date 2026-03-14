@@ -7,6 +7,7 @@ export async function GET(
     req: NextRequest,
     { params }: { params: Promise<{ slug: string }> }
 ) {
+    try {
     const { slug } = await params;
 
     const product = await db.query.products.findFirst({
@@ -36,4 +37,8 @@ export async function GET(
     const { adminNotes, ...publicProduct } = product as any;
 
     return NextResponse.json(publicProduct);
+    } catch (error) {
+        console.error("[PRODUCT DETAIL] Error:", error);
+        return NextResponse.json({ error: "Failed to load product" }, { status: 500 });
+    }
 }

@@ -39,7 +39,17 @@ export async function getCurrentUser() {
 
     try {
         const [user] = await db
-            .select()
+            .select({
+                id: users.id,
+                name: users.name,
+                email: users.email,
+                role: users.role,
+                status: users.status,
+                image: users.image,
+                vendorId: users.vendorId,
+                phoneNumber: users.phoneNumber,
+                companyName: users.companyName,
+            })
             .from(users)
             .where(eq(users.id, session.id))
             .limit(1);
