@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { ProductCard } from "@/components/ProductCard";
 import { Footer } from "@/components/Footer";
@@ -19,11 +19,17 @@ interface Product {
     pricePerDay: number;
     pricePerHour: number | null;
     totalUnits: number;
-    condition: string;
+    currentAvailableUnits: number;
     thumbnailUrl: string | null;
-    dimensions: string | null;
     category: { name: string; slug: string } | null;
     itemCode: string | null;
+    showPrice?: boolean;
+    priceType?: string;
+    priceRangeMax?: number | null;
+    unit?: string;
+    averageRating?: number | null;
+    reviewCount?: number | null;
+    vendor?: { companyName: string; scoreRating: number | null } | null;
 }
 
 interface Category {
@@ -80,50 +86,84 @@ function CatalogContent() {
     const [categoryTree, setCategoryTree] = useState<Category[]>([]);
     const [selectedCategory, setSelectedCategory] = useState(initialCategory);
     const [searchQuery, setSearchQuery] = useState("");
+    const [debouncedSearch, setDebouncedSearch] = useState("");
     const [loading, setLoading] = useState(true);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const [hasMore, setHasMore] = useState(false);
+    const [nextCursor, setNextCursor] = useState<string | null>(null);
     const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
+    const [totalCount, setTotalCount] = useState(0);
 
+    // Sentinel ref for IntersectionObserver (infinite scroll trigger)
+    const sentinelRef = useRef<HTMLDivElement>(null);
+
+    // ── Debounce search input (300 ms) ─────────────────────────────────────
+    useEffect(() => {
+        const timer = setTimeout(() => setDebouncedSearch(searchQuery), 300);
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
+
+    // ── Load categories (cached by HTTP) ──────────────────────────────────
     useEffect(() => {
         fetch("/api/categories")
             .then((r) => r.json())
-            .then((data) => {
-                if (data.tree) {
-                    setCategoryTree(data.tree);
-                }
-            })
+            .then((data) => { if (data.tree) setCategoryTree(data.tree); })
             .catch(console.error);
     }, []);
 
-    useEffect(() => {
-        setLoading(true);
-        const url = selectedCategory
-            ? `/api/products?category=${selectedCategory}`
-            : "/api/products";
-        fetch(url)
-            .then((r) => r.json())
-            .then((data) => {
-                if (Array.isArray(data)) {
-                    setProducts(data);
-                } else if (data && typeof data === 'object' && 'error' in data) {
-                    console.error("API Error:", data.error);
-                    setProducts([]);
-                } else {
-                    setProducts([]);
-                }
-                setLoading(false);
-            })
-            .catch((err) => {
-                console.error("Fetch Error:", err);
-                setLoading(false);
-            });
-    }, [selectedCategory]);
+    // ── Core fetch function ────────────────────────────────────────────────
+    const fetchProducts = useCallback(async (
+        category: string,
+        search: string,
+        cursor: string | null,
+        replace: boolean
+    ) => {
+        if (replace) setLoading(true); else setLoadingMore(true);
 
-    const filteredProducts = Array.isArray(products)
-        ? products.filter((p) =>
-            p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            p.shortDescription?.toLowerCase().includes(searchQuery.toLowerCase())
-        )
-        : [];
+        try {
+            const params = new URLSearchParams({ limit: "20" });
+            if (category) params.set("category", category);
+            if (search) params.set("search", search);
+            if (cursor) params.set("cursor", cursor);
+
+            const res = await fetch(`/api/products?${params.toString()}`);
+            const data = await res.json();
+
+            if (data && Array.isArray(data.products)) {
+                setProducts((prev) => replace ? data.products : [...prev, ...data.products]);
+                setHasMore(data.hasMore ?? false);
+                setNextCursor(data.nextCursor ?? null);
+                setTotalCount((prev) => replace ? data.products.length : prev + data.products.length);
+            }
+        } catch (err) {
+            console.error("Fetch error:", err);
+        } finally {
+            if (replace) setLoading(false); else setLoadingMore(false);
+        }
+    }, []);
+
+    // ── Re-fetch from scratch when category or search changes ─────────────
+    useEffect(() => {
+        setNextCursor(null);
+        fetchProducts(selectedCategory, debouncedSearch, null, true);
+    }, [selectedCategory, debouncedSearch, fetchProducts]);
+
+    // ── IntersectionObserver — load next page when sentinel is visible ─────
+    useEffect(() => {
+        if (!sentinelRef.current) return;
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (entries[0].isIntersecting && hasMore && !loadingMore && !loading) {
+                    fetchProducts(selectedCategory, debouncedSearch, nextCursor, false);
+                }
+            },
+            { rootMargin: "200px" } // trigger 200px before the bottom
+        );
+
+        observer.observe(sentinelRef.current);
+        return () => observer.disconnect();
+    }, [hasMore, loadingMore, loading, nextCursor, selectedCategory, debouncedSearch, fetchProducts]);
 
     const handleCategorySelect = (slug: string) => {
         setSelectedCategory(slug);
@@ -156,6 +196,15 @@ function CatalogContent() {
                             onChange={(e) => setSearchQuery(e.target.value)}
                             className="w-full pl-12 pr-4 py-3.5 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border-subtle)] text-[var(--color-warm-white)] placeholder:text-[var(--color-slate)] focus:border-[var(--color-gold)] focus:outline-none transition-colors"
                         />
+                        {searchQuery && (
+                            <button
+                                onClick={() => setSearchQuery("")}
+                                className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--color-slate)] hover:text-[var(--color-warm-white)] transition-colors"
+                                aria-label="Clear search"
+                            >
+                                ✕
+                            </button>
+                        )}
                     </div>
 
                     <div className="flex gap-8 items-start">
@@ -237,11 +286,14 @@ function CatalogContent() {
                             {/* Results count */}
                             <div className="flex items-center justify-between mb-4">
                                 <p className="text-sm text-[var(--color-slate)]">
-                                    {loading ? "Loading..." : `${filteredProducts.length} item${filteredProducts.length !== 1 ? "s" : ""} found`}
+                                    {loading
+                                        ? "Loading..."
+                                        : `${totalCount} item${totalCount !== 1 ? "s" : ""} found${hasMore ? "+" : ""}`
+                                    }
                                 </p>
                             </div>
 
-                            {/* Product grid */}
+                            {/* Product grid — initial skeleton */}
                             {loading ? (
                                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
                                     {Array.from({ length: 9 }).map((_, i) => (
@@ -255,7 +307,7 @@ function CatalogContent() {
                                         </div>
                                     ))}
                                 </div>
-                            ) : filteredProducts.length === 0 ? (
+                            ) : products.length === 0 ? (
                                 <div className="text-center py-20">
                                     <div className="text-5xl mb-4">🔍</div>
                                     <h3 className="font-[family-name:var(--font-heading)] text-xl font-semibold text-[var(--color-warm-white)] mb-2">
@@ -264,11 +316,31 @@ function CatalogContent() {
                                     <p className="text-[var(--color-slate)]">Try adjusting your search or category filter.</p>
                                 </div>
                             ) : (
-                                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-                                    {filteredProducts.map((product) => (
-                                        <ProductCard key={product.id} {...product} />
-                                    ))}
-                                </div>
+                                <>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+                                        {products.map((product) => (
+                                            <ProductCard key={product.id} {...product} />
+                                        ))}
+                                    </div>
+
+                                    {/* Infinite scroll sentinel */}
+                                    <div ref={sentinelRef} className="h-1 mt-8" />
+
+                                    {/* Loading more indicator */}
+                                    {loadingMore && (
+                                        <div className="flex justify-center items-center py-8 gap-3">
+                                            <div className="w-5 h-5 rounded-full border-2 border-[var(--color-gold)] border-t-transparent animate-spin" />
+                                            <span className="text-sm text-[var(--color-slate)]">Loading more equipment...</span>
+                                        </div>
+                                    )}
+
+                                    {/* End of results */}
+                                    {!hasMore && products.length > 0 && (
+                                        <p className="text-center text-xs text-[var(--color-slate)] py-8 opacity-60">
+                                            — All {totalCount} items loaded —
+                                        </p>
+                                    )}
+                                </>
                             )}
                         </div>
                     </div>

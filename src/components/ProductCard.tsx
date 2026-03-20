@@ -8,9 +8,9 @@ interface ProductCardProps {
     shortDescription: string | null;
     pricePerDay: number;
     pricePerHour: number | null;
-    dimensions: string | null;
-    totalUnits: number;
-    condition: string;
+    dimensions?: string | null;
+    totalUnits?: number;
+    condition?: string | null;
     thumbnailUrl: string | null;
     category?: { name: string; slug: string } | null;
     currentAvailableUnits?: number; // Injected by API
@@ -31,7 +31,7 @@ export function ProductCard({
     pricePerDay,
     pricePerHour,
     dimensions,
-    totalUnits,
+    totalUnits = 0,
     condition,
     thumbnailUrl,
     category,

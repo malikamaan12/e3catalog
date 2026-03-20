@@ -23,7 +23,11 @@ export async function GET() {
         }));
 
         // Also return a flat list for backwards compatibility
-        return NextResponse.json({ tree, flat: all });
+        return NextResponse.json({ tree, flat: all }, {
+            headers: {
+                "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
+            },
+        });
     } catch (e) {
         console.error("Error fetching categories:", e);
         return NextResponse.json({ tree: [], flat: [] });

@@ -3,8 +3,9 @@
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowRight, CheckCircle2, ChevronRight, UploadCloud, XCircle, Building2, User, FileText } from "lucide-react";
+import { ArrowRight, CheckCircle2, ChevronRight, UploadCloud, XCircle, Building2, User, FileText, Banknote, ShieldCheck } from "lucide-react";
 import { Footer } from "@/components/Footer";
+import { useSiteSettings } from "@/components/SiteSettingsProvider";
 
 export default function VendorApplyPage() {
     const router = useRouter();
@@ -24,6 +25,14 @@ export default function VendorApplyPage() {
         password: "",
         taxCardUrl: "",
         companyRegistrationUrl: "",
+        // Banking Details
+        bankName: "",
+        accountName: "",
+        accountNumber: "",
+        iban: "",
+        swift: "",
+        // Agreement
+        agreedToTerms: false,
     });
 
     const updateForm = (key: string, value: string) => setForm((prev) => ({ ...prev, [key]: value }));
@@ -82,10 +91,14 @@ export default function VendorApplyPage() {
             if (!form.pocName || !form.pocPhone || !form.email || !form.password) return setError("All contact fields and password are required");
             if (form.password.length < 8) return setError("Password must be at least 8 characters");
         }
+        if (step === 4) {
+            if (!form.bankName || !form.accountNumber || !form.iban) return setError("Major banking details (Bank, Account #, IBAN) are required");
+        }
         setStep(p => p + 1);
     };
 
     const submitApplication = async () => {
+        if (!form.agreedToTerms) return setError("You must agree to the commission rules to proceed.");
         setError("");
 
         setSubmitting(true);
@@ -160,7 +173,9 @@ export default function VendorApplyPage() {
                     {[
                         { num: 1, title: "Company", icon: Building2 },
                         { num: 2, title: "Contact", icon: User },
-                        { num: 3, title: "Compliance", icon: FileText }
+                        { num: 3, title: "Compliance", icon: FileText },
+                        { num: 4, title: "Banking", icon: Banknote },
+                        { num: 5, title: "Agreement", icon: ShieldCheck }
                     ].map((s) => (
                         <div key={s.num} className="relative z-10 flex flex-col items-center">
                             <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg transition-colors border-4 border-[var(--color-navy)] ${step >= s.num ? "bg-[var(--color-gold)] text-[var(--color-navy)]" : "bg-[var(--color-navy-lighter)] text-[var(--color-slate)]"}`}>
@@ -308,23 +323,119 @@ export default function VendorApplyPage() {
                                 </div>
                             </div>
 
-                            <div className="pt-6 mt-6 border-t border-white/5 flex justify-between items-center">
-                                <button onClick={() => setStep(2)} disabled={submitting} className="px-6 py-3 rounded-xl border border-white/10 text-[var(--color-warm-white)] hover:bg-white/5 transition-colors text-sm font-semibold">Back</button>
-                                <button onClick={submitApplication} disabled={submitting} className="btn-primary">
-                                    {submitting ? (
-                                        <><div className="w-5 h-5 border-2 border-white border-t-transparent animate-spin rounded-full mr-2" /> Submitting...</>
-                                    ) : (
-                                        <>Submit Application <CheckCircle2 className="w-5 h-5 ml-2" /></>
-                                    )}
-                                </button>
+                            <div className="pt-6 mt-6 border-t border-white/5 flex justify-between">
+                                <button onClick={() => setStep(2)} className="px-6 py-3 rounded-xl border border-white/10 text-[var(--color-warm-white)] hover:bg-white/5 transition-colors text-sm font-semibold">Back</button>
+                                <button onClick={nextStep} className="btn-primary">Next Step <ChevronRight className="w-5 h-5 ml-1" /></button>
                             </div>
                         </div>
+                    )}
+
+                    {/* Step 4: Banking Details */}
+                    {step === 4 && (
+                        <div className="space-y-6 animate-in fade-in slide-in-from-right-8 duration-500">
+                            <div>
+                                <h3 className="font-[family-name:var(--font-heading)] text-2xl font-bold text-[var(--color-warm-white)] mb-1">Banking & Payouts</h3>
+                                <p className="text-[var(--color-slate)] text-sm mb-8">Secure details for your monthly marketplace earnings transfers.</p>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                <div className="md:col-span-2">
+                                    <label className="text-sm text-[var(--color-slate)] font-medium mb-2 block">Bank Name *</label>
+                                    <input type="text" value={form.bankName} onChange={e => updateForm("bankName", e.target.value)}
+                                        className="w-full px-5 py-3.5 rounded-xl bg-[var(--color-navy-lighter)] border border-white/10 text-[var(--color-warm-white)] focus:border-[var(--color-gold)] focus:outline-none transition-colors" placeholder="e.g. Qatar National Bank" />
+                                </div>
+                                <div className="md:col-span-2">
+                                    <label className="text-sm text-[var(--color-slate)] font-medium mb-2 block">Account Holder Name *</label>
+                                    <input type="text" value={form.accountName} onChange={e => updateForm("accountName", e.target.value)}
+                                        className="w-full px-5 py-3.5 rounded-xl bg-[var(--color-navy-lighter)] border border-white/10 text-[var(--color-warm-white)] focus:border-[var(--color-gold)] focus:outline-none transition-colors" placeholder="Legal business or owner name" />
+                                </div>
+                                <div>
+                                    <label className="text-sm text-[var(--color-slate)] font-medium mb-2 block">Account Number *</label>
+                                    <input type="text" value={form.accountNumber} onChange={e => updateForm("accountNumber", e.target.value)}
+                                        className="w-full px-5 py-3.5 rounded-xl bg-[var(--color-navy-lighter)] border border-white/10 text-[var(--color-warm-white)] focus:border-[var(--color-gold)] focus:outline-none transition-colors" placeholder="0000 1234 5678" />
+                                </div>
+                                <div>
+                                    <label className="text-sm text-[var(--color-slate)] font-medium mb-2 block">SWIFT / BIC Code</label>
+                                    <input type="text" value={form.swift} onChange={e => updateForm("swift", e.target.value)}
+                                        className="w-full px-5 py-3.5 rounded-xl bg-[var(--color-navy-lighter)] border border-white/10 text-[var(--color-warm-white)] focus:border-[var(--color-gold)] focus:outline-none transition-colors" placeholder="QNBKQAXXXX" />
+                                </div>
+                                <div className="md:col-span-2">
+                                    <label className="text-sm text-[var(--color-slate)] font-medium mb-2 block">IBAN Number *</label>
+                                    <input type="text" value={form.iban} onChange={e => updateForm("iban", e.target.value)}
+                                        className="w-full px-5 py-3.5 rounded-xl bg-[var(--color-navy-lighter)] border border-white/10 text-[var(--color-warm-white)] focus:border-[var(--color-gold)] focus:outline-none transition-colors" placeholder="QA00 QNBK 0000 0000 1234 5678" />
+                                </div>
+                            </div>
+                            <div className="pt-6 mt-6 border-t border-white/5 flex justify-between">
+                                <button onClick={() => setStep(3)} className="px-6 py-3 rounded-xl border border-white/10 text-[var(--color-warm-white)] hover:bg-white/5 transition-colors text-sm font-semibold">Back</button>
+                                <button onClick={nextStep} className="btn-primary">Next Step <ChevronRight className="w-5 h-5 ml-1" /></button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Step 5: Commission Rules & Agreement */}
+                    {step === 5 && (
+                        <CommissionStep
+                            agreed={form.agreedToTerms}
+                            onToggle={(val: boolean) => setForm(p => ({ ...p, agreedToTerms: val }))}
+                            onBack={() => setStep(4)}
+                            onSubmit={submitApplication}
+                            submitting={submitting}
+                        />
                     )}
                 </div>
             </div>
             {/* Footer */}
             <div className="mt-20">
                 <Footer />
+            </div>
+        </div>
+    );
+}
+
+function CommissionStep({ agreed, onToggle, onBack, onSubmit, submitting }: any) {
+    const { getSetting } = useSiteSettings();
+    const rules = getSetting("commission_rules", "Platform collects 20% commission on all rentals. Payouts are processed monthly.");
+
+    return (
+        <div className="space-y-6 animate-in fade-in slide-in-from-right-8 duration-500">
+            <div>
+                <h3 className="font-[family-name:var(--font-heading)] text-2xl font-bold text-[var(--color-warm-white)] mb-1">Commission Agreement</h3>
+                <p className="text-[var(--color-slate)] text-sm mb-8">Review our marketplace revenue share policy before joining.</p>
+            </div>
+
+            <div className="p-6 rounded-2xl bg-[var(--color-gold)]/5 border border-[var(--color-gold)]/20 text-sm text-[var(--color-slate)] leading-relaxed">
+                <div className="flex items-start gap-3 mb-4">
+                    <ShieldCheck className="w-5 h-5 text-[var(--color-gold)] shrink-0" />
+                    <div>
+                        <h4 className="text-[var(--color-warm-white)] font-bold mb-1 uppercase tracking-tight text-xs">Platform Distribution Rules</h4>
+                        <div className="whitespace-pre-wrap">{rules}</div>
+                    </div>
+                </div>
+            </div>
+
+            <label className="flex items-start gap-4 p-4 rounded-xl bg-white/5 border border-white/10 cursor-pointer hover:bg-white/10 transition-colors group">
+                <div className="pt-0.5">
+                    <input
+                        type="checkbox"
+                        checked={agreed}
+                        onChange={(e) => onToggle(e.target.checked)}
+                        className="w-5 h-5 rounded border-white/20 bg-transparent text-[var(--color-gold)] focus:ring-[var(--color-gold)]"
+                    />
+                </div>
+                <div>
+                    <span className="text-sm font-medium text-[var(--color-warm-white)] block mb-1">I agree to the Commission Rules</span>
+                    <span className="text-xs text-[var(--color-slate)]">By checking this, you accept the revenue split and payout terms of E3 Marketplace.</span>
+                </div>
+            </label>
+
+            <div className="pt-6 mt-6 border-t border-white/5 flex justify-between items-center">
+                <button onClick={onBack} disabled={submitting} className="px-6 py-3 rounded-xl border border-white/10 text-[var(--color-warm-white)] hover:bg-white/5 transition-colors text-sm font-semibold">Back</button>
+                <button onClick={onSubmit} disabled={submitting || !agreed} className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed">
+                    {submitting ? (
+                        <><div className="w-5 h-5 border-2 border-white border-t-transparent animate-spin rounded-full mr-2" /> Submitting...</>
+                    ) : (
+                        <>Submit Application <CheckCircle2 className="w-5 h-5 ml-2" /></>
+                    )}
+                </button>
             </div>
         </div>
     );
