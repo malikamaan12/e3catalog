@@ -1,4 +1,5 @@
 {
+  "//": "Trigger build for sync verification",
   "crons": [
     {
       "path": "/api/cron/safety-checks",
