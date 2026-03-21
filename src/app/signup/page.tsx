@@ -31,11 +31,12 @@ export default function SignupPage() {
                 }),
             });
 
-            const data = await res.json();
-
             if (!res.ok) {
-                throw new Error(data.error || "Failed to sign up");
+                const errorData = await res.json().catch(() => ({}));
+                throw new Error(errorData.error || "Failed to sign up");
             }
+
+            const data = await res.json();
 
             // Immediately log them in
             await fetch("/api/auth/login", {

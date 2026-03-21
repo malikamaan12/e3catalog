@@ -70,9 +70,9 @@ export default function InventoryAdminPage() {
     useEffect(() => {
         setLoading(true);
         Promise.all([
-            fetch("/api/admin/inventory").then((res) => res.json()),
-            fetch("/api/products").then((res) => res.json()),
-            fetch(`/api/admin/inventory/matrix?from=${fromDate}&to=${tillDate}`).then((res) => res.json()),
+            fetch("/api/admin/inventory").then((res) => res.ok ? res.json() : []).catch(() => []),
+            fetch("/api/products").then((res) => res.ok ? res.json() : []).catch(() => []),
+            fetch(`/api/admin/inventory/matrix?from=${fromDate}&to=${tillDate}`).then((res) => res.ok ? res.json() : { error: "Failed to load matrix" }).catch(() => ({ error: "Failed to load matrix" })),
         ]).then(([overridesData, productsData, matrixRes]) => {
             setOverrides(overridesData || []);
             setProducts(productsData || []);

@@ -25,16 +25,17 @@ export default function LoginPage() {
                 body: JSON.stringify({ email: emailState, password: passwordState }),
             });
 
-            const data = await res.json();
-
             if (!res.ok) {
+                const errorData = await res.json().catch(() => ({}));
                 // Return a more user-friendly error depending on the login mode
                 const errMsg =
                     loginType === "client"
-                        ? (data.error || "Failed to sign in. Did you use the phone number you requested the quote with?")
-                        : (data.error || "Invalid admin credentials");
+                        ? (errorData.error || "Failed to sign in. Did you use the phone number you requested the quote with?")
+                        : (errorData.error || "Invalid admin credentials");
                 throw new Error(errMsg);
             }
+
+            const data = await res.json();
 
             // Route based on actual role claim instead of what tab they clicked
             const adminRoles = ["admin", "super_admin", "sales_rep", "warehouse_manager", "vendor"];

@@ -58,7 +58,10 @@ export default function VendorApplyPage() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ filename: file.name, contentType: file.type, folder: "kyc" })
             });
-            if (!res.ok) throw new Error("Failed to get presigned URL");
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => ({}));
+                throw new Error(errorData.error || `Upload failed with status ${res.status}`);
+            }
             const data = await res.json();
 
             // Direct S3 Upload

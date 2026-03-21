@@ -188,7 +188,10 @@ export default function AddProductPage() {
                     body: JSON.stringify({ filename: file.name, contentType: fileType, folder: "products" })
                 });
 
-                if (!res.ok) throw new Error("Failed to get presigned URL");
+                if (!res.ok) {
+                    const errorData = await res.json().catch(() => ({}));
+                    throw new Error(errorData.error || `Upload failed with status ${res.status}`);
+                }
                 const data = await res.json();
 
                 // 2. Upload to S3 directly
@@ -268,7 +271,10 @@ export default function AddProductPage() {
                     body: JSON.stringify({ filename: file.name, contentType: fileType, folder: "documents" })
                 });
 
-                if (!res.ok) throw new Error("Failed to get presigned URL");
+                if (!res.ok) {
+                    const errorData = await res.json().catch(() => ({}));
+                    throw new Error(errorData.error || `Upload failed with status ${res.status}`);
+                }
                 const data = await res.json();
 
                 const uploadRes = await fetch(data.url, {

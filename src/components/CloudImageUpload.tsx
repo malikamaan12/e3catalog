@@ -50,8 +50,12 @@ export function CloudImageUpload({ onUploadComplete, folder = "uploads", existin
                 })
             });
 
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => ({}));
+                throw new Error(errorData.error || `Upload failed with status ${res.status}`);
+            }
+            
             const data = await res.json();
-            if (!res.ok) throw new Error(data.error || "Failed to get upload URL");
 
             // 2. Upload file directly to S3
             const uploadRes = await fetch(data.url, {

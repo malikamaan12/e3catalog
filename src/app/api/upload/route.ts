@@ -20,14 +20,22 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        const body = await req.json();
+        // Validate that request body exists and is not empty
+        let body;
+        try {
+            body = await req.json();
+        } catch (e) {
+            console.error("UPLOAD ERROR: Empty or invalid JSON body");
+            return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+        }
+        
         const { filename, contentType, folder = "uploads" } = body;
 
         let user = null;
         if (folder !== "kyc") {
             const authCheck = await requireAdmin(["super_admin", "admin", "vendor"]);
             if (authCheck.error) {
-                console.error("UPLOAD AUTH ERROR:", JSON.stringify(authCheck.error));
+                console.error("UPLOAD AUTH ERROR: User not authorized to upload to folder:", folder);
                 return authCheck.error;
             }
             user = authCheck.user;
