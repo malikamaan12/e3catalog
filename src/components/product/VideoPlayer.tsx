@@ -1,17 +1,16 @@
 "use client";
 
-export default function VideoPlayer({ url }: { url?: string }) {
+export default function VideoPlayer({ url, posterUrl }: { url?: string; posterUrl?: string }) {
     if (url) {
         return (
             <div className="h-96 rounded-xl overflow-hidden bg-black flex items-center justify-center relative">
                 <video
                     src={url}
+                    poster={posterUrl}
                     controls
                     controlsList="nodownload"
                     onContextMenu={(e) => e.preventDefault()}
-                    autoPlay
-                    muted
-                    loop
+                    preload="none"
                     className="w-full h-full object-contain"
                 />
             </div>

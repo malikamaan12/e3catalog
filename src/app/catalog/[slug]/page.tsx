@@ -10,11 +10,11 @@ import AvailabilityTimeline from "@/components/product/AvailabilityTimeline";
 
 // Lazy-load heavy components — only mount when tab is active
 // Lazy-load heavy components — only mount when tab is active
-const ModelViewer = dynamic<{ url?: string }>(() => import("@/components/product/ModelViewer"), {
+const ModelViewer = dynamic<{ url?: string; posterUrl?: string }>(() => import("@/components/product/ModelViewer"), {
     ssr: false,
     loading: () => <MediaLoadingPlaceholder label="Loading 3D Model..." />,
 });
-const VideoPlayer = dynamic<{ url?: string }>(() => import("@/components/product/VideoPlayer"), {
+const VideoPlayer = dynamic<{ url?: string; posterUrl?: string }>(() => import("@/components/product/VideoPlayer"), {
     ssr: false,
     loading: () => <MediaLoadingPlaceholder label="Loading Video..." />,
 });
@@ -303,13 +303,13 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
 
                                 {activeTab === "3d" && model3d?.url && (
                                     <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-[var(--color-navy-lighter)]">
-                                        <ModelViewer url={model3d.url} />
+                                        <ModelViewer url={model3d.url} posterUrl={model3d.thumbnailUrl || product.thumbnailUrl || undefined} />
                                         <CopyLinkButton productSlug={product.slug} tab="3d" />
                                     </div>
                                 )}
                                 {activeTab === "video" && video?.url && (
                                     <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-black">
-                                        <VideoPlayer url={video.url} />
+                                        <VideoPlayer url={video.url} posterUrl={video.thumbnailUrl || product.thumbnailUrl || undefined} />
                                         <CopyLinkButton productSlug={product.slug} tab="video" />
                                     </div>
                                 )}

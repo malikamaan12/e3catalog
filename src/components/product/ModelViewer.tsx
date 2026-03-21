@@ -2,7 +2,7 @@
 
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, Environment, ContactShadows, PresentationControls, useGLTF, Bounds, Center } from "@react-three/drei";
-import { Suspense } from "react";
+import { Suspense, useState } from "react";
 
 function DemoStage() {
     return (
@@ -69,13 +69,31 @@ function DynamicModel({ url }: { url: string }) {
 // useGLTF.preload(url) 
 
 
-export default function ModelViewer({ url }: { url?: string }) {
+export default function ModelViewer({ url, posterUrl }: { url?: string; posterUrl?: string }) {
+    const [isLoaded, setIsLoaded] = useState(false);
+
     return (
-        <div className="h-96 rounded-xl overflow-hidden bg-[var(--color-navy-lighter)] relative">
+        <div className="h-96 rounded-xl overflow-hidden bg-[var(--color-navy-lighter)] relative group">
+            {/* Poster Image Overlay — Shown until Canvas/Model is ready */}
+            {!isLoaded && posterUrl && (
+                <div className="absolute inset-0 z-10 transition-opacity duration-700">
+                    <img
+                        src={posterUrl}
+                        alt="3D Model Poster"
+                        className="w-full h-full object-cover blur-sm scale-105 opacity-40"
+                    />
+                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-[var(--color-navy)] bg-opacity-40 backdrop-blur-md">
+                        <div className="w-10 h-10 border-2 border-[var(--color-gold)] border-t-transparent rounded-full animate-spin mb-4" />
+                        <p className="text-sm font-medium text-[var(--color-warm-white)]">Initializing 3D Engine...</p>
+                    </div>
+                </div>
+            )}
+
             <Canvas
                 camera={{ position: [4, 3, 4], fov: 45 }}
                 shadows
                 style={{ background: "transparent" }}
+                onCreated={() => setIsLoaded(true)}
             >
                 <Suspense fallback={null}>
                     <ambientLight intensity={0.4} />
@@ -104,7 +122,7 @@ export default function ModelViewer({ url }: { url?: string }) {
             </Canvas>
 
             {/* Overlay instructions */}
-            <div className="absolute bottom-4 left-4 text-xs text-[var(--color-slate)] bg-[var(--color-navy)] bg-opacity-80 px-3 py-1.5 rounded-lg">
+            <div className="absolute bottom-4 left-4 text-xs text-[var(--color-slate)] bg-[var(--color-navy)] bg-opacity-80 px-3 py-1.5 rounded-lg border border-white/5 backdrop-blur-sm group-hover:border-[var(--color-gold)]/30 transition-all">
                 🖱️ Drag to rotate · Scroll to zoom
             </div>
         </div>

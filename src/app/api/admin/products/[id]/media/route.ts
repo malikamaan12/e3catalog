@@ -5,11 +5,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { v4 as uuid } from "uuid";
 import { requireAdmin } from "@/lib/requireAdmin";
 
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     const { user, error } = await requireAdmin(["admin", "super_admin", "vendor"]);
     if (error) return error;
 
-    const productId = params.id;
+    const { id: productId } = await params;
     const isSuperAdmin = user.role === 'super_admin' || user.role === 'admin';
     const vendorId = isSuperAdmin ? null : (user as any).vendorId;
 
@@ -45,11 +45,11 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     }
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     const { user, error } = await requireAdmin(["admin", "super_admin", "vendor"]);
     if (error) return error;
 
-    const productId = params.id;
+    const { id: productId } = await params;
     const { searchParams } = new URL(req.url);
     const mediaId = searchParams.get("mediaId");
 
