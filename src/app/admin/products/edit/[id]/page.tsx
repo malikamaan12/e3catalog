@@ -279,6 +279,29 @@ export default function EditProductPage() {
                     originalName: file.name,
                     size: file.size
                 };
+
+                // NEW: Incremental media record creation in DB
+                if (realProductId || productId) {
+                    try {
+                        const mediaRes = await fetch(`/api/admin/products/${realProductId || productId}/media`, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                                type: mappedType,
+                                url: data.publicUrl,
+                                alt: file.name
+                            })
+                        });
+                        const mediaData = await mediaRes.json();
+                        if (mediaRes.ok && mediaData.id) {
+                            item.id = mediaData.id; // Correct the ID used for deletion later
+                        }
+                    } catch (mErr) {
+                        console.error("FAILED TO SAVE MEDIA METADATA:", mErr);
+                        // Carry on, the file is on S3, but DB link might be missing
+                    }
+                }
+
                 console.log("Uploaded Item:", item);
                 uploadedItems.push(item);
             }
@@ -300,8 +323,20 @@ export default function EditProductPage() {
         if (fileInputRef.current) fileInputRef.current.value = "";
     };
 
-    const removeMedia = (id: string) => {
+    const removeMedia = async (id: string) => {
         const removed = mediaFiles.find((f) => f.id === id);
+        
+        // NEW: Incremental media record deletion from DB
+        if (realProductId || productId) {
+            try {
+                await fetch(`/api/admin/products/${realProductId || productId}/media?mediaId=${id}`, {
+                    method: "DELETE"
+                });
+            } catch (dErr) {
+                console.error("FAILED TO DELETE MEDIA METADATA:", dErr);
+            }
+        }
+
         setMediaFiles((prev) => prev.filter((f) => f.id !== id));
         // Clear thumbnail if it was the removed file
         if (removed && form.thumbnailUrl === removed.url) {
@@ -404,13 +439,7 @@ export default function EditProductPage() {
                     cleaningTime: Number(form.cleaningTime),
                     installGuideUrl: form.installGuideUrl || null,
                     dismantleGuideUrl: form.dismantleGuideUrl || null,
-                    media: mediaFiles.map((f, i) => ({
-                        id: f.id,
-                        type: f.type,
-                        url: f.url,
-                        alt: f.originalName,
-                        sortOrder: i,
-                    })),
+                    media: undefined, // Omit media to avoid backend delete-and-reinsert chain
                     documents: documentFiles.map(f => ({
                         id: f.id,
                         type: f.type,
@@ -439,8 +468,8 @@ export default function EditProductPage() {
             });
 
             if (!res.ok) {
-                const data = await res.json();
-                throw new Error(data.error || "Failed to create product");
+                const data = await res.json().catch(() => ({}));
+                throw new Error(data.error || `Failed to update product (Status ${res.status})`);
             }
 
             setSuccess(true);

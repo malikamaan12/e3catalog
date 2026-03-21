@@ -32,7 +32,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     }
 }
 
-export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
     try {
         const { error } = await requireAdmin();
         if (error) return error;
@@ -52,17 +52,23 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
             })
             .where(eq(vendors.id, id));
 
-        // Let's also enforce user statuses conditionally
-        if (kycStatus === "approved" && storeStatus === "active") {
-            const updatedVendor = await db.select().from(vendors).where(eq(vendors.id, id)).limit(1);
-            if (updatedVendor.length) {
-                await db.update(users).set({ status: "active" }).where(eq(users.id, updatedVendor[0].userId));
+        // The "Role Flip": Upgrade user to vendor role when KYC is approved
+        if (kycStatus === "approved") {
+            const currentVendor = await db.select({ userId: vendors.userId }).from(vendors).where(eq(vendors.id, id)).limit(1);
+            if (currentVendor.length && currentVendor[0].userId) {
+                await db.update(users)
+                    .set({ 
+                        role: "vendor",
+                        status: "active" 
+                    })
+                    .where(eq(users.id, currentVendor[0].userId));
+                console.log("ADMIN ACTION: Vendor KYC Approved. User role upgraded to 'vendor' for ID:", currentVendor[0].userId);
             }
         }
 
         return NextResponse.json({ success: true });
     } catch (err: any) {
-        console.error("PUT /api/admin/vendors/[id] error:", err);
+        console.error("PATCH /api/admin/vendors/[id] error:", err);
         return NextResponse.json({ error: "Failed to update vendor" }, { status: 500 });
     }
 }

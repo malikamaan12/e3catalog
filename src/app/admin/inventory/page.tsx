@@ -70,17 +70,17 @@ export default function InventoryAdminPage() {
     useEffect(() => {
         setLoading(true);
         Promise.all([
-            fetch("/api/admin/inventory").then((res) => res.ok ? res.json() : []).catch(() => []),
-            fetch("/api/products").then((res) => res.ok ? res.json() : []).catch(() => []),
-            fetch(`/api/admin/inventory/matrix?from=${fromDate}&to=${tillDate}`).then((res) => res.ok ? res.json() : { error: "Failed to load matrix" }).catch(() => ({ error: "Failed to load matrix" })),
+            fetch("/api/admin/inventory").then((res) => res.ok ? res.json().catch(() => []) : []).catch(() => []),
+            fetch("/api/products").then((res) => res.ok ? res.json().catch(() => []) : []).catch(() => []),
+            fetch(`/api/admin/inventory/matrix?from=${fromDate}&to=${tillDate}`).then((res) => res.ok ? res.json().catch(() => ({ error: "Failed to load matrix" })) : { error: "Failed to load matrix" }).catch(() => ({ error: "Failed to load matrix" })),
         ]).then(([overridesData, productsData, matrixRes]) => {
-            setOverrides(overridesData || []);
-            setProducts(productsData || []);
+            setOverrides(Array.isArray(overridesData) ? overridesData : []);
+            setProducts(Array.isArray(productsData) ? productsData : []);
             setMatrixData(Array.isArray(matrixRes) ? matrixRes : []);
-            if (matrixRes && matrixRes.error) setError(matrixRes.error);
+            if (matrixRes && !Array.isArray(matrixRes) && matrixRes.error) setError(matrixRes.error);
             setLoading(false);
         }).catch(err => {
-            console.error(err);
+            console.error("Initial Load Error:", err);
             setLoading(false);
         });
     }, [fromDate, tillDate]);
@@ -119,12 +119,19 @@ export default function InventoryAdminPage() {
                 throw new Error(data.error || "Failed to create override");
             }
 
-            const newOverride = await res.json();
-            setOverrides([newOverride, ...overrides]);
+            const newOverride = await res.json().catch(() => null);
+            if (newOverride && typeof newOverride === 'object') {
+                setOverrides([newOverride, ...overrides]);
+            }
 
             // Re-fetch matrix to reflect new manual hold
-            const matrixRes = await fetch(`/api/admin/inventory/matrix?from=${fromDate}&to=${tillDate}`).then(r => r.json());
-            setMatrixData(matrixRes);
+            try {
+                const mRes = await fetch(`/api/admin/inventory/matrix?from=${fromDate}&to=${tillDate}`);
+                const mData = await mRes.json().catch(() => []);
+                setMatrixData(Array.isArray(mData) ? mData : []);
+            } catch (mErr) {
+                console.error("Re-fetch matrix error:", mErr);
+            }
 
             // Reset form
             setProductId("");
@@ -147,8 +154,9 @@ export default function InventoryAdminPage() {
             if (res.ok) {
                 setOverrides(overrides.filter((o) => o.id !== id));
                 // Re-fetch matrix to reflect removed hold
-                const matrixRes = await fetch(`/api/admin/inventory/matrix?from=${fromDate}&to=${tillDate}`).then(r => r.json());
-                setMatrixData(matrixRes);
+                const mRes = await fetch(`/api/admin/inventory/matrix?from=${fromDate}&to=${tillDate}`);
+                const mData = await mRes.json().catch(() => []);
+                setMatrixData(Array.isArray(mData) ? mData : []);
             } else {
                 alert("Failed to delete override");
             }

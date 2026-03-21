@@ -376,8 +376,8 @@ export default function AddProductPage() {
             });
 
             if (!res.ok) {
-                const data = await res.json();
-                throw new Error(data.error || "Failed to create product");
+                const data = await res.json().catch(() => ({}));
+                throw new Error(data.error || `Failed to create product (Status ${res.status})`);
             }
 
             setSuccess(true);

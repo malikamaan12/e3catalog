@@ -11,7 +11,9 @@ export function VendorManagement() {
         try {
             const res = await fetch("/api/admin/vendors");
             const data = await res.json();
-            if (Array.isArray(data)) {
+            if (data.vendors && Array.isArray(data.vendors)) {
+                setVendors(data.vendors);
+            } else if (Array.isArray(data)) {
                 setVendors(data);
             }
         } catch (err) {
