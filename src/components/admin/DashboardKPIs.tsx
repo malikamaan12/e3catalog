@@ -15,7 +15,7 @@ import gsap from "gsap";
 interface Stat {
     label: string;
     value: string;
-    icon: any;
+    icon: string;
     change: string;
     color: string;
     trend?: "up" | "down" | "neutral";
@@ -26,9 +26,16 @@ interface DashboardKPIsProps {
     stats: Stat[];
 }
 
-export default function DashboardKPIs({ stats }: DashboardKPIsProps) {
-    const containerRef = useRef<HTMLDivElement>(null);
+const ICON_MAP: Record<string, any> = {
+    PackageOpen,
+    CalendarRange,
+    TrendingUp,
+    AlertCircle,
+    ShieldAlert,
+    Warehouse
+};
 
+export default function DashboardKPIs({ stats }: DashboardKPIsProps) {
     const container = {
         hidden: { opacity: 0 },
         show: {
@@ -61,6 +68,8 @@ export default function DashboardKPIs({ stats }: DashboardKPIsProps) {
 function KPICard({ stat, index, variants }: { stat: Stat, index: number, variants: any }) {
     const cardRef = useRef<HTMLDivElement>(null);
     const glowRef = useRef<HTMLDivElement>(null);
+
+    const IconComponent = ICON_MAP[stat.icon] || AlertCircle;
 
     const onMouseEnter = () => {
         gsap.to(cardRef.current, {
@@ -114,7 +123,7 @@ function KPICard({ stat, index, variants }: { stat: Stat, index: number, variant
                         ? "bg-red-500/10 border-red-500/20 text-red-400" 
                         : "bg-white/5 border-white/10 text-[var(--color-slate)] group-hover:text-[var(--color-gold)]"
                 } transition-colors`}>
-                    <stat.icon className="w-5 h-5" />
+                    <IconComponent className="w-5 h-5" />
                 </div>
                 {stat.trend && (
                     <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${

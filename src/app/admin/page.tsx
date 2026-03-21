@@ -99,12 +99,12 @@ export default async function AdminDashboard() {
 
         // Format KPI Stats
         const kpiStats = [
-            { label: "Fleet Items", value: productCount.toString(), icon: PackageOpen, change: "Total Catalog Items", color: "gold" },
-            { label: "Active Pipeline", value: activeBookingCount.toString(), icon: CalendarRange, change: "Quotes & Bookings", color: "blue", trend: "up" as const },
-            { label: "Monthly Revenue", value: `${(monthlyRevenue || 0).toLocaleString()} QAR`, icon: TrendingUp, change: "Approved this month", color: "emerald", trend: "up" as const },
-            { label: "Pending Tasks", value: pendingActionCount.toString(), icon: AlertCircle, change: "Awaiting your action", color: "red", isAlert: pendingActionCount > 0 },
-            { label: "Expiring Certs", value: expiringCerts.length.toString(), icon: ShieldAlert, change: "Next 30 days", color: "amber", isAlert: expiringCerts.length > 0 },
-            { label: "Offline Units", value: offlineCount.toString(), icon: Warehouse, change: "Maintenance/Repair", color: "slate", isAlert: offlineCount > 0 },
+            { label: "Fleet Items", value: productCount.toString(), icon: "PackageOpen", change: "Total Catalog Items", color: "gold" },
+            { label: "Active Pipeline", value: activeBookingCount.toString(), icon: "CalendarRange", change: "Quotes & Bookings", color: "blue", trend: "up" as const },
+            { label: "Monthly Revenue", value: `${(monthlyRevenue || 0).toLocaleString()} QAR`, icon: "TrendingUp", change: "Approved this month", color: "emerald", trend: "up" as const },
+            { label: "Pending Tasks", value: pendingActionCount.toString(), icon: "AlertCircle", change: "Awaiting your action", color: "red", isAlert: pendingActionCount > 0 },
+            { label: "Expiring Certs", value: expiringCerts.length.toString(), icon: "ShieldAlert", change: "Next 30 days", color: "amber", isAlert: expiringCerts.length > 0 },
+            { label: "Offline Units", value: offlineCount.toString(), icon: "Warehouse", change: "Maintenance/Repair", color: "slate", isAlert: offlineCount > 0 },
         ];
 
         // Format Compliance Alerts
