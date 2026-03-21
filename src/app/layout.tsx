@@ -5,6 +5,7 @@ import { SiteSettingsProvider } from "@/components/SiteSettingsProvider";
 import { MarketingBanner } from "@/components/landing/MarketingBanner";
 import { MarketingPopup } from "@/components/landing/MarketingPopup";
 import { Toaster } from "react-hot-toast";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 export const metadata: Metadata = {
   title: "E3 Rentals — Premium Event Equipment",
@@ -45,6 +46,7 @@ export default function RootLayout({
             },
           }}
         />
+        <SpeedInsights />
       </body>
     </html>
   );
