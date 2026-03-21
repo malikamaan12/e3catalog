@@ -60,22 +60,22 @@ function CategoryCard({ category, index }: { category: typeof CATEGORIES[0], ind
 
             {/* Content Overlay */}
             <div
-                className="absolute inset-0 z-10 flex flex-col justify-end p-10 space-y-4"
+                className="absolute inset-0 z-10 flex flex-col justify-end p-8 md:p-10 space-y-4"
             >
                 <div className="space-y-2">
                     <motion.h3 className="text-3xl md:text-5xl font-black text-white italic tracking-tighter leading-none">
                         {category.name.toUpperCase()}
                     </motion.h3>
-                    <p className="text-navy-300 text-sm md:text-lg font-medium tracking-tight max-w-[80%] opacity-0 group-hover:opacity-100 transition-opacity duration-500 delay-100">
+                    <p className="text-slate text-sm md:text-lg font-medium tracking-tight max-w-[90%] md:max-w-[80%] opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-500 delay-100">
                         {category.desc}
                     </p>
                 </div>
 
                 <Link
                     href={`/catalog?category=${category.slug}`}
-                    className="inline-flex items-center gap-2 text-gold font-black text-xs tracking-widest uppercase group-hover:gap-4 transition-all duration-300"
+                    className="inline-flex items-center gap-2 text-gold font-black text-[10px] md:text-xs tracking-[0.2em] md:tracking-widest uppercase group-hover:gap-4 transition-all duration-300"
                 >
-                    Quick Entry <ArrowRight className="w-4 h-4" />
+                    Explore Flow <ArrowRight className="w-4 h-4" />
                 </Link>
             </div>
 

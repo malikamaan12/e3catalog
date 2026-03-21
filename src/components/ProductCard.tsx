@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { Star } from "lucide-react";
+import { Star, ShieldCheck, Zap } from "lucide-react";
 
 interface ProductCardProps {
     slug: string;
@@ -10,172 +10,117 @@ interface ProductCardProps {
     pricePerHour: number | null;
     dimensions?: string | null;
     totalUnits?: number;
-    condition?: string | null;
     thumbnailUrl: string | null;
     category?: { name: string; slug: string } | null;
-    currentAvailableUnits?: number; // Injected by API
+    currentAvailableUnits?: number;
     showPrice?: boolean;
     priceType?: string;
-    priceRangeMax?: number | null;
     unit?: string;
     itemCode?: string | null;
     averageRating?: number | null;
     reviewCount?: number | null;
-    vendor?: { companyName: string; scoreRating: number | null } | null;
 }
 
 export function ProductCard({
     slug,
     name,
-    shortDescription,
     pricePerDay,
-    pricePerHour,
-    dimensions,
-    totalUnits = 0,
-    condition,
     thumbnailUrl,
     category,
     currentAvailableUnits,
+    totalUnits = 0,
     showPrice,
     priceType,
-    priceRangeMax,
     unit,
     itemCode,
-    averageRating,
-    reviewCount,
-    vendor,
 }: ProductCardProps) {
-    // If we don't have currentAvailableUnits (old API), fallback to totalUnits
     const available = currentAvailableUnits !== undefined ? currentAvailableUnits : totalUnits;
-
-    // Dynamic Traffic Light Logic
-    // Green: > 20% of total stock AND > 2 items
-    // Yellow: <= 20% of stock OR <= 2 items, but > 0
-    // Red: 0 items
 
     let availabilityStatus = "unavailable";
     let availabilityLabel = "Out of Stock";
 
     if (available > 0) {
         const percentage = totalUnits > 0 ? available / totalUnits : 0;
-        const dispUnit = (unit === 'unit' || !unit) ? 'in stock' : `${unit} in stock`;
-        const dispLeft = (unit === 'unit' || !unit) ? 'left' : `${unit} left`;
-
         if (percentage > 0.2 && available > 2) {
-            availabilityStatus = "available"; // Green
-            availabilityLabel = `${available} ${dispUnit}`;
+            availabilityStatus = "available";
+            availabilityLabel = `${available} in stock`;
         } else {
-            availabilityStatus = "limited"; // Yellow
-            availabilityLabel = `Only ${available} ${dispLeft}`;
+            availabilityStatus = "limited";
+            availabilityLabel = `Only ${available} left`;
         }
     }
 
     return (
-        <Link href={`/catalog/${slug}`} className="card group block overflow-hidden">
-            {/* Thumbnail */}
-            <div className="relative h-52 bg-[var(--color-navy-lighter)] overflow-hidden">
+        <Link href={`/catalog/${slug}`} className="group relative bg-[#0d152a] rounded-[2rem] border border-white/5 overflow-hidden transition-all duration-500 hover:border-gold/30 hover:shadow-2xl hover:shadow-gold/5 flex flex-col h-full">
+            {/* Thumbnail Header */}
+            <div className="relative aspect-[4/3] overflow-hidden bg-navy">
                 {thumbnailUrl ? (
                     <Image
                         src={thumbnailUrl}
                         alt={name}
                         fill
-                        loading="lazy"
-                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                        className="object-cover transition-transform duration-700 group-hover:scale-110"
+                        className="object-cover transition-transform duration-1000 group-hover:scale-110"
+                        sizes="(max-width: 768px) 100vw, 33vw"
                     />
                 ) : (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" className="text-[var(--color-slate)] opacity-30">
-                            <rect x="3" y="3" width="18" height="18" rx="2" />
-                            <circle cx="8.5" cy="8.5" r="1.5" />
-                            <polyline points="21 15 16 10 5 21" />
-                        </svg>
+                    <div className="absolute inset-0 flex items-center justify-center opacity-20">
+                        <Zap className="w-12 h-12 text-gold" />
                     </div>
                 )}
-
-                {/* Category badge */}
-                {category && (
-                    <div className="absolute top-3 left-3">
-                        <span className="text-xs font-medium px-2.5 py-1 rounded-full glass text-[var(--color-gold)]">
+                
+                {/* Status Badges Overlay */}
+                <div className="absolute top-4 left-4 right-4 flex justify-between items-start pointer-events-none">
+                    {category && (
+                        <span className="glass-light text-[9px] font-black uppercase tracking-[0.2em] px-3 py-1.5 rounded-full text-white/70">
                             {category.name}
                         </span>
-                    </div>
-                )}
-
-                {/* Gradient overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-[var(--color-navy)] via-transparent to-transparent opacity-60" />
-            </div>
-
-            {/* Content */}
-            <div className="p-5">
-                <div className="flex items-start justify-between gap-3 mb-2">
-                    <div className="flex-1">
-                        <h3 className="font-[family-name:var(--font-heading)] font-semibold text-[var(--color-warm-white)] leading-tight line-clamp-2 group-hover:text-[var(--color-gold)] transition-colors">
-                            {name}
-                        </h3>
-                        {itemCode && (
-                            <p className="text-[10px] font-mono text-[var(--color-gold)] opacity-70 mt-0.5 tracking-wider">
-                                {itemCode}
-                            </p>
-                        )}
-                        {vendor && (
-                            <p className="text-[10px] text-[var(--color-slate)] mt-1 truncate">
-                                By {vendor.companyName}
-                            </p>
-                        )}
-                    </div>
-                    <div className="flex flex-col items-end shrink-0 mt-1 gap-1">
-                        <div className="flex items-center gap-1.5">
-                            <span className="text-[10px] text-[var(--color-slate)] font-medium tracking-wide uppercase">{availabilityLabel}</span>
-                            <div className={`dot-${availabilityStatus}`} />
-                        </div>
-                        {(reviewCount && reviewCount > 0) ? (
-                            <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-[var(--color-gold)]/10 border border-[var(--color-gold)]/20">
-                                <Star className="w-3 h-3 text-[var(--color-gold)] fill-[var(--color-gold)]" />
-                                <span className="text-[10px] font-bold text-[var(--color-gold)]">{Number(averageRating).toFixed(1)}</span>
-                                <span className="text-[9px] text-[var(--color-gold)]/70">({reviewCount})</span>
-                            </div>
-                        ) : null}
+                    )}
+                    <div className={`glass-light backdrop-blur-md px-3 py-1.5 rounded-full flex items-center gap-1.5`}>
+                        <div className={`w-1.5 h-1.5 rounded-full dot-${availabilityStatus} animate-pulse`} />
+                        <span className="text-[9px] font-black uppercase tracking-widest text-white/90">
+                            {availabilityStatus}
+                        </span>
                     </div>
                 </div>
 
-                {shortDescription && (
-                    <p className="text-xs text-[var(--color-slate)] mb-3 line-clamp-2 leading-relaxed">
-                        &quot;{shortDescription}&quot;
-                    </p>
-                )}
+                {/* Scrim Overlay */}
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0d152a] via-transparent to-transparent opacity-60" />
+            </div>
 
-                {dimensions && (
-                    <p className="text-xs text-[var(--color-slate)] mb-3 flex items-center gap-1.5">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-                        </svg>
-                        {dimensions}
-                    </p>
-                )}
+            {/* Product Meta */}
+            <div className="p-6 flex flex-col flex-1">
+                <div className="mb-4">
+                    <h3 className="font-bold text-lg text-white leading-tight line-clamp-2 min-h-[3.5rem] group-hover:text-gold transition-colors">
+                        {name}
+                    </h3>
+                    {itemCode && (
+                        <p className="text-[10px] font-black text-gold/40 mt-1 uppercase tracking-[0.2em]">
+                            REF: {itemCode}
+                        </p>
+                    )}
+                </div>
 
-                {/* Price */}
-                <div className="flex items-baseline justify-between pt-3 border-t border-[var(--color-border-subtle)]">
-                    {showPrice === false ? (
-                        <div className="text-sm font-semibold text-[var(--color-slate)]">Price on request</div>
-                    ) : (
-                        <>
-                            <div>
-                                {priceRangeMax ? (
-                                    <span className="text-sm font-medium text-[var(--color-warm-white)]">Starting from </span>
-                                ) : null}
-                                <span className="text-lg font-bold gradient-text-gold">{pricePerDay} QAR</span>
-                                {priceType === "daily" && <span className="text-xs text-[var(--color-slate)] ml-1">/{(unit === 'unit' || !unit) ? 'day' : `${unit}/day`}</span>}
-                                {priceType === "job" && <span className="text-xs text-[var(--color-slate)] ml-1">/job</span>}
-                            </div>
-                            {(!priceRangeMax && pricePerHour) && (
-                                <div className="text-right">
-                                    <span className="text-sm text-[var(--color-slate)]">{pricePerHour} QAR</span>
-                                    <span className="text-xs text-[var(--color-slate)] ml-0.5">/hr</span>
+                <div className="mt-auto space-y-4">
+                    <div className="flex items-center justify-between pt-4 border-t border-white/5">
+                        <div className="flex flex-col">
+                            <span className="text-[9px] font-black text-slate uppercase tracking-widest mb-1">Price / Day</span>
+                            {showPrice === false ? (
+                                <span className="text-sm font-bold text-slate">On Request</span>
+                            ) : (
+                                <div className="flex items-baseline gap-1">
+                                    <span className="text-xl font-bold text-white tracking-tighter">{pricePerDay}</span>
+                                    <span className="text-xs text-slate font-medium">QAR</span>
                                 </div>
                             )}
-                        </>
-                    )}
+                        </div>
+                        
+                        <div className="w-10 h-10 rounded-full glass border border-gold/20 flex items-center justify-center group-hover:bg-gold group-hover:text-navy transition-all duration-300">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                <line x1="12" y1="5" x2="12" y2="19"></line>
+                                <line x1="5" y1="12" x2="19" y2="12"></line>
+                            </svg>
+                        </div>
+                    </div>
                 </div>
             </div>
         </Link>

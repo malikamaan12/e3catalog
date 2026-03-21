@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useSearchParams } from "next/navigation";
 import { ProductCard } from "@/components/ProductCard";
 import { Footer } from "@/components/Footer";
@@ -93,6 +94,7 @@ function CatalogContent() {
     const [nextCursor, setNextCursor] = useState<string | null>(null);
     const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
     const [totalCount, setTotalCount] = useState(0);
+    const [isFilterOpen, setIsFilterOpen] = useState(false);
 
     // Sentinel ref for IntersectionObserver (infinite scroll trigger)
     const sentinelRef = useRef<HTMLDivElement>(null);
@@ -167,6 +169,7 @@ function CatalogContent() {
 
     const handleCategorySelect = (slug: string) => {
         setSelectedCategory(slug);
+        setIsFilterOpen(false);
     };
 
     return (
@@ -264,80 +267,63 @@ function CatalogContent() {
 
                         {/* ── MAIN CONTENT ── */}
                         <div className="flex-1 min-w-0">
-                            {/* Mobile category pills */}
-                            <div className="flex gap-2 flex-wrap mb-6 lg:hidden">
-                                <button
-                                    onClick={() => handleCategorySelect("")}
-                                    className={`px-3 py-1.5 rounded-lg font-[family-name:var(--font-heading)] text-xs font-semibold transition-all flex items-center gap-2 ${!selectedCategory ? "bg-[var(--color-gold)] text-[var(--color-navy)]" : "glass text-[var(--color-slate)] hover:text-[var(--color-gold)]"}`}
-                                >
-                                    <LayoutGrid className="w-3.5 h-3.5" /> All
-                                </button>
-                                {Array.isArray(categoryTree) && categoryTree.map((group) => (
-                                    <button
-                                        key={group.id}
-                                        onClick={() => handleCategorySelect(group.slug)}
-                                        className={`px-3 py-1.5 rounded-lg font-[family-name:var(--font-heading)] text-xs font-semibold transition-all flex items-center gap-2 ${selectedCategory === group.slug ? "bg-[var(--color-gold)] text-[var(--color-navy)]" : "glass text-[var(--color-slate)] hover:text-[var(--color-gold)]"}`}
-                                    >
-                                        <CategoryIcon icon={group.icon} slug={group.slug} className="w-3.5 h-3.5" /> {group.name}
-                                    </button>
-                                ))}
-                            </div>
-
-                            {/* Results count */}
-                            <div className="flex items-center justify-between mb-4">
-                                <p className="text-sm text-[var(--color-slate)]">
+                            {/* Results count & Quick Filters */}
+                            <div className="flex items-center justify-between mb-6">
+                                <p className="text-sm font-bold text-slate tracking-widest uppercase">
                                     {loading
-                                        ? "Loading..."
-                                        : `${totalCount} item${totalCount !== 1 ? "s" : ""} found${hasMore ? "+" : ""}`
+                                        ? "Scanning..."
+                                        : `${totalCount} Asset${totalCount !== 1 ? "s" : ""} Located`
                                     }
                                 </p>
+                                
+                                {selectedCategory && (
+                                    <button 
+                                        onClick={() => handleCategorySelect("")}
+                                        className="text-[10px] font-black text-gold uppercase tracking-widest flex items-center gap-1 hover:opacity-70 transition-opacity"
+                                    >
+                                        Clear Filter <span className="text-lg">×</span>
+                                    </button>
+                                )}
                             </div>
 
                             {/* Product grid — initial skeleton */}
                             {loading ? (
-                                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-                                    {Array.from({ length: 9 }).map((_, i) => (
-                                        <div key={i} className="card animate-pulse">
-                                            <div className="h-52 bg-[var(--color-navy-lighter)] rounded-t-xl" />
-                                            <div className="p-5 space-y-3">
-                                                <div className="h-4 bg-[var(--color-navy-lighter)] rounded w-3/4" />
-                                                <div className="h-3 bg-[var(--color-navy-lighter)] rounded w-full" />
-                                                <div className="h-3 bg-[var(--color-navy-lighter)] rounded w-1/2" />
-                                            </div>
-                                        </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6 md:gap-8">
+                                    {Array.from({ length: 6 }).map((_, i) => (
+                                        <div key={i} className="bg-[#0d152a] rounded-[2rem] border border-white/5 h-[400px] animate-pulse" />
                                     ))}
                                 </div>
                             ) : products.length === 0 ? (
-                                <div className="text-center py-20">
-                                    <div className="text-5xl mb-4">🔍</div>
-                                    <h3 className="font-[family-name:var(--font-heading)] text-xl font-semibold text-[var(--color-warm-white)] mb-2">
-                                        No equipment found
+                                <div className="text-center py-32 glass rounded-[3rem] border-dashed border-2 border-white/5">
+                                    <div className="text-6xl mb-6 opacity-20">📡</div>
+                                    <h3 className="font-[family-name:var(--font-heading)] text-2xl font-bold text-white mb-2">
+                                        No assets located
                                     </h3>
-                                    <p className="text-[var(--color-slate)]">Try adjusting your search or category filter.</p>
+                                    <p className="text-slate max-w-xs mx-auto text-sm">Modify your search parameters or select a wider category range.</p>
                                 </div>
                             ) : (
                                 <>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6 md:gap-8">
                                         {products.map((product) => (
                                             <ProductCard key={product.id} {...product} />
                                         ))}
                                     </div>
 
                                     {/* Infinite scroll sentinel */}
-                                    <div ref={sentinelRef} className="h-1 mt-8" />
+                                    <div ref={sentinelRef} className="h-20" />
 
                                     {/* Loading more indicator */}
                                     {loadingMore && (
-                                        <div className="flex justify-center items-center py-8 gap-3">
-                                            <div className="w-5 h-5 rounded-full border-2 border-[var(--color-gold)] border-t-transparent animate-spin" />
-                                            <span className="text-sm text-[var(--color-slate)]">Loading more equipment...</span>
+                                        <div className="flex justify-center items-center py-12 gap-3">
+                                            <div className="w-5 h-5 rounded-full border-2 border-gold border-t-transparent animate-spin" />
+                                            <span className="text-xs font-black text-gold uppercase tracking-widest">Streaming more assets...</span>
                                         </div>
                                     )}
 
                                     {/* End of results */}
                                     {!hasMore && products.length > 0 && (
-                                        <p className="text-center text-xs text-[var(--color-slate)] py-8 opacity-60">
-                                            — All {totalCount} items loaded —
+                                        <p className="text-center text-[10px] font-black text-slate/30 py-12 uppercase tracking-[0.4em]">
+                                            — All {totalCount} assets loaded —
                                         </p>
                                     )}
                                 </>
@@ -346,6 +332,104 @@ function CatalogContent() {
                     </div>
                 </div>
             </div>
+
+            {/* ── Mobile Filter Drawer ── */}
+            <AnimatePresence>
+                {isFilterOpen && (
+                    <>
+                        <motion.div 
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setIsFilterOpen(false)}
+                            className="fixed inset-0 bg-navy/80 backdrop-blur-md z-[110] lg:hidden"
+                        />
+                        <motion.div 
+                            initial={{ y: "100%" }}
+                            animate={{ y: 0 }}
+                            exit={{ y: "100%" }}
+                            transition={{ type: "spring", damping: 25, stiffness: 200 }}
+                            className="fixed bottom-0 left-0 right-0 h-[80vh] bg-[#0d152a] border-t border-white/10 z-[120] lg:hidden rounded-t-[3rem] shadow-2xl flex flex-col p-8 pb-12"
+                        >
+                            <div className="w-12 h-1.5 bg-white/10 rounded-full mx-auto mb-8 shrink-0" />
+                            <div className="flex items-center justify-between mb-8">
+                                <h3 className="text-2xl font-bold text-white tracking-tighter uppercase italic">Filter Assets</h3>
+                                <button onClick={() => setIsFilterOpen(false)} className="text-slate font-black text-xs uppercase tracking-widest">Done</button>
+                            </div>
+                            
+                            <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-2">
+                                <button
+                                    onClick={() => handleCategorySelect("")}
+                                    className={`w-full text-left p-5 rounded-2xl font-bold transition-all flex items-center gap-4 ${!selectedCategory ? "bg-gold text-navy" : "bg-white/5 text-slate border border-white/5"}`}
+                                >
+                                    <LayoutGrid className="w-5 h-5" /> <span className="text-sm uppercase tracking-widest">All Equipment</span>
+                                </button>
+
+                                {Array.isArray(categoryTree) && categoryTree.map((group) => {
+                                    const isExpanded = expandedGroup === group.id;
+                                    const isSelected = selectedCategory === group.slug || group.children?.some(c => c.slug === selectedCategory);
+                                    
+                                    return (
+                                        <div key={group.id} className="space-y-2">
+                                            <button
+                                                onClick={() => {
+                                                    setExpandedGroup(isExpanded ? null : group.id);
+                                                    if (!group.children?.length) handleCategorySelect(group.slug);
+                                                }}
+                                                className={`w-full text-left p-5 rounded-2xl font-bold transition-all flex items-center justify-between ${isSelected ? "bg-white/10 text-gold border border-gold/20" : "bg-white/5 text-slate border border-white/5"}`}
+                                            >
+                                                <div className="flex items-center gap-4">
+                                                    <CategoryIcon icon={group.icon} slug={group.slug} className="w-5 h-5" />
+                                                    <span className="text-sm uppercase tracking-widest">{group.name}</span>
+                                                </div>
+                                                {group.children && group.children.length > 0 && (
+                                                    <span className={`text-xl transition-transform ${isExpanded ? 'rotate-90' : ''}`}>›</span>
+                                                )}
+                                            </button>
+                                            
+                                            {isExpanded && group.children && (
+                                                <div className="grid grid-cols-1 gap-2 pl-4">
+                                                    {group.children.map(child => (
+                                                        <button
+                                                            key={child.id}
+                                                            onClick={() => handleCategorySelect(child.slug)}
+                                                            className={`text-left p-4 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${selectedCategory === child.slug ? "text-gold bg-gold/5 border border-gold/20" : "text-slate/60 hover:text-white"}`}
+                                                        >
+                                                            {child.name}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </motion.div>
+                    </>
+                )}
+            </AnimatePresence>
+
+            {/* ── Sticky Filter Trigger (Mobile) ── */}
+            <div className="fixed bottom-8 left-0 right-0 z-50 flex justify-center lg:hidden px-6 pointer-events-none">
+                <button 
+                    onClick={() => setIsFilterOpen(true)}
+                    className="pointer-events-auto shadow-2xl shadow-gold/20 bg-gold text-navy px-8 py-5 rounded-2xl flex items-center gap-3 font-black text-sm uppercase tracking-widest hover:scale-105 transition-transform active:scale-95"
+                >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                        <line x1="4" y1="21" x2="4" y2="14" />
+                        <line x1="4" y1="10" x2="4" y2="3" />
+                        <line x1="12" y1="21" x2="12" y2="12" />
+                        <line x1="12" y1="8" x2="12" y2="3" />
+                        <line x1="20" y1="21" x2="20" y2="16" />
+                        <line x1="20" y1="12" x2="20" y2="3" />
+                        <line x1="1" y1="14" x2="7" y2="14" />
+                        <line x1="9" y1="8" x2="15" y2="8" />
+                        <line x1="17" y1="16" x2="23" y2="16" />
+                    </svg>
+                    Filter Assets
+                </button>
+            </div>
+
             <Footer />
         </>
     );

@@ -114,17 +114,26 @@ h6 {
   color: var(--foreground);
 }
 
-/* ─── Glassmorphism Utility ─── */
+/* ─── Glassmorphism Utility (Premium) ─── */
 .glass {
-  background: rgba(13, 20, 37, 0.9);
-  /* More opaque, no blur */
-  border: 1px solid rgba(201, 168, 76, 0.1);
+  background: rgba(13, 20, 37, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .glass-light {
-  background: rgba(26, 35, 66, 0.85);
-  /* More opaque, no blur */
-  border: 1px solid rgba(201, 168, 76, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.glass-dark {
+  background: rgba(7, 11, 22, 0.85);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(201, 168, 76, 0.15);
 }
 
 /* ─── Gradient Utilities ─── */
@@ -133,10 +142,11 @@ h6 {
 }
 
 .gradient-text-gold {
-  background: linear-gradient(135deg, #c9a84c, #e0c671);
+  background: linear-gradient(135deg, #c9a84c 0%, #f5f0e8 50%, #c9a84c 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  background-size: 200% auto;
 }
 
 .gradient-border {

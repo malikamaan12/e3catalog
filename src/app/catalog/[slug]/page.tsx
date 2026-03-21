@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
 import dynamic from "next/dynamic";
 import { Footer } from "@/components/Footer";
 import Link from "next/link";
@@ -228,28 +229,28 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
                         {/* LEFT: Media */}
                         <div>
-                            {/* Tab Switcher — only show tabs admin has enabled */}
-                            <div className="flex gap-1 mb-4 p-1 bg-[var(--color-surface)] rounded-xl">
+                            {/* Tab Switcher — High Fidelity Floating Style */}
+                            <div className="flex gap-2 mb-6 p-1.5 glass-dark rounded-2xl border border-white/5">
                                 <button
                                     onClick={() => setActiveTab("images")}
-                                    className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all ${activeTab === "images" ? "bg-[var(--color-gold)] text-[var(--color-navy)]" : "text-[var(--color-slate)] hover:text-[var(--color-warm-white)]"}`}
+                                    className={`flex-1 py-3 px-4 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-300 flex items-center justify-center gap-2 ${activeTab === "images" ? "bg-gold text-navy shadow-xl shadow-gold/20" : "text-slate hover:text-white"}`}
                                 >
-                                    📷 Images
+                                    <span className="text-lg">📷</span> <span className="hidden sm:inline">Gallery</span>
                                 </button>
                                 {show3d && (
                                     <button
                                         onClick={() => setActiveTab("3d")}
-                                        className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all ${activeTab === "3d" ? "bg-[var(--color-gold)] text-[var(--color-navy)]" : "text-[var(--color-slate)] hover:text-[var(--color-warm-white)]"}`}
+                                        className={`flex-1 py-3 px-4 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-300 flex items-center justify-center gap-2 ${activeTab === "3d" ? "bg-gold text-navy shadow-xl shadow-gold/20" : "text-slate hover:text-white"}`}
                                     >
-                                        🎲 3D Model
+                                        <span className="text-lg">🎲</span> <span className="hidden sm:inline">3D View</span>
                                     </button>
                                 )}
                                 {showVideo && (
                                     <button
                                         onClick={() => setActiveTab("video")}
-                                        className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all ${activeTab === "video" ? "bg-[var(--color-gold)] text-[var(--color-navy)]" : "text-[var(--color-slate)] hover:text-[var(--color-warm-white)]"}`}
+                                        className={`flex-1 py-3 px-4 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-300 flex items-center justify-center gap-2 ${activeTab === "video" ? "bg-gold text-navy shadow-xl shadow-gold/20" : "text-slate hover:text-white"}`}
                                     >
-                                        🎬 Video
+                                        <span className="text-lg">🎬</span> <span className="hidden sm:inline">Video</span>
                                     </button>
                                 )}
                             </div>
@@ -370,358 +371,245 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
                                 )}
                             </div>
 
-                            {/* Deep Technical Specs */}
-                            <div className="glass rounded-xl p-5 mb-6">
-                                <h3 className="font-[family-name:var(--font-heading)] font-semibold text-sm tracking-wider text-[var(--color-gold)] mb-4">TECHNICAL SPECIFICATIONS</h3>
-                                <div className="grid grid-cols-2 gap-3 text-sm">
-                                    {product.dimensions && (
+                            <div className="space-y-4 mb-8">
+                                <AccordionItem 
+                                    title="TECHNICAL SPECIFICATIONS" 
+                                    isOpen={openGuide === 'specs'} 
+                                    onToggle={() => setOpenGuide(openGuide === 'specs' ? null : 'specs')}
+                                >
+                                    <div className="grid grid-cols-2 gap-6 text-sm py-4">
+                                        {product.dimensions && (
+                                            <div>
+                                                <span className="text-slate/60 font-black text-[10px] uppercase tracking-widest block mb-1">Dimensions</span>
+                                                <p className="text-white font-bold">{product.dimensions}</p>
+                                            </div>
+                                        )}
+                                        {product.weight && (
+                                            <div>
+                                                <span className="text-slate/60 font-black text-[10px] uppercase tracking-widest block mb-1">Total Weight</span>
+                                                <p className="text-white font-bold">{product.weight}</p>
+                                            </div>
+                                        )}
+                                        {product.powerRequirements && (
+                                            <div>
+                                                <span className="text-slate/60 font-black text-[10px] uppercase tracking-widest block mb-1">Energy Req.</span>
+                                                <p className="text-gold font-bold">{product.powerRequirements}</p>
+                                            </div>
+                                        )}
+                                        {product.materials && (
+                                            <div>
+                                                <span className="text-slate/60 font-black text-[10px] uppercase tracking-widest block mb-1">Materials</span>
+                                                <p className="text-white font-bold">{product.materials}</p>
+                                            </div>
+                                        )}
                                         <div>
-                                            <span className="text-[var(--color-slate)]">Dimensions</span>
-                                            <p className="text-[var(--color-warm-white)] font-medium">{product.dimensions}</p>
+                                            <span className="text-slate/60 font-black text-[10px] uppercase tracking-widest block mb-1">Condition</span>
+                                            <p className={`font-bold capitalize ${conditionColor}`}>{product.condition?.replace("_", " ")}</p>
                                         </div>
-                                    )}
-                                    {product.weight && (
                                         <div>
-                                            <span className="text-[var(--color-slate)]">Weight</span>
-                                            <p className="text-[var(--color-warm-white)] font-medium">{product.weight}</p>
+                                            <span className="text-slate/60 font-black text-[10px] uppercase tracking-widest block mb-1">Fleet Stock</span>
+                                            <p className="text-white font-bold">{product.totalUnits} Units Available</p>
                                         </div>
-                                    )}
-                                    {product.powerRequirements && (
-                                        <div>
-                                            <span className="text-[var(--color-slate)]">Power</span>
-                                            <p className="text-[var(--color-warm-white)] font-medium">{product.powerRequirements}</p>
-                                        </div>
-                                    )}
-                                    {product.materials && (
-                                        <div>
-                                            <span className="text-[var(--color-slate)]">Materials</span>
-                                            <p className="text-[var(--color-warm-white)] font-medium">{product.materials}</p>
-                                        </div>
-                                    )}
-                                    <div>
-                                        <span className="text-[var(--color-slate)]">Condition</span>
-                                        <p className={`font-medium capitalize ${conditionColor}`}>{product.condition?.replace("_", " ") || "Standard"}</p>
                                     </div>
-                                    <div>
-                                        <span className="text-[var(--color-slate)]">In Fleet</span>
-                                        <p className="text-[var(--color-warm-white)] font-medium">{product.totalUnits} {product.unit}</p>
-                                    </div>
-                                </div>
+                                </AccordionItem>
+
+                                {(product.installTime || product.dismantleTime || product.manpower) && (
+                                    <AccordionItem 
+                                        title="LOGISTICS & MOBILIZATION" 
+                                        isOpen={openGuide === 'logistics'} 
+                                        onToggle={() => setOpenGuide(openGuide === 'logistics' ? null : 'logistics')}
+                                    >
+                                        <div className="grid grid-cols-2 gap-6 text-sm py-4">
+                                            {product.installTime !== null && (
+                                                <div>
+                                                    <span className="text-slate/60 font-black text-[10px] uppercase tracking-widest block mb-1">Est. Install</span>
+                                                    <p className="text-white font-bold">{product.installTime} Hours</p>
+                                                </div>
+                                            )}
+                                            {product.dismantleTime !== null && (
+                                                <div>
+                                                    <span className="text-slate/60 font-black text-[10px] uppercase tracking-widest block mb-1">Est. Dismantle</span>
+                                                    <p className="text-white font-bold">{product.dismantleTime} Hours</p>
+                                                </div>
+                                            )}
+                                            {product.manpower && (
+                                                <div className="col-span-2">
+                                                    <span className="text-slate/60 font-black text-[10px] uppercase tracking-widest block mb-1">Manpower Requirement</span>
+                                                    <p className="text-white font-bold">{product.manpower}</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </AccordionItem>
+                                )}
+
+                                {Array.isArray(product.safetyCertificates) && product.safetyCertificates.length > 0 && (
+                                    <AccordionItem 
+                                        title="COMPLIANCE & DOCUMENTATION" 
+                                        isOpen={openGuide === 'safety'} 
+                                        onToggle={() => setOpenGuide(openGuide === 'safety' ? null : 'safety')}
+                                    >
+                                        <div className="space-y-4 py-4">
+                                            {product.safetyCertificates.map((cert) => (
+                                                <div key={cert.id} className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/5">
+                                                    <div>
+                                                        <p className="text-sm font-bold text-white">{cert.certName}</p>
+                                                        <p className="text-[10px] font-black text-slate uppercase tracking-widest">{cert.issuingBody}</p>
+                                                    </div>
+                                                    <span className="text-[9px] font-black uppercase tracking-widest px-3 py-1 bg-emerald-500/10 text-emerald-400 rounded-full border border-emerald-500/20">Certified</span>
+                                                </div>
+                                            ))}
+                                            {product.documents?.map(doc => (
+                                                <a key={doc.id} href={doc.url} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-dashed border-white/20 hover:border-gold/30 transition-all group">
+                                                    <span className="text-sm font-bold text-slate group-hover:text-white transition-colors">{doc.name}</span>
+                                                    <span className="text-[10px] font-black text-gold uppercase tracking-widest">Download PDF ↓</span>
+                                                </a>
+                                            ))}
+                                        </div>
+                                    </AccordionItem>
+                                )}
                             </div>
 
-                            {/* Logistics */}
-                            {(product.installTime || product.dismantleTime || product.manpower) && (
-                                <div className="glass rounded-xl p-5 mb-6">
-                                    <h3 className="font-[family-name:var(--font-heading)] font-semibold text-sm tracking-wider text-[var(--color-gold)] mb-4">LOGISTICS</h3>
-                                    <div className="grid grid-cols-2 gap-3 text-sm">
-                                        {product.installTime !== null && product.installTime > 0 && (
-                                            <div>
-                                                <span className="text-[var(--color-slate)]">Install Time</span>
-                                                <p className="text-[var(--color-warm-white)] font-medium">{product.installTime}h buffer</p>
-                                            </div>
-                                        )}
-                                        {product.dismantleTime !== null && product.dismantleTime > 0 && (
-                                            <div>
-                                                <span className="text-[var(--color-slate)]">Dismantle Time</span>
-                                                <p className="text-[var(--color-warm-white)] font-medium">{product.dismantleTime}h buffer</p>
-                                            </div>
-                                        )}
-                                        {product.manpower && (
-                                            <div className="col-span-2">
-                                                <span className="text-[var(--color-slate)]">Manpower</span>
-                                                <p className="text-[var(--color-warm-white)] font-medium">{product.manpower}</p>
-                                            </div>
-                                        )}
-                                        {product.tools && (
-                                            <div className="col-span-2">
-                                                <span className="text-[var(--color-slate)]">Tools Required</span>
-                                                <p className="text-[var(--color-warm-white)] font-medium">{product.tools}</p>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Safety Certificates */}
-                            {Array.isArray(product.safetyCertificates) && product.safetyCertificates.length > 0 && (
-                                <div className="glass rounded-xl p-5 mb-6">
-                                    <h3 className="font-[family-name:var(--font-heading)] font-semibold text-sm tracking-wider text-[var(--color-gold)] mb-4">SAFETY & COMPLIANCE</h3>
-                                    <div className="space-y-3">
-                                        {product.safetyCertificates.map((cert) => {
-                                            const isExpired = new Date(cert.expiryDate) < new Date();
-                                            const isExpiringSoon = !isExpired && new Date(cert.expiryDate) < new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
-                                            // Find matching document by name match (optional)
-                                            const matchedDoc = product.documents?.find(d =>
-                                                d.name.toLowerCase().includes(cert.certName.toLowerCase().split(" ")[0])
-                                            );
-                                            return (
-                                                <div key={cert.id} className="flex items-center justify-between p-3 rounded-lg bg-[var(--color-navy-lighter)]">
-                                                    <div className="flex-1 min-w-0">
-                                                        <p className="text-sm font-medium text-[var(--color-warm-white)]">{cert.certName}</p>
-                                                        <p className="text-xs text-[var(--color-slate)]">{cert.certNumber} · {cert.issuingBody}</p>
-                                                    </div>
-                                                    <div className="flex items-center gap-2 shrink-0 ml-3">
-                                                        {matchedDoc && (
-                                                            <a href={matchedDoc.url} target="_blank" rel="noopener noreferrer"
-                                                                className="text-xs px-2.5 py-1 rounded-lg border border-[var(--color-gold)]/30 text-[var(--color-gold)] hover:bg-[var(--color-gold)]/10 transition-colors font-medium">
-                                                                View Doc ↗
-                                                            </a>
-                                                        )}
-                                                        <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${isExpired ? "bg-red-500/10 text-[var(--color-danger)]" :
-                                                            isExpiringSoon ? "bg-yellow-500/10 text-[var(--color-warning)]" :
-                                                                "bg-green-500/10 text-[var(--color-success)]"
-                                                            }`}>
-                                                            {isExpired ? "Expired" : isExpiringSoon ? "Expiring Soon" : "Valid"}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-
-                                    {/* All compliance docs as a direct list */}
-                                    {product.documents && product.documents.length > 0 && (
-                                        <div className="mt-4 pt-4 border-t border-white/5">
-                                            <p className="text-xs text-[var(--color-slate)] mb-3 font-semibold uppercase tracking-wider">Attached Documents</p>
-                                            <div className="space-y-2">
-                                                {product.documents.map(doc => (
-                                                    <a key={doc.id} href={doc.url} target="_blank" rel="noopener noreferrer"
-                                                        className="flex items-center justify-between p-3 rounded-lg bg-[var(--color-navy)] hover:border-[var(--color-gold)] border border-[var(--color-border-subtle)] transition-colors group">
-                                                        <div className="flex items-center gap-3">
-                                                            <span className="text-lg">📄</span>
-                                                            <span className="text-sm text-[var(--color-warm-white)] group-hover:text-[var(--color-gold)] transition-colors">{doc.name}</span>
-                                                        </div>
-                                                        <span className="text-xs font-semibold text-[var(--color-gold)] opacity-0 group-hover:opacity-100 transition-opacity">View ↗</span>
-                                                    </a>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-
-                            {/* Documentation & Guides */}
-                            {(product.installGuideUrl || product.dismantleGuideUrl || product.installationGuides.length > 0 || (product.documents && product.documents.length > 0)) && (
-                                <div className="glass rounded-xl p-5 mb-6">
-                                    <h3 className="font-[family-name:var(--font-heading)] font-semibold text-sm tracking-wider text-[var(--color-gold)] mb-4">DOCUMENTATION</h3>
-
-                                    {/* Link-based Documentation */}
-                                    {(product.installGuideUrl || product.dismantleGuideUrl) && (
-                                        <div className="space-y-2 mb-4">
-                                            {product.installGuideUrl && (
-                                                <a href={product.installGuideUrl} target="_blank" rel="noopener noreferrer"
-                                                    className="flex items-center justify-between p-3 rounded-lg bg-[var(--color-navy-lighter)] hover:border-[var(--color-gold)] border border-transparent transition-colors group">
-                                                    <div className="flex items-center gap-3">
-                                                        <span className="text-lg">🛠️</span>
-                                                        <span className="text-sm font-medium text-[var(--color-warm-white)] group-hover:text-[var(--color-gold)] transition-colors">Installation Guide</span>
-                                                    </div>
-                                                    <span className="text-xs text-[var(--color-gold)] opacity-0 group-hover:opacity-100 transition-opacity">View ↗</span>
-                                                </a>
-                                            )}
-                                            {product.dismantleGuideUrl && (
-                                                <a href={product.dismantleGuideUrl} target="_blank" rel="noopener noreferrer"
-                                                    className="flex items-center justify-between p-3 rounded-lg bg-[var(--color-navy-lighter)] hover:border-[var(--color-gold)] border border-transparent transition-colors group">
-                                                    <div className="flex items-center gap-3">
-                                                        <span className="text-lg">🔧</span>
-                                                        <span className="text-sm font-medium text-[var(--color-warm-white)] group-hover:text-[var(--color-gold)] transition-colors">Dismantling Procedure</span>
-                                                    </div>
-                                                    <span className="text-xs text-[var(--color-gold)] opacity-0 group-hover:opacity-100 transition-opacity">View ↗</span>
-                                                </a>
-                                            )}
-                                        </div>
-                                    )}
-
-                                    {/* Uploaded Documents */}
-                                    {product.documents && product.documents.length > 0 && (
-                                        <div className="space-y-2 mb-4">
-                                            {product.documents.map(doc => (
-                                                <a key={doc.id} href={doc.url} target="_blank" rel="noopener noreferrer"
-                                                    className="flex items-center justify-between p-3 rounded-lg bg-[var(--color-navy-lighter)] hover:border-[var(--color-gold)] border border-transparent transition-colors group">
-                                                    <div className="flex items-center gap-3">
-                                                        <span className="text-lg">📄</span>
-                                                        <span className="text-sm font-medium text-[var(--color-warm-white)] group-hover:text-[var(--color-gold)] transition-colors">{doc.name}</span>
-                                                    </div>
-                                                    <span className="text-xs text-[var(--color-gold)] opacity-0 group-hover:opacity-100 transition-opacity">Download ↓</span>
-                                                </a>
-                                            ))}
-                                        </div>
-                                    )}
-
-                                    {/* Installation Guides Accordion */}
-                                    {Array.isArray(product.installationGuides) && product.installationGuides.length > 0 && (
-                                        <div className="space-y-4">
-                                            {product.installationGuides.map((guide) => (
-                                                <div key={guide.id} className="rounded-xl bg-[var(--color-navy)] border border-[var(--color-border-subtle)] overflow-hidden">
-                                                    <button
-                                                        onClick={() => setOpenGuide(openGuide === guide.id ? null : guide.id)}
-                                                        className="w-full flex items-center justify-between p-4 text-left transition-colors hover:bg-[var(--color-navy-lighter)]"
-                                                    >
-                                                        <div className="flex items-center gap-3">
-                                                            <span className="text-xl">
-                                                                {guide.guideType === 'install' ? '🛠️' : guide.guideType === 'dismantle' ? '🔧' : '📄'}
-                                                            </span>
-                                                            <span className="text-base font-semibold text-[var(--color-warm-white)]">
-                                                                {guideTypeLabels[guide.guideType] || guide.guideType}
-                                                            </span>
-                                                        </div>
-                                                        <svg
-                                                            width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
-                                                            className={`text-[var(--color-gold)] transition-transform duration-300 ${openGuide === guide.id ? "rotate-180" : ""}`}
-                                                        >
-                                                            <polyline points="6 9 12 15 18 9" />
-                                                        </svg>
-                                                    </button>
-                                                    {openGuide === guide.id && (
-                                                        <div className="px-6 pb-6 border-t border-[var(--color-border-subtle)] bg-[var(--color-navy-lighter)]/30">
-                                                            <div className="pt-5 space-y-6">
-                                                                {/* Steps */}
-                                                                <div>
-                                                                    <p className="text-[10px] font-bold text-[var(--color-gold)] uppercase tracking-widest mb-3">Procedure Steps</p>
-                                                                    <div className="text-sm text-[var(--color-warm-white)] leading-relaxed whitespace-pre-line">
-                                                                        {guide.content}
-                                                                    </div>
-                                                                </div>
-
-                                                                {/* logistics row */}
-                                                                {(guide.requiredManpower || guide.estimatedTime) && (
-                                                                    <div className="grid grid-cols-2 gap-4 py-3 border-y border-[var(--color-border-subtle)]">
-                                                                        {guide.requiredManpower && (
-                                                                            <div className="flex items-center gap-2">
-                                                                                <span className="text-sm">👥</span>
-                                                                                <div className="text-xs">
-                                                                                    <span className="text-[var(--color-slate)] block">Manpower</span>
-                                                                                    <span className="text-[var(--color-warm-white)] font-medium">{guide.requiredManpower} persons</span>
-                                                                                </div>
-                                                                            </div>
-                                                                        )}
-                                                                        {guide.estimatedTime && (
-                                                                            <div className="flex items-center gap-2">
-                                                                                <span className="text-sm">⏱️</span>
-                                                                                <div className="text-xs">
-                                                                                    <span className="text-[var(--color-slate)] block">Est. Time</span>
-                                                                                    <span className="text-[var(--color-warm-white)] font-medium">{guide.estimatedTime}</span>
-                                                                                </div>
-                                                                            </div>
-                                                                        )}
-                                                                    </div>
-                                                                )}
-
-                                                                {/* tools row */}
-                                                                {guide.toolsRequired && (
-                                                                    <div className="flex items-start gap-3">
-                                                                        <span className="text-sm mt-0.5">⚙️</span>
-                                                                        <div className="text-xs">
-                                                                            <span className="text-[var(--color-slate)] block mb-1 uppercase tracking-wider font-bold text-[9px]">Tools Required</span>
-                                                                            <span className="text-[var(--color-warm-white)] font-medium leading-relaxed">{guide.toolsRequired}</span>
-                                                                        </div>
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-
                             {/* Advanced Availability Timeline */}
-                            <AvailabilityTimeline productId={product.id} />
+                            <div className="mb-8">
+                                <AvailabilityTimeline productId={product.id} />
+                            </div>
 
                             {/* Add to Cart / Availability Check */}
-                            <div className="glass rounded-xl p-5">
-                                <h3 className="font-[family-name:var(--font-heading)] font-semibold text-sm tracking-wider text-[var(--color-gold)] mb-4">ADD TO CART</h3>
-                                <div className="grid grid-cols-2 gap-3 mb-4">
-                                    <div>
-                                        <label className="text-xs text-[var(--color-slate)] mb-1 block">Start Date</label>
+                            <div id="quote-form" className="glass-dark rounded-[2.5rem] p-8 md:p-10 border border-white/10 shadow-2xl relative overflow-hidden group">
+                                <div className="absolute top-0 right-0 w-32 h-32 bg-gold/5 blur-[80px] group-hover:bg-gold/10 transition-colors" />
+                                
+                                <h3 className="font-bold text-xl text-white italic tracking-tighter uppercase mb-8 flex items-center gap-3">
+                                    <span className="w-8 h-8 rounded-full bg-gold/10 border border-gold/20 flex items-center justify-center text-gold text-xs">01</span>
+                                    Configure Selection
+                                </h3>
+                                
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-slate uppercase tracking-widest ml-1">Arrival Date</label>
                                         <input type="date" value={startDate}
                                             min={new Date().toLocaleDateString('en-CA')}
                                             onChange={(e) => {
                                                 setStartDate(e.target.value);
-                                                if (endDate && e.target.value > endDate) {
-                                                    setEndDate(e.target.value);
-                                                }
+                                                if (endDate && e.target.value > endDate) setEndDate(e.target.value);
                                             }}
-                                            className="w-full px-3 py-2.5 rounded-lg bg-[var(--color-navy-lighter)] border border-[var(--color-border-subtle)] text-[var(--color-warm-white)] focus:border-[var(--color-gold)] focus:outline-none text-sm" />
+                                            className="w-full px-5 py-4 rounded-2xl bg-white/5 border border-white/10 text-white focus:border-gold focus:outline-none transition-all placeholder:text-slate/30" />
                                     </div>
-                                    <div>
-                                        <label className="text-xs text-[var(--color-slate)] mb-1 block">End Date</label>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-slate uppercase tracking-widest ml-1">Release Date</label>
                                         <input type="date" value={endDate}
                                             min={startDate || new Date().toLocaleDateString('en-CA')}
                                             onChange={(e) => setEndDate(e.target.value)}
-                                            className="w-full px-3 py-2.5 rounded-lg bg-[var(--color-navy-lighter)] border border-[var(--color-border-subtle)] text-[var(--color-warm-white)] focus:border-[var(--color-gold)] focus:outline-none text-sm" />
+                                            className="w-full px-5 py-4 rounded-2xl bg-white/5 border border-white/10 text-white focus:border-gold focus:outline-none transition-all placeholder:text-slate/30" />
                                     </div>
                                 </div>
-                                <div className="mb-4">
-                                    <label className="text-xs text-[var(--color-slate)] mb-1 block">Quantity</label>
-                                    <div className="flex items-center gap-3">
-                                        <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-10 h-10 rounded-lg bg-[var(--color-navy-lighter)] border border-[var(--color-border-subtle)] flex items-center justify-center text-[var(--color-warm-white)] hover:border-[var(--color-gold)] transition-colors">
+
+                                <div className="mb-8 space-y-2">
+                                    <label className="text-[10px] font-black text-slate uppercase tracking-widest ml-1">Asset Quantity</label>
+                                    <div className="flex items-center gap-4 bg-white/5 p-2 rounded-2xl border border-white/5">
+                                        <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center text-white hover:bg-gold hover:text-navy transition-all text-xl font-bold">
                                             −
                                         </button>
-                                        <span className="text-lg font-semibold text-[var(--color-warm-white)] px-4 text-center whitespace-nowrap min-w-[3rem]">{quantity} {product.unit}</span>
-                                        <button onClick={() => setQuantity(quantity + 1)} className="w-10 h-10 rounded-lg bg-[var(--color-navy-lighter)] border border-[var(--color-border-subtle)] flex items-center justify-center text-[var(--color-warm-white)] hover:border-[var(--color-gold)] transition-colors">
+                                        <div className="flex-1 text-center">
+                                            <span className="text-xl font-black text-white tracking-tighter">{quantity}</span>
+                                            <span className="text-slate text-xs ml-2 uppercase font-bold tracking-widest">{product.unit || 'Units'}</span>
+                                        </div>
+                                        <button onClick={() => setQuantity(quantity + 1)} className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center text-white hover:bg-gold hover:text-navy transition-all text-xl font-bold">
                                             +
                                         </button>
                                     </div>
                                 </div>
 
-                                {/* Live Availability Check */}
-                                {checkingAvailability && (
-                                    <div className="flex items-center gap-2 mb-4 text-xs text-[var(--color-slate)]">
-                                        <div className="w-3 h-3 border border-[var(--color-gold)] border-t-transparent rounded-full animate-spin" />
-                                        Checking availability...
-                                    </div>
-                                )}
-                                {!checkingAvailability && availability && (
-                                    <div className={`flex items-center gap-2 mb-4 text-xs font-semibold p-2.5 rounded-lg border ${availability.available
-                                        ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
-                                        : "bg-red-500/10 border-red-500/20 text-red-400"
-                                        }`}>
-                                        <span>{availability.available ? "✅" : "❌"}</span>
-                                        {availability.available
-                                            ? `Available — ${availability.unitsAvailable} unit${availability.unitsAvailable !== 1 ? "s" : ""} free for these dates`
-                                            : `Not available for the selected dates`
-                                        }
-                                    </div>
-                                )}
-                                {!checkingAvailability && !availability && startDate && endDate && (
-                                    <div className="flex items-center gap-2 mb-4 text-xs text-[var(--color-slate)]">
-                                        <div className="dot-available" />
-                                        <span>Subject to final approval during quoting</span>
-                                    </div>
-                                )}
-                                {(!startDate || !endDate) && (
-                                    <div className="flex items-center gap-2 mb-4 text-xs text-[var(--color-slate)]">
-                                        <div className="dot-available" />
-                                        <span>Select dates above to check availability</span>
-                                    </div>
-                                )}
+                                {/* Availability Indicator */}
+                                <div className="mb-8">
+                                    <AnimatePresence mode="wait">
+                                        {checkingAvailability ? (
+                                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-3 text-xs font-black text-gold uppercase tracking-[0.2em] p-4 rounded-2xl bg-gold/5 border border-gold/10">
+                                                <div className="w-4 h-4 border-2 border-gold border-t-transparent rounded-full animate-spin" />
+                                                Decrypting Live Fleet Data...
+                                            </motion.div>
+                                        ) : availability ? (
+                                            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={`flex items-center gap-4 p-5 rounded-2xl border-2 ${availability.available ? "bg-emerald-500/5 border-emerald-500/10 text-emerald-400" : "bg-red-500/5 border-red-500/10 text-red-400"}`}>
+                                                <div className={`w-3 h-3 rounded-full ${availability.available ? "bg-emerald-400 shadow-[0_0_15px_rgba(52,211,153,0.5)]" : "bg-red-400"} animate-pulse`} />
+                                                <span className="text-xs font-black uppercase tracking-widest">
+                                                    {availability.available ? `STOCK CONFIRMED: ${availability.unitsAvailable} SECURED` : "FLEET EXHAUSTED FOR SELECTED WINDOW"}
+                                                </span>
+                                            </motion.div>
+                                        ) : (
+                                            <div className="p-5 rounded-2xl bg-white/5 border border-white/5 flex items-center gap-4">
+                                                <div className="w-3 h-3 rounded-full bg-slate/30" />
+                                                <span className="text-xs font-black text-slate/50 uppercase tracking-widest">Awaiting Logistics Data</span>
+                                            </div>
+                                        )}
+                                    </AnimatePresence>
+                                </div>
 
                                 <button
                                     onClick={addToCart}
                                     disabled={!startDate || !endDate || addingToCart}
-                                    className={`w-full transition-all ${cartAdded
-                                        ? "bg-green-500 text-white py-3.5 rounded-xl font-bold font-[family-name:var(--font-heading)] tracking-wider"
-                                        : "btn-primary disabled:opacity-40 disabled:cursor-not-allowed"
+                                    className={`w-full py-6 rounded-2xl font-black text-sm uppercase tracking-[0.3em] transition-all duration-500 relative overflow-hidden ${cartAdded
+                                        ? "bg-emerald-500 text-white"
+                                        : "bg-gold text-navy shadow-2xl shadow-gold/20 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-30 disabled:grayscale"
                                         }`}
                                 >
-                                    {cartAdded ? "✓ ADDED TO CART" : addingToCart ? "Adding..." : "Add to Cart"}
+                                    {cartAdded ? "✓ ADDED TO QUOTE" : addingToCart ? "Establishing Link..." : "Add to Live Quote"}
                                 </button>
-
-                                {cartAdded && (
-                                    <div className="mt-4 text-center">
-                                        <Link href="/cart" className="text-sm text-[var(--color-gold)] hover:underline font-medium">
-                                            View Cart →
-                                        </Link>
-                                    </div>
-                                )}
+                                
+                                <p className="mt-6 text-center text-[10px] font-black text-slate uppercase tracking-[0.2em] opacity-30">
+                                    Instant PDF Generation Available After Checkout
+                                </p>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
+
+            {/* ── STICKY BOTTOM BAR (Mobile Only) ── */}
+            <div className="fixed bottom-0 left-0 right-0 z-50 p-6 lg:hidden">
+                <motion.div 
+                    initial={{ y: 100 }}
+                    animate={{ y: 0 }}
+                    className="glass-dark border border-white/10 rounded-3xl p-4 shadow-2xl flex items-center justify-between gap-4"
+                >
+                    <div className="flex flex-col">
+                        <span className="text-[10px] font-black text-slate/50 uppercase tracking-widest">Starting / Day</span>
+                        <span className="text-xl font-black text-white">{product.pricePerDay} <span className="text-xs text-slate">QAR</span></span>
+                    </div>
+                    <button 
+                        onClick={() => document.getElementById('quote-form')?.scrollIntoView({ behavior: 'smooth' })}
+                        className="bg-gold text-navy px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-gold/20"
+                    >
+                        Build Quote
+                    </button>
+                </motion.div>
+            </div>
+
             <Footer />
         </>
+    );
+}
+
+// ── Components Helper ──
+function AccordionItem({ title, children, isOpen, onToggle }: { title: string, children: React.ReactNode, isOpen: boolean, onToggle: () => void }) {
+    return (
+        <div className="glass-dark rounded-[1.5rem] border border-white/5 overflow-hidden">
+            <button onClick={onToggle} className="w-full flex items-center justify-between p-6 text-left group transition-all">
+                <span className="text-[11px] font-black text-slate group-hover:text-gold uppercase tracking-widest">{title}</span>
+                <span className={`text-gold transition-transform duration-500 ${isOpen ? 'rotate-180' : ''}`}>▼</span>
+            </button>
+            <AnimatePresence>
+                {isOpen && (
+                    <motion.div 
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.4, ease: "circOut" }}
+                    >
+                        <div className="px-6 pb-6 border-t border-white/5">
+                            {children}
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div>
     );
 }

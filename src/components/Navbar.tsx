@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState, useEffect, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { usePathname } from "next/navigation";
 import { NotificationBell } from "@/components/dashboard/NotificationBell";
 import { useSiteSettings } from "@/components/SiteSettingsProvider";
@@ -67,7 +68,7 @@ export function Navbar() {
     const isCatalogVisible = getSetting("feature_catalog_visible", "true") === "true";
 
     return (
-        <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${scrolled ? "glass py-3" : "bg-transparent py-5"}`}>
+        <nav className={`fixed top-0 left-0 right-0 z-[100] transition-all duration-500 ${scrolled ? "backdrop-blur-xl bg-navy/40 border-b border-white/5 py-3" : "bg-transparent py-5"}`}>
             <div className="max-w-7xl mx-auto px-6 flex items-center justify-between gap-4">
 
                 {/* ── Logo ── */}
@@ -213,58 +214,96 @@ export function Navbar() {
                 </div>
             </div>
 
-            {/* ── Mobile Menu ── */}
-            {mobileOpen && (
-                <div className="md:hidden glass mt-2 mx-4 rounded-xl p-5 animate-fade-up">
-                    <div className="flex flex-col gap-1">
-                        {isAnyAdmin && (
-                            <>
-                                <MobileLink href="/admin" label="🏠 Dashboard" close={() => setMobileOpen(false)} />
-                                {hasProductsAccess && <MobileLink href="/admin/products" label={isVendor ? "📦 My Catalog" : "📦 Products"} close={() => setMobileOpen(false)} />}
-                                {hasInventoryAccess && <MobileLink href="/admin/inventory" label="🏗️ Inventory" close={() => setMobileOpen(false)} />}
-                                {isAnyAdmin && <MobileLink href="/admin/bookings" label="📅 Bookings" close={() => setMobileOpen(false)} />}
-                                {isSalesRepAdmin && <MobileLink href="/admin/categories" label="🏷️ Categories" close={() => setMobileOpen(false)} />}
-                                <hr className="border-white/10 my-2" />
-                                <button onClick={logout} className="text-left text-sm text-red-400 hover:text-red-300 px-2 py-2">🚪 Sign Out</button>
-                            </>
-                        )}
-                        {isClient && (
-                            <>
-                                <div className="flex items-center gap-2.5 px-2 py-2 mb-1">
-                                    <div className="w-8 h-8 rounded-full overflow-hidden gradient-gold flex items-center justify-center text-xs font-bold text-[var(--color-navy)] border border-white/10">
-                                        {user.image ? (
-                                            <img src={user.image} alt={user.name} className="w-full h-full object-cover" />
-                                        ) : (
-                                            user.name?.charAt(0)?.toUpperCase() || "?"
-                                        )}
-                                    </div>
-                                    <div>
-                                        <p className="text-sm font-semibold text-[var(--color-warm-white)]">{user.name}</p>
-                                        <p className="text-[10px] text-[var(--color-gold)] font-bold">CLIENT</p>
-                                    </div>
-                                </div>
-                                <hr className="border-white/10 mb-2" />
-                                {isCatalogVisible && <MobileLink href="/catalog" label="🛍️ Catalog" close={() => setMobileOpen(false)} />}
-                                <MobileLink href="/dashboard" label="🏠 My Dashboard" close={() => setMobileOpen(false)} />
-                                <MobileLink href="/dashboard/quotes" label="📄 My Quotes" close={() => setMobileOpen(false)} />
-                                <MobileLink href="/dashboard/bookings" label="📅 My Bookings" close={() => setMobileOpen(false)} />
-                                <MobileLink href="/dashboard/profile" label="👤 My Profile" close={() => setMobileOpen(false)} />
-                                <MobileLink href="/cart" label="🛒 My Cart" close={() => setMobileOpen(false)} />
-                                <hr className="border-white/10 my-2" />
-                                <button onClick={logout} className="text-left text-sm text-red-400 hover:text-red-300 px-2 py-2">🚪 Sign Out</button>
-                            </>
-                        )}
-                        {!user && authLoaded && (
-                            <>
-                                {isCatalogVisible && <MobileLink href="/catalog" label="Catalog" close={() => setMobileOpen(false)} />}
-                                <hr className="border-white/10 my-2" />
-                                <MobileLink href="/login" label="Sign In" close={() => setMobileOpen(false)} />
-                                <MobileLink href="/signup" label="Create Account" close={() => setMobileOpen(false)} />
-                            </>
-                        )}
-                    </div>
-                </div>
-            )}
+            {/* ── Mobile Menu (Enhanced Drawer) ── */}
+            <AnimatePresence>
+                {mobileOpen && (
+                    <>
+                        {/* Backdrop */}
+                        <motion.div 
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setMobileOpen(false)}
+                            className="fixed inset-0 bg-navy/80 backdrop-blur-md z-[110] md:hidden"
+                        />
+                        
+                        {/* Drawer Content */}
+                        <motion.div 
+                            initial={{ x: "100%" }}
+                            animate={{ x: 0 }}
+                            exit={{ x: "100%" }}
+                            transition={{ type: "spring", damping: 25, stiffness: 200 }}
+                            className="fixed top-0 right-0 bottom-0 w-[85%] max-w-sm bg-[#0d152a] border-l border-white/10 z-[120] md:hidden shadow-2xl flex flex-col pt-24 px-6 pb-12"
+                        >
+                            <div className="flex flex-col gap-1 overflow-y-auto pr-2">
+                                {isAnyAdmin && (
+                                    <>
+                                        <div className="text-[10px] font-bold text-gold uppercase tracking-[0.2em] mb-4 opacity-50 px-2 font-[family-name:var(--font-heading)]">Admin Hub</div>
+                                        <MobileLink href="/admin" label="🏠 Dashboard" close={() => setMobileOpen(false)} />
+                                        {hasProductsAccess && <MobileLink href="/admin/products" label={isVendor ? "📦 My Catalog" : "📦 Products"} close={() => setMobileOpen(false)} />}
+                                        {hasInventoryAccess && <MobileLink href="/admin/inventory" label="🏗️ Inventory" close={() => setMobileOpen(false)} />}
+                                        {isAnyAdmin && <MobileLink href="/admin/bookings" label="📅 Bookings" close={() => setMobileOpen(false)} />}
+                                        {isSalesRepAdmin && <MobileLink href="/admin/categories" label="🏷️ Categories" close={() => setMobileOpen(false)} />}
+                                        <div className="h-px bg-white/5 my-6 mx-2" />
+                                        <button onClick={logout} className="text-left text-sm text-red-400 hover:text-red-300 px-2 py-2 font-bold">🚪 Sign Out</button>
+                                    </>
+                                )}
+                                {isClient && (
+                                    <>
+                                        <div className="flex items-center gap-3.5 px-3 py-4 mb-6 glass rounded-2xl border border-white/10">
+                                            <div className="w-10 h-10 rounded-full overflow-hidden gradient-gold flex items-center justify-center text-sm font-bold text-[var(--color-navy)] border border-white/10">
+                                                {user.image ? (
+                                                    <img src={user.image} alt={user.name} className="w-full h-full object-cover" />
+                                                ) : (
+                                                    user.name?.charAt(0)?.toUpperCase() || "?"
+                                                )}
+                                            </div>
+                                            <div className="min-w-0">
+                                                <p className="text-sm font-bold text-[var(--color-warm-white)] truncate">{user.name}</p>
+                                                <p className="text-[10px] text-gold font-black tracking-widest uppercase">Client Profile</p>
+                                            </div>
+                                        </div>
+                                        
+                                        <MobileLink href="/catalog" label="🛍️ Equipment Catalog" close={() => setMobileOpen(false)} />
+                                        <MobileLink href="/dashboard" label="🏠 My Dashboard" close={() => setMobileOpen(false)} />
+                                        <MobileLink href="/dashboard/quotes" label="📄 My Quotes" close={() => setMobileOpen(false)} />
+                                        <MobileLink href="/dashboard/bookings" label="📅 My Bookings" close={() => setMobileOpen(false)} />
+                                        <MobileLink href="/dashboard/profile" label="👤 My Profile" close={() => setMobileOpen(false)} />
+                                        <MobileLink href="/cart" label="🛒 My Cart" close={() => setMobileOpen(false)} />
+                                        
+                                        <div className="h-px bg-white/5 my-6 mx-2" />
+                                        <button onClick={logout} className="text-left text-sm text-red-500 hover:text-red-400 px-2 py-2 font-bold">🚪 Logout</button>
+                                    </>
+                                )}
+                                {!user && authLoaded && (
+                                    <>
+                                        <div className="text-[10px] font-bold text-gold uppercase tracking-[0.2em] mb-4 opacity-50 px-2 pt-4 font-[family-name:var(--font-heading)]">Storefront</div>
+                                        {isCatalogVisible && <MobileLink href="/catalog" label="🛍️ Equipment Catalog" close={() => setMobileOpen(false)} />}
+                                        <MobileLink href="/how-it-works" label="📖 How it Works" close={() => setMobileOpen(false)} />
+                                        
+                                        <div className="mt-auto pt-10 grid grid-cols-2 gap-3">
+                                            <Link 
+                                                href="/login" 
+                                                onClick={() => setMobileOpen(false)}
+                                                className="w-full py-4 rounded-2xl bg-white/5 border border-white/10 text-center text-sm font-bold text-white hover:bg-white/10 transition-all"
+                                            >
+                                                Sign In
+                                            </Link>
+                                            <Link 
+                                                href="/signup" 
+                                                onClick={() => setMobileOpen(false)}
+                                                className="w-full py-4 rounded-2xl bg-gold text-navy text-center text-sm font-bold hover:translate-y-[-2px] transition-all shadow-lg shadow-gold/20"
+                                            >
+                                                Join Now
+                                            </Link>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                        </motion.div>
+                    </>
+                )}
+            </AnimatePresence>
         </nav>
     );
 }
