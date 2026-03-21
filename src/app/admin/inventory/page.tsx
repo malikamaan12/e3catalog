@@ -76,7 +76,8 @@ export default function InventoryAdminPage() {
         ]).then(([overridesData, productsData, matrixRes]) => {
             setOverrides(overridesData || []);
             setProducts(productsData || []);
-            setMatrixData(matrixRes || []);
+            setMatrixData(Array.isArray(matrixRes) ? matrixRes : []);
+            if (matrixRes && matrixRes.error) setError(matrixRes.error);
             setLoading(false);
         }).catch(err => {
             console.error(err);
@@ -158,7 +159,35 @@ export default function InventoryAdminPage() {
     };
 
     if (loading) {
-        return <div className="p-8 text-[var(--color-slate)]">Loading inventory data...</div>;
+        return (
+            <div className="animate-pulse">
+                <header className="mb-6">
+                    <div className="h-8 bg-[var(--color-navy-lighter)] border border-white/5 rounded-lg w-64 mb-4"></div>
+                    <div className="h-4 bg-[var(--color-navy-lighter)] border border-white/5 rounded w-96"></div>
+                </header>
+
+                <div className="flex border-b border-white/10 mb-8 gap-6">
+                    <div className="h-6 w-40 bg-[var(--color-navy-lighter)] rounded-t-lg"></div>
+                    <div className="h-6 w-32 bg-white/5 rounded-t-lg"></div>
+                </div>
+
+                <div className="glass rounded-xl border border-white/10 overflow-hidden shadow-2xl">
+                    <div className="p-4 border-b border-white/10 flex gap-3 items-center">
+                        <div className="h-10 bg-[var(--color-navy-lighter)] border border-white/5 rounded-lg flex-1 max-w-sm"></div>
+                        <div className="h-10 w-48 bg-[var(--color-navy-lighter)] border border-white/5 rounded-lg shrink-0"></div>
+                        <div className="h-4 w-24 bg-white/5 rounded shrink-0 ml-auto"></div>
+                    </div>
+                    <div className="p-0 flex flex-col">
+                        <div className="h-12 w-full bg-[var(--color-navy-lighter)] border-b border-white/5"></div>
+                        <div className="h-20 w-full bg-white/5 border-b border-white/5 mt-1"></div>
+                        <div className="h-20 w-full bg-white/5 border-b border-white/5 mt-1"></div>
+                        <div className="h-20 w-full bg-white/5 border-b border-white/5 mt-1"></div>
+                        <div className="h-20 w-full bg-white/5 border-b border-white/5 mt-1"></div>
+                        <div className="h-20 w-full bg-white/5 mt-1"></div>
+                    </div>
+                </div>
+            </div>
+        );
     }
 
     // Derived filtered data
