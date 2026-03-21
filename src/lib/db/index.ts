@@ -8,7 +8,7 @@ import * as schema from "./schema";
 function getDbConfig() {
     return {
         host: process.env.DB_HOST || "aws-1-ap-northeast-1.pooler.supabase.com",
-        port: parseInt(process.env.DB_PORT || "6543"),  // 6543 = Transaction Pooler (serverless-safe)
+        port: 6543,  // FORCE 6543 = Transaction Pooler (serverless-safe), ignore env to prevent Session Pooler leaks
         user: process.env.DB_USER || "postgres.kwswkoysskkxuezbfmyt",
         password: process.env.DB_PASSWORD || "Malik12amaan@#",
         database: process.env.DB_NAME || "postgres",
