@@ -21,6 +21,8 @@ import {
     LineChart
 } from "lucide-react";
 import NotificationBell from "@/components/NotificationBell";
+import Sidebar from "@/components/admin/Sidebar";
+import AdminSearch from "@/components/admin/AdminSearch";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
@@ -50,8 +52,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         { href: "/admin/super/vendors", label: "Vendors", icon: ShieldCheck, roles: ["super_admin"] },
     ];
 
+    const [isCollapsed, setIsCollapsed] = useState(false);
+    const [isSearchOpen, setIsSearchOpen] = useState(false);
+
     // Filter items based on user role
     const visibleNavItems = navItems.filter(item => user && item.roles.includes(user.role));
+
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault();
+                setIsSearchOpen(true);
+            }
+        };
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+    }, []);
 
     useEffect(() => {
         const fetchUnread = async () => {
@@ -118,82 +134,26 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }
 
     return (
-        <div className="min-h-screen pt-20">
-            <div className="flex">
-                {/* Sidebar */}
-                <aside className="w-64 fixed top-20 left-0 bottom-0 bg-[var(--color-surface)] border-r border-[var(--color-border-subtle)] p-6 hidden lg:block">
-                    <div className="mb-8 flex items-start justify-between">
-                        <div>
-                            <h2 className="font-[family-name:var(--font-heading)] text-xs tracking-widest text-[var(--color-gold)] font-semibold mb-1">ADMIN PANEL</h2>
-                            <p className="font-[family-name:var(--font-heading)] text-xs text-[var(--color-slate)] uppercase tracking-wider">Management Console</p>
-                        </div>
-                        <NotificationBell />
-                    </div>
+        <div className="min-h-screen pt-20 relative">
+            <Sidebar 
+                items={visibleNavItems}
+                superAdminItems={superAdminItems}
+                user={user}
+                isCollapsed={isCollapsed}
+                setIsCollapsed={setIsCollapsed}
+                unreadCount={unreadTotal}
+                onSearchClick={() => setIsSearchOpen(true)}
+            />
 
-                    <nav className="space-y-1">
-                        {visibleNavItems.map((item) => {
-                            const isActive = pathname === item.href;
-                            const showBadge = item.hasBadge && unreadTotal > 0;
+            <AdminSearch isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
 
-                            return (
-                                <Link
-                                    key={item.href}
-                                    href={item.href}
-                                    className={`flex items-center justify-between px-4 py-3 rounded-lg text-sm transition-all group ${isActive
-                                        ? "bg-[var(--color-navy-lighter)] text-[var(--color-gold)]"
-                                        : "text-[var(--color-slate)] hover:text-[var(--color-warm-white)] hover:bg-[var(--color-navy-lighter)] hover:text-[var(--color-gold)]"
-                                        }`}
-                                >
-                                    <div className="flex items-center gap-3">
-                                        <item.icon className={`w-4 h-4 transition-colors ${isActive ? "text-[var(--color-gold)]" : "text-[var(--color-slate)] group-hover:text-[var(--color-gold)]"}`} />
-                                        <span className="font-medium tracking-wide">{item.label}</span>
-                                    </div>
-                                    {showBadge && (
-                                        <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full animate-pulse">
-                                            {unreadTotal > 9 ? "9+" : unreadTotal}
-                                        </span>
-                                    )}
-                                </Link>
-                            );
-                        })}
-
-                        {user?.role === "super_admin" && (
-                            <>
-                                <div className="pt-6 pb-2 px-4 shadow-border-b">
-                                    <h3 className="text-[10px] font-bold text-[var(--color-slate)] uppercase tracking-[0.2em]">Super Admin</h3>
-                                </div>
-                                {superAdminItems.map((item) => {
-                                    const isActive = pathname === item.href;
-                                    return (
-                                        <Link
-                                            key={item.href}
-                                            href={item.href}
-                                            className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm transition-all group ${isActive
-                                                ? "bg-purple-500/10 text-purple-400 border border-purple-500/20"
-                                                : "text-[var(--color-slate)] hover:text-purple-400 hover:bg-purple-500/5"
-                                                }`}
-                                        >
-                                            <item.icon className={`w-4 h-4 transition-colors ${isActive ? "text-purple-400" : "text-[var(--color-slate)] group-hover:text-purple-400"}`} />
-                                            <span className="font-medium tracking-wide">{item.label}</span>
-                                        </Link>
-                                    );
-                                })}
-                            </>
-                        )}
-                    </nav>
-
-                    <div className="absolute bottom-6 left-6 right-6">
-                        <Link href="/" className="flex items-center gap-2 text-xs text-[var(--color-slate)] hover:text-[var(--color-gold)] transition-colors">
-                            ← Back to Site
-                        </Link>
-                    </div>
-                </aside>
-
-                {/* Main Content */}
-                <main className="flex-1 lg:ml-64 p-6 md:p-10">
-                    {children}
-                </main>
-            </div>
+            <main 
+                className={`transition-all duration-300 p-6 md:p-10 ${
+                    isCollapsed ? "lg:ml-[100px]" : "lg:ml-[280px]"
+                }`}
+            >
+                {children}
+            </main>
         </div>
     );
 }

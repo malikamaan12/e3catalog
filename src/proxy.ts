@@ -17,7 +17,7 @@ async function getSession(req: NextRequest) {
     }
 }
 
-export async function middleware(req: NextRequest) {
+export default async function middleware(req: NextRequest) {
     const { pathname } = req.nextUrl;
 
     const isAdminRoute = pathname.startsWith("/admin");

@@ -3,10 +3,11 @@ import { bookings, reviews } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import ReviewForm from "./ReviewForm";
 
-export default async function ReviewPage({ params }: { params: { bookingId: string } }) {
+export default async function ReviewPage({ params }: { params: Promise<{ bookingId: string }> }) {
+    const { bookingId } = await params;
     // Look up the booking securely
     const bookingData = await db.query.bookings.findFirst({
-        where: eq(bookings.id, params.bookingId),
+        where: eq(bookings.id, bookingId),
         with: {
             product: {
                 with: {
@@ -29,7 +30,7 @@ export default async function ReviewPage({ params }: { params: { bookingId: stri
 
     // Check if review already exists
     const existingReview = await db.query.reviews.findFirst({
-        where: eq(reviews.bookingId, params.bookingId)
+        where: eq(reviews.bookingId, bookingId)
     });
 
     if (existingReview) {
