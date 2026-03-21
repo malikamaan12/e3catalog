@@ -197,7 +197,16 @@ export async function PUT(req: NextRequest) {
     if (error) return error;
 
     const body = await req.json();
-    const { id, media, documents, ...updates } = body;
+    const { 
+        id, 
+        media, 
+        documents, 
+        certificates: certificatesInput, 
+        installationGuides: installationGuidesInput, 
+        totalUnits, 
+        condition: unitCondition,
+        ...updates 
+    } = body;
 
     if (!id) {
         return NextResponse.json({ error: "Product ID required" }, { status: 400 });
@@ -216,11 +225,11 @@ export async function PUT(req: NextRequest) {
     updates.updatedAt = new Date();
     if (updates.minOrderQty) updates.minOrderQty = Number(updates.minOrderQty);
 
-    const condition = targetVendorId
+    const whereClause = targetVendorId
         ? and(eq(products.id, id), eq(products.vendorId, targetVendorId))
         : eq(products.id, id);
 
-    await db.update(products).set(updates).where(condition);
+    await db.update(products).set(updates).where(whereClause);
 
     // Reconstruct media relations
     try {
@@ -242,8 +251,6 @@ export async function PUT(req: NextRequest) {
         }
     } catch (mediaErr) {
         console.error("FAILED TO UPDATE PRODUCT MEDIA:", mediaErr);
-        // We continue because the main product update already happened, 
-        // but we should probably surface this or at least log it well.
     }
 
     // Reconstruct document relations
@@ -263,10 +270,9 @@ export async function PUT(req: NextRequest) {
     }
 
     // Reconstruct safety certificates
-    const certs = body.certificates;
-    if (certs && Array.isArray(certs)) {
+    if (certificatesInput && Array.isArray(certificatesInput)) {
         await db.delete(safetyCertificates).where(eq(safetyCertificates.productId, id));
-        for (const cert of certs) {
+        for (const cert of certificatesInput) {
             if (!cert.certName || !cert.issueDate || !cert.expiryDate) continue;
             await db.insert(safetyCertificates).values({
                 id: uuid(),
@@ -281,10 +287,9 @@ export async function PUT(req: NextRequest) {
     }
 
     // Reconstruct installation guides
-    const guides = body.installationGuides;
-    if (guides && Array.isArray(guides)) {
+    if (installationGuidesInput && Array.isArray(installationGuidesInput)) {
         await db.delete(installationGuides).where(eq(installationGuides.productId, id));
-        for (const guide of guides) {
+        for (const guide of installationGuidesInput) {
             if (!guide.content) continue;
             await db.insert(installationGuides).values({
                 id: uuid(),
