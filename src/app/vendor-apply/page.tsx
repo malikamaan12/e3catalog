@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowRight, CheckCircle2, ChevronRight, UploadCloud, XCircle, Building2, User, FileText, Banknote, ShieldCheck } from "lucide-react";
 import { Footer } from "@/components/Footer";
 import { useSiteSettings } from "@/components/SiteSettingsProvider";
+import gsap from "gsap";
 
 export default function VendorApplyPage() {
     const router = useRouter();
@@ -13,6 +14,25 @@ export default function VendorApplyPage() {
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState("");
     const [success, setSuccess] = useState(false);
+
+    const mainRef = useRef<HTMLDivElement>(null);
+    const contentRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (!mainRef.current) return;
+        gsap.fromTo(mainRef.current, 
+            { opacity: 0, y: 30 },
+            { opacity: 1, y: 0, duration: 1, ease: "power3.out" }
+        );
+    }, []);
+
+    useEffect(() => {
+        if (!contentRef.current) return;
+        gsap.fromTo(contentRef.current,
+            { opacity: 0, x: 20 },
+            { opacity: 1, x: 0, duration: 0.6, ease: "power2.out" }
+        );
+    }, [step]);
 
     // Form State
     const [form, setForm] = useState({
@@ -149,7 +169,7 @@ export default function VendorApplyPage() {
     }
 
     return (
-        <div className="min-h-screen bg-[var(--color-navy)] pb-20">
+        <div ref={mainRef} className="min-h-screen bg-[var(--color-navy)] pb-20">
             {/* Header Area */}
             <div className="pt-32 pb-16 px-6 border-b border-white/5 bg-[var(--color-navy-dark)] relative overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-b from-[var(--color-gold)]/5 to-transparent pointer-events-none" />
@@ -191,7 +211,7 @@ export default function VendorApplyPage() {
                     ))}
                 </div>
 
-                <div className="glass rounded-3xl p-8 md:p-12 border border-white/5 shadow-2xl">
+                <div ref={contentRef} className="glass rounded-3xl p-8 md:p-12 border border-white/5 shadow-2xl">
                     {error && (
                         <div className="mb-8 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 flex items-center gap-3">
                             <XCircle className="w-5 h-5 shrink-0" />
@@ -201,7 +221,7 @@ export default function VendorApplyPage() {
 
                     {/* Step 1: Company Details */}
                     {step === 1 && (
-                        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="space-y-6 duration-500">
                             <div>
                                 <h3 className="font-[family-name:var(--font-heading)] text-2xl font-bold text-[var(--color-warm-white)] mb-1">Company Information</h3>
                                 <p className="text-[var(--color-slate)] text-sm mb-8">Please provide your registered business credentials.</p>

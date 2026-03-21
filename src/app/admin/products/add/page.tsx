@@ -167,12 +167,15 @@ export default function AddProductPage() {
     }, [form.categoryId, categories]);
 
     // ─── Media Upload ───
+    const [performanceWarnings, setPerformanceWarnings] = useState<{file: string, msg: string, type: 'warning' | 'info'}[]>([]);
+
     const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = e.target.files;
         if (!files || files.length === 0) return;
 
         setUploading(true);
         setUploadProgress(`Uploading ${files.length} file${files.length > 1 ? "s" : ""}...`);
+        setPerformanceWarnings([]);
 
         try {
             const uploadedItems: UploadedFile[] = [];
@@ -180,6 +183,21 @@ export default function AddProductPage() {
             for (let i = 0; i < files.length; i++) {
                 const file = files[i];
                 const fileType = file.type || (file.name.endsWith(".glb") ? "model/gltf-binary" : file.name.endsWith(".gltf") ? "model/gltf+json" : "application/octet-stream");
+
+                // Performance Intelligence
+                if (file.name.endsWith(".glb") && file.size > 5 * 1024 * 1024) {
+                    setPerformanceWarnings(prev => [...prev, { 
+                        file: file.name, 
+                        msg: "Large 3D model detected. Use Draco compression to reduce load times by up to 80%.",
+                        type: 'warning'
+                    }]);
+                } else if (file.type.startsWith("video/") && file.size > 20 * 1024 * 1024) {
+                    setPerformanceWarnings(prev => [...prev, { 
+                        file: file.name, 
+                        msg: "Large video file. Ensure 'faststart' is enabled for instant streaming.",
+                        type: 'info'
+                    }]);
+                }
 
                 // 1. Get Presigned URL
                 const res = await fetch("/api/upload", {
@@ -557,6 +575,25 @@ export default function AddProductPage() {
                             </>
                         )}
                     </div>
+
+                    {/* Performance Intelligence Warnings */}
+                    {performanceWarnings.length > 0 && (
+                        <div className="mt-4 space-y-2">
+                            {performanceWarnings.map((warning, idx) => (
+                                <div key={idx} className={`p-3 rounded-lg flex items-start gap-3 border ${
+                                    warning.type === 'warning' ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' : 'bg-blue-500/10 border-blue-500/20 text-blue-400'
+                                }`}>
+                                    <div className="shrink-0 mt-0.5 text-xs">
+                                        {warning.type === 'warning' ? '⚠️' : 'ℹ️'}
+                                    </div>
+                                    <div className="text-[11px] leading-relaxed">
+                                        <span className="font-bold block mb-1 uppercase tracking-wider text-[10px]">{warning.file}</span>
+                                        {warning.msg}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
 
                     {/* Uploaded Files Grid */}
                     {mediaFiles.length > 0 && (

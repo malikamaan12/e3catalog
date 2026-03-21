@@ -17,6 +17,17 @@ import DashboardKPIs from "@/components/admin/DashboardKPIs";
 import PipelineKanban from "@/components/admin/PipelineKanban";
 import ComplianceFeed from "@/components/admin/ComplianceFeed";
 
+const calculateTrend = (current: number, previous: number): "up" | "down" | "neutral" => {
+    if (!previous || previous === 0) return current > 0 ? "up" : "neutral";
+    return current > previous ? "up" : current < previous ? "down" : "neutral";
+};
+
+const calculatePct = (current: number, previous: number) => {
+    if (!previous || previous === 0) return current > 0 ? "+100%" : "0%";
+    const pct = ((current - previous) / previous) * 100;
+    return `${pct > 0 ? '+' : ''}${pct.toFixed(1)}%`;
+};
+
 export default async function AdminDashboard() {
     try {
         const user = await getCurrentUser();
@@ -26,6 +37,8 @@ export default async function AdminDashboard() {
         const now = new Date();
         const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
         const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+        const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
 
         // 1. Fetch KPI Data
         const [{ productCount }] = await db
@@ -41,6 +54,17 @@ export default async function AdminDashboard() {
                 ? and(inArray(bookings.status, activeStatuses), eq(bookings.vendorId, targetVendorId)) 
                 : inArray(bookings.status, activeStatuses));
 
+        // Comparison for previous month
+        const [{ prevBookingCount }] = await db
+            .select({ prevBookingCount: sql<number>`count(*)` })
+            .from(bookings)
+            .where(and(
+                inArray(bookings.status, activeStatuses),
+                gte(bookings.createdAt, startOfLastMonth),
+                lte(bookings.createdAt, endOfLastMonth),
+                targetVendorId ? eq(bookings.vendorId, targetVendorId) : sql`1=1`
+            ));
+
         const [{ monthlyRevenue }] = await db
             .select({ monthlyRevenue: sql<number>`sum(${bookings.totalPrice})` })
             .from(bookings)
@@ -48,6 +72,16 @@ export default async function AdminDashboard() {
                 inArray(bookings.status, ["approved", "booked"]),
                 gte(bookings.createdAt, startOfMonth),
                 lte(bookings.createdAt, endOfMonth),
+                targetVendorId ? eq(bookings.vendorId, targetVendorId) : sql`1=1`
+            ));
+
+        const [{ prevMonthlyRevenue }] = await db
+            .select({ prevMonthlyRevenue: sql<number>`sum(${bookings.totalPrice})` })
+            .from(bookings)
+            .where(and(
+                inArray(bookings.status, ["approved", "booked"]),
+                gte(bookings.createdAt, startOfLastMonth),
+                lte(bookings.createdAt, endOfLastMonth),
                 targetVendorId ? eq(bookings.vendorId, targetVendorId) : sql`1=1`
             ));
 
@@ -98,10 +132,27 @@ export default async function AdminDashboard() {
         });
 
         // Format KPI Stats
+        const revChange = calculatePct(Number(monthlyRevenue || 0), Number(prevMonthlyRevenue || 0));
+        const bookingChange = calculatePct(activeBookingCount, prevBookingCount);
+
         const kpiStats = [
             { label: "Fleet Items", value: productCount.toString(), icon: "PackageOpen", change: "Total Catalog Items", color: "gold" },
-            { label: "Active Pipeline", value: activeBookingCount.toString(), icon: "CalendarRange", change: "Quotes & Bookings", color: "blue", trend: "up" as const },
-            { label: "Monthly Revenue", value: `${(monthlyRevenue || 0).toLocaleString()} QAR`, icon: "TrendingUp", change: "Approved this month", color: "emerald", trend: "up" as const },
+            { 
+                label: "Active Pipeline", 
+                value: activeBookingCount.toString(), 
+                icon: "CalendarRange", 
+                change: `${bookingChange} vs last month`, 
+                color: "blue", 
+                trend: calculateTrend(activeBookingCount, prevBookingCount) 
+            },
+            { 
+                label: "Monthly Revenue", 
+                value: `${(monthlyRevenue || 0).toLocaleString()} QAR`, 
+                icon: "TrendingUp", 
+                change: `${revChange} vs last month`, 
+                color: "emerald", 
+                trend: calculateTrend(Number(monthlyRevenue || 0), Number(prevMonthlyRevenue || 0)) 
+            },
             { label: "Pending Tasks", value: pendingActionCount.toString(), icon: "AlertCircle", change: "Awaiting your action", color: "red", isAlert: pendingActionCount > 0 },
             { label: "Expiring Certs", value: expiringCerts.length.toString(), icon: "ShieldAlert", change: "Next 30 days", color: "amber", isAlert: expiringCerts.length > 0 },
             { label: "Offline Units", value: offlineCount.toString(), icon: "Warehouse", change: "Maintenance/Repair", color: "slate", isAlert: offlineCount > 0 },
