@@ -204,12 +204,12 @@ export function UserManagement() {
                                                 value={user.role}
                                                 onChange={(e) => handleUpdateRole(user.id, e.target.value)}
                                             >
-                                                <option value="client">Client</option>
-                                                <option value="vendor">Vendor</option>
-                                                <option value="sales_rep">Sales Rep</option>
-                                                <option value="warehouse_manager">Warehouse Mgr</option>
-                                                <option value="admin">Admin</option>
-                                                <option value="super_admin">Super Admin</option>
+                                                <option value="client" className="bg-[#0a0f1e] text-white">Client</option>
+                                                <option value="vendor" className="bg-[#0a0f1e] text-white">Vendor</option>
+                                                <option value="sales_rep" className="bg-[#0a0f1e] text-white">Sales Rep</option>
+                                                <option value="warehouse_manager" className="bg-[#0a0f1e] text-white">Warehouse Mgr</option>
+                                                <option value="admin" className="bg-[#0a0f1e] text-white">Admin</option>
+                                                <option value="super_admin" className="bg-[#0a0f1e] text-white">Super Admin</option>
                                             </select>
                                         </td>
                                         <td className="px-6 py-4">
@@ -221,9 +221,9 @@ export function UserManagement() {
                                                         user.status === 'frozen' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
                                                             'bg-green-500/10 text-green-400 border-green-500/20'}`}
                                             >
-                                                <option className="text-black" value="active">Active</option>
-                                                <option className="text-black" value="frozen">Frozen</option>
-                                                <option className="text-black" value="blocked">Blocked</option>
+                                                <option value="active" className="bg-[#0a0f1e] text-white">Active</option>
+                                                <option value="frozen" className="bg-[#0a0f1e] text-white">Frozen</option>
+                                                <option value="blocked" className="bg-[#0a0f1e] text-white">Blocked</option>
                                             </select>
                                         </td>
                                         <td className="px-6 py-4 text-sm text-[var(--color-slate)]">

@@ -364,9 +364,9 @@ export default function CartPage() {
                                                         onChange={(e) => setSelectedProjectId(e.target.value)}
                                                         className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-sm font-bold text-white focus:border-gold focus:outline-none transition-all appearance-none cursor-pointer"
                                                     >
-                                                        <option value="new" className="bg-navy">New Strategic Project</option>
+                                                        <option value="new" className="bg-[#0a0f1e] text-white">New Strategic Project</option>
                                                         {existingQuotes.map(q => (
-                                                            <option key={q.id} value={q.id} className="bg-navy">{q.projectName}</option>
+                                                            <option key={q.id} value={q.id} className="bg-[#0a0f1e] text-white">{q.projectName}</option>
                                                         ))}
                                                     </select>
                                                 )}

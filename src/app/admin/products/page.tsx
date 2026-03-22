@@ -145,9 +145,9 @@ export default function AdminProductsPage() {
                             onChange={(e) => setCategoryFilter(e.target.value)}
                             className="bg-transparent text-sm text-[var(--color-warm-white)] focus:outline-none appearance-none cursor-pointer"
                         >
-                            <option value="ALL">All Categories</option>
+                            <option value="ALL" className="bg-[#0a0f1e] text-white">All Categories</option>
                             {uniqueCategories.map(c => (
-                                <option key={c} value={c}>{c}</option>
+                                <option key={c} value={c} className="bg-[#0a0f1e] text-white">{c}</option>
                             ))}
                         </select>
                     </div>
@@ -158,10 +158,10 @@ export default function AdminProductsPage() {
                             onChange={(e) => setVendorFilter(e.target.value)}
                             className="bg-transparent text-sm text-[var(--color-warm-white)] focus:outline-none appearance-none cursor-pointer"
                         >
-                            <option value="ALL">All Vendors</option>
-                            <option value="PLATFORM">Platform Only</option>
+                            <option value="ALL" className="bg-[#0a0f1e] text-white">All Vendors</option>
+                            <option value="PLATFORM" className="bg-[#0a0f1e] text-white">Platform Only</option>
                             {uniqueVendors.map(v => (
-                                <option key={v} value={v}>{v}</option>
+                                <option key={v} value={v} className="bg-[#0a0f1e] text-white">{v}</option>
                             ))}
                         </select>
                     </div>
@@ -172,10 +172,10 @@ export default function AdminProductsPage() {
                             onChange={(e) => setConditionFilter(e.target.value)}
                             className="bg-transparent text-sm text-[var(--color-warm-white)] focus:outline-none appearance-none cursor-pointer capitalize"
                         >
-                            <option value="ALL">All Conditions</option>
-                            <option value="excellent">Excellent</option>
-                            <option value="good">Good</option>
-                            <option value="maintenance_required">Maintenance Required</option>
+                            <option value="ALL" className="bg-[#0a0f1e] text-white">All Conditions</option>
+                            <option value="excellent" className="bg-[#0a0f1e] text-white">Excellent</option>
+                            <option value="good" className="bg-[#0a0f1e] text-white">Good</option>
+                            <option value="maintenance_required" className="bg-[#0a0f1e] text-white">Maintenance Required</option>
                         </select>
                     </div>
                 </div>

@@ -335,3 +335,14 @@ h6 {
   border-radius: 1rem;
   padding: 1.5rem;
 }
+
+/* ─── Global Dropdown Fix (Dark Mode) ─── */
+select option {
+  background-color: #0d1425; /* Matches var(--color-surface) */
+  color: #f5f0e8; /* Matches var(--color-warm-white) */
+}
+
+/* Ensure native selects use the right color scheme */
+select {
+  color-scheme: dark;
+}

@@ -155,8 +155,8 @@ export function SiteSettingsManager() {
                                                             setSettings(prev => prev.map(s => s.id === setting.id ? { ...s, value: newVal } : s));
                                                         }}
                                                     >
-                                                        <option value="true">Enabled</option>
-                                                        <option value="false">Disabled</option>
+                                                        <option value="true" className="bg-[#0a0f1e] text-white">Enabled</option>
+                                                        <option value="false" className="bg-[#0a0f1e] text-white">Disabled</option>
                                                     </select>
                                                 ) : (
                                                     <input

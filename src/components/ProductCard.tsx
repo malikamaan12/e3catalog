@@ -61,7 +61,7 @@ export const ProductCard = memo(function ProductCard({
                         alt={name}
                         fill
                         className="object-cover transition-transform duration-1000 group-hover:scale-110"
-                        sizes="(max-width: 768px) 100vw, 33vw"
+                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, (max-width: 1536px) 25vw, (max-width: 1920px) 20vw, 16vw"
                     />
                 ) : (
                     <div className="absolute inset-0 flex items-center justify-center opacity-20">
