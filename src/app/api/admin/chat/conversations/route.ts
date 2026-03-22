@@ -18,7 +18,16 @@ export async function GET(req: NextRequest) {
 
         if (staffIds.length === 0) return NextResponse.json([]);
 
-        // 2. Fetch all messages involving ANY staff member
+        // 2. Determine Vendor Access
+        let vendorProjectIds: string[] = [];
+        if (currentAdmin.role === "vendor" && currentAdmin.vendorId) {
+            // Vendors can only see chats tied to their bookings
+            const { bookings } = await import("@/lib/db/schema");
+            const vBookings = await db.select({ id: bookings.id }).from(bookings).where(eq(bookings.vendorId, currentAdmin.vendorId));
+            vendorProjectIds = vBookings.map(b => b.id);
+        }
+
+        // 3. Fetch all messages involving ANY staff member
         const allMessages = await db
             .select()
             .from(chatMessages)
@@ -30,20 +39,28 @@ export async function GET(req: NextRequest) {
             )
             .orderBy(desc(chatMessages.createdAt));
 
-        // 3. Group by the "Other" (Client) party
+        // 4. Group by Client and Project
         const conversationsMap = new Map();
 
         for (const msg of allMessages) {
+            // Apply Vendor Security Filter
+            if (currentAdmin.role === "vendor") {
+                // If it's a quote chat, must be one of their quotes
+                if (msg.projectId && !vendorProjectIds.includes(msg.projectId)) continue;
+                // If no quote ID, they shouldn't see it unless they are specifically the sender/receiver
+                if (!msg.projectId && msg.senderId !== currentAdmin.id && msg.receiverId !== currentAdmin.id) continue;
+            }
+
             const isSenderStaff = staffIds.includes(msg.senderId);
             const isReceiverStaff = staffIds.includes(msg.receiverId);
             
-            // The person we are talking to is the one who isn't staff
-            // If both are staff (internal chat), pick the other staff member
             const otherUserId = isSenderStaff 
                 ? (isReceiverStaff ? (msg.receiverId === currentAdmin.id ? msg.senderId : msg.receiverId) : msg.receiverId)
                 : msg.senderId;
 
-            if (!conversationsMap.has(otherUserId)) {
+            const conversationKey = msg.projectId ? `project_${msg.projectId}` : `user_${otherUserId}`;
+
+            if (!conversationsMap.has(conversationKey)) {
                 const [otherUser] = await db
                     .select()
                     .from(users)
@@ -51,9 +68,11 @@ export async function GET(req: NextRequest) {
                     .limit(1);
 
                 if (otherUser) {
-                    conversationsMap.set(otherUserId, {
+                    conversationsMap.set(conversationKey, {
+                        id: conversationKey, // unique identifier for the conversation
                         userId: otherUserId,
-                        name: otherUser.name,
+                        projectId: msg.projectId,
+                        name: msg.projectId ? `${otherUser.name} (Quote)` : otherUser.name,
                         email: otherUser.email,
                         companyName: otherUser.companyName,
                         image: otherUser.image,
@@ -65,10 +84,8 @@ export async function GET(req: NextRequest) {
                     });
                 }
             } else {
-                // Update unread count if message was sent TO the current admin
-                // OR if we want to show a global "unread" state for the conversation
                 if (!msg.isRead && msg.receiverId === currentAdmin.id) {
-                    const conv = conversationsMap.get(otherUserId);
+                    const conv = conversationsMap.get(conversationKey);
                     conv.unreadCount += 1;
                 }
             }
@@ -82,3 +99,4 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }
+

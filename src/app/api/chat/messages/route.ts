@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { chatMessages, users, bookings, vendors } from "@/lib/db/schema";
-import { eq, or, and, desc, inArray } from "drizzle-orm";
+import { eq, or, and, desc, inArray, isNull } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { v4 as uuid } from "uuid";
@@ -20,40 +20,86 @@ export async function GET(req: NextRequest) {
 
         const conditions = [];
 
-        if (["admin", "super_admin", "vendor", "sales_rep"].includes(user.role)) {
-            if (otherUserId) {
-                // Staff roles that constitute the "Support Team"
-                const STAFF_ROLES = ["admin", "super_admin", "vendor", "sales_rep"];
-                const staffList = await db.select({ id: users.id }).from(users).where(or(...STAFF_ROLES.map(role => eq(users.role, role))));
-                const staffIds = staffList.map(s => s.id);
+        if (projectId) {
+            // Project/Quote Chat Logic
+            if (user.role === "vendor") {
+                // Determine if Vendor owns this project
+                const { bookings } = await import("@/lib/db/schema");
+                if (!user.vendorId) {
+                    return NextResponse.json({ error: "Unauthorized access to project chat (No Vendor ID)" }, { status: 403 });
+                }
+                const vendorBookings = await db.select().from(bookings).where(and(eq(bookings.id, projectId), eq(bookings.vendorId, user.vendorId))).limit(1);
+                if (vendorBookings.length === 0) {
+                     return NextResponse.json({ error: "Unauthorized access to project chat" }, { status: 403 });
+                }
+            } else if (user.role === "client") {
+                // Client must own the project
+                const { bookings } = await import("@/lib/db/schema");
+                const clientBookings = await db.select().from(bookings).where(and(eq(bookings.id, projectId), eq(bookings.userId, user.id))).limit(1);
+                if (clientBookings.length === 0) {
+                     return NextResponse.json({ error: "Unauthorized access to project chat" }, { status: 403 });
+                }
+            } // Admins see all
 
-                // Staff can see any message between the otherUserId and ANY staff member
+            conditions.push(eq(chatMessages.projectId, projectId));
+            
+            // If projectId is present, we don't necessarily need otherUserId if we just want the whole thread.
+            // But if otherUserId is provided, we can filter, otherwise we grab the whole project thread.
+            if (otherUserId) {
                 conditions.push(
                     or(
-                        and(eq(chatMessages.senderId, otherUserId), inArray(chatMessages.receiverId, staffIds)),
-                        and(inArray(chatMessages.senderId, staffIds), eq(chatMessages.receiverId, otherUserId))
+                        eq(chatMessages.senderId, otherUserId),
+                        eq(chatMessages.receiverId, otherUserId)
                     )
                 );
-            } else {
-                return NextResponse.json({ error: "otherUserId is required for staff" }, { status: 400 });
             }
         } else {
-            // Client: messages involving themselves
-            conditions.push(
-                or(
-                    eq(chatMessages.senderId, user.id),
-                    eq(chatMessages.receiverId, user.id)
-                )
-            );
-        }
+            // Generic Direct User-to-Staff Chat Logic
+            if (["admin", "super_admin", "vendor", "sales_rep"].includes(user.role)) {
+                if (otherUserId) {
+                    const STAFF_ROLES = ["admin", "super_admin", "vendor", "sales_rep"];
+                    const staffList = await db.select({ id: users.id }).from(users).where(or(...STAFF_ROLES.map(role => eq(users.role, role))));
+                    const staffIds = staffList.map(s => s.id);
 
-        if (projectId) {
-            conditions.push(eq(chatMessages.projectId, projectId));
+                    conditions.push(
+                        or(
+                            and(eq(chatMessages.senderId, otherUserId), inArray(chatMessages.receiverId, staffIds)),
+                            and(inArray(chatMessages.senderId, staffIds), eq(chatMessages.receiverId, otherUserId))
+                        )
+                    );
+                } else {
+                    return NextResponse.json({ error: "otherUserId or projectId is required for staff" }, { status: 400 });
+                }
+            } else {
+                conditions.push(
+                    or(
+                        eq(chatMessages.senderId, user.id),
+                        eq(chatMessages.receiverId, user.id)
+                    )
+                );
+            }
+            
+            // Explicitly exclude project messages from the generic thread
+            conditions.push(isNull(chatMessages.projectId));
         }
 
         const messages = await db
-            .select()
+            .select({
+                id: chatMessages.id,
+                senderId: chatMessages.senderId,
+                receiverId: chatMessages.receiverId,
+                projectId: chatMessages.projectId,
+                content: chatMessages.content,
+                attachmentUrl: chatMessages.attachmentUrl,
+                attachmentType: chatMessages.attachmentType,
+                attachmentName: chatMessages.attachmentName,
+                isRead: chatMessages.isRead,
+                createdAt: chatMessages.createdAt,
+                senderRole: users.role,
+                senderName: users.name
+            })
             .from(chatMessages)
+            .leftJoin(users, eq(chatMessages.senderId, users.id))
             .where(and(...conditions))
             .orderBy(desc(chatMessages.createdAt))
             .limit(100);

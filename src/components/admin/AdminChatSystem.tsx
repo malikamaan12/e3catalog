@@ -10,7 +10,9 @@ import {
 import Link from "next/link";
 
 interface Conversation {
+    id: string;
     userId: string;
+    projectId?: string;
     name: string;
     email: string;
     companyName: string | null;
@@ -33,6 +35,8 @@ interface Message {
     attachmentName: string | null;
     isRead: boolean;
     createdAt: string;
+    senderRole?: string;
+    senderName?: string;
 }
 
 const STICKERS = [
@@ -193,6 +197,7 @@ export default function AdminChatSystem({
                     .then(user => {
                         if (user && !user.error) {
                             setSelectedConv({
+                                id: `user_${user.id}`,
                                 userId: user.id,
                                 name: user.name,
                                 email: user.email,
@@ -224,6 +229,7 @@ export default function AdminChatSystem({
             setIsNewChatPlaceholder(false);
         } else {
             setSelectedConv({
+                id: `user_${user.id}`,
                 userId: user.id,
                 name: user.name,
                 email: user.email,
@@ -269,15 +275,20 @@ export default function AdminChatSystem({
     const fetchMessages = async () => {
         if (!selectedConv) return;
         try {
-            const res = await fetch(`/api/chat/messages?otherUserId=${selectedConv.userId}`);
+            const url = selectedConv.projectId 
+                ? `/api/chat/messages?projectId=${selectedConv.projectId}`
+                : `/api/chat/messages?otherUserId=${selectedConv.userId}`;
+            const res = await fetch(url);
             const data = await res.json();
             if (Array.isArray(data)) {
                 setMessages(data);
 
-                // Mark as read if there are unread messages from client
-                const hasUnread = data.some(m => !m.isRead && m.senderId === selectedConv.userId);
-                if (hasUnread) {
-                    markAsRead(selectedConv.userId);
+                // Mark as read if there are unread messages from others
+                const unreadSenders = Array.from(new Set(data.filter(m => !m.isRead && m.senderId !== adminUser.id).map(m => m.senderId)));
+                for (const sid of unreadSenders) {
+                    if (typeof sid === "string") {
+                        markAsRead(sid);
+                    }
                 }
             }
         } catch (error) {
@@ -318,7 +329,7 @@ export default function AdminChatSystem({
                 body: JSON.stringify({
                     content: content,
                     receiverId: selectedConv.userId,
-                    projectId: [...messages].reverse().find(m => !!m.projectId)?.projectId || null,
+                    projectId: selectedConv.projectId || [...messages].reverse().find(m => !!m.projectId)?.projectId || null,
                 }),
             });
 
@@ -365,7 +376,7 @@ export default function AdminChatSystem({
                 body: JSON.stringify({
                     content: `Sent an attachment: ${fileData.name}`,
                     receiverId: selectedConv.userId,
-                    projectId: [...messages].reverse().find(m => !!m.projectId)?.projectId || null,
+                    projectId: selectedConv.projectId || [...messages].reverse().find(m => !!m.projectId)?.projectId || null,
                     attachmentUrl: fileData.url,
                     attachmentType: fileData.type,
                     attachmentName: fileData.name
@@ -535,17 +546,32 @@ export default function AdminChatSystem({
                         <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
                             {messages.map((msg) => {
                                 const isMe = msg.senderId === adminUser.id;
+                                // Color Selection based on Role
+                                let bubbleColor = "glass border border-white/10 text-[var(--color-warm-white)] font-normal"; // Default client
+                                let roleBadge = "";
+                                if (isMe || msg.senderRole === "admin" || msg.senderRole === "super_admin") {
+                                    bubbleColor = "bg-[var(--color-gold)] text-black font-medium";
+                                    if (!isMe) roleBadge = "Admin Support";
+                                } else if (msg.senderRole === "vendor") {
+                                    bubbleColor = "bg-emerald-600/90 text-[var(--color-warm-white)] font-medium border border-emerald-500/50";
+                                    roleBadge = "Vendor Partner";
+                                }
+
                                 return (
                                     <div key={msg.id} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
                                         <div className={`max-w-[70%] group relative ${isMe ? "text-right" : "text-left"}`}>
                                             {msg.projectId && (
                                                 <div className={`text-[9px] mb-1 font-bold uppercase tracking-widest text-[var(--color-gold)] opacity-60`}>
-                                                    Ref: Quote #{msg.projectId.slice(0, 8)}
+                                                    Ref: Quote #{msg.projectId.slice(0, 8)} 
+                                                    {roleBadge && <span className="ml-2 text-[var(--color-slate)] opacity-80">{roleBadge} ({msg.senderName})</span>}
                                                 </div>
                                             )}
-                                            <div className={`rounded-2xl px-4 py-2 text-sm inline-block ${isMe
-                                                ? "bg-[var(--color-gold)] text-black rounded-tr-none font-medium"
-                                                : "glass border border-white/10 text-[var(--color-warm-white)] rounded-tl-none font-normal"}`}
+                                            {!msg.projectId && roleBadge && (
+                                                 <div className={`text-[9px] mb-1 font-bold uppercase tracking-widest text-[var(--color-slate)] opacity-60`}>
+                                                    {roleBadge} ({msg.senderName})
+                                                </div>
+                                            )}
+                                            <div className={`rounded-2xl px-4 py-2 text-sm inline-block ${bubbleColor} ${isMe ? "rounded-tr-none" : "rounded-tl-none"}`}
                                             >
                                                 {msg.attachmentUrl && (
                                                     <div className="mb-2 overflow-hidden rounded-lg bg-black/20 border border-white/5">

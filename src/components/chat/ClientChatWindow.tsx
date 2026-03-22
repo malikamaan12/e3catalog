@@ -14,6 +14,8 @@ interface Message {
     attachmentName: string | null;
     isRead: boolean;
     createdAt: string;
+    senderRole?: string;
+    senderName?: string;
 }
 
 const STICKERS = [
@@ -248,41 +250,60 @@ export default function ClientChatWindow({ currentUser, projects }: ClientChatWi
                         ) : (
                             messages.map((msg) => {
                                 const isMe = msg.senderId === currentUser.id;
+                                
+                                // Color Selection based on Role for Client View
+                                let bubbleColor = "glass border border-white/10 text-[var(--color-warm-white)] font-normal"; // Default
+                                let roleBadge = "";
+                                if (isMe) {
+                                    bubbleColor = "bg-[#2a2d3e] text-white font-medium border border-[#3f4354]";
+                                } else if (msg.senderRole === "admin" || msg.senderRole === "super_admin") {
+                                    bubbleColor = "bg-[var(--color-gold)] text-black font-medium shadow-[0_0_15px_rgba(255,215,0,0.15)]";
+                                    roleBadge = "Admin Support";
+                                } else if (msg.senderRole === "vendor") {
+                                    bubbleColor = "bg-emerald-600/90 text-[var(--color-warm-white)] font-medium border border-emerald-500/50";
+                                    roleBadge = "Vendor Partner";
+                                }
+
                                 return (
                                     <div key={msg.id} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
-                                        <div className={`max-w-[80%] rounded-2xl px-4 py-2 text-sm ${isMe
-                                            ? "bg-[var(--color-gold)] text-black rounded-tr-none font-medium"
-                                            : "glass border border-white/10 text-[var(--color-warm-white)] rounded-tl-none font-normal"}`}
-                                        >
-                                            {msg.attachmentUrl && (
-                                                <div className="mb-2 overflow-hidden rounded-lg bg-black/20 border border-white/5">
-                                                    {msg.attachmentType === "image" ? (
-                                                        <img src={msg.attachmentUrl} alt={msg.attachmentName || "image"} className="max-w-full h-auto object-cover" />
-                                                    ) : msg.attachmentType === "video" ? (
-                                                        <video src={msg.attachmentUrl} controls className="max-w-full h-auto" />
-                                                    ) : (
-                                                        <a href={msg.attachmentUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 p-3 text-xs hover:bg-white/5 transition-colors">
-                                                            <FileIcon className="w-5 h-5 text-[var(--color-gold)]" />
-                                                            <div className="flex-1 truncate">
-                                                                <p className="font-bold truncate">{msg.attachmentName}</p>
-                                                                <p className="opacity-60 text-[10px]">Document • Click to view</p>
-                                                            </div>
-                                                        </a>
-                                                    )}
+                                        <div className={`max-w-[80%] relative flex flex-col ${isMe ? "items-end text-right" : "items-start text-left"}`}>
+                                            {!isMe && roleBadge && (
+                                                <div className="text-[9px] mb-1 font-bold uppercase tracking-widest text-[var(--color-slate)] opacity-80 pl-1">
+                                                    {roleBadge} ({msg.senderName})
                                                 </div>
                                             )}
-                                            <p className={msg.content.includes("✅") || msg.content.includes("🎉") ? "text-lg py-1" : ""}>
-                                                {msg.content}
-                                            </p>
-                                            <div className={`flex items-center justify-end gap-1 text-[9px] mt-1 ${isMe ? "text-black/60" : "text-[var(--color-slate)]"}`}>
-                                                <span>{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                                                {isMe && (
-                                                    msg.isRead ? (
-                                                        <CheckCheck className="w-3 h-3 text-blue-500" />
-                                                    ) : (
-                                                        <Check className="w-3 h-3 text-black/40" />
-                                                    )
+                                            <div className={`rounded-2xl px-4 py-2 text-sm ${bubbleColor} ${isMe ? "rounded-tr-none text-right" : "rounded-tl-none text-left"}`}
+                                            >
+                                                {msg.attachmentUrl && (
+                                                    <div className="mb-2 overflow-hidden rounded-lg bg-black/20 border border-white/5">
+                                                        {msg.attachmentType === "image" ? (
+                                                            <img src={msg.attachmentUrl} alt={msg.attachmentName || "image"} className="max-w-full h-auto object-cover" />
+                                                        ) : msg.attachmentType === "video" ? (
+                                                            <video src={msg.attachmentUrl} controls className="max-w-full h-auto" />
+                                                        ) : (
+                                                            <a href={msg.attachmentUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 p-3 text-xs hover:bg-white/5 transition-colors">
+                                                                <FileIcon className="w-5 h-5 text-[var(--color-gold)]" />
+                                                                <div className="flex-1 truncate">
+                                                                    <p className="font-bold truncate">{msg.attachmentName}</p>
+                                                                    <p className="opacity-60 text-[10px]">Document • Click to view</p>
+                                                                </div>
+                                                            </a>
+                                                        )}
+                                                    </div>
                                                 )}
+                                                <p className={msg.content.includes("✅") || msg.content.includes("🎉") ? "text-lg py-1" : ""}>
+                                                    {msg.content}
+                                                </p>
+                                                <div className={`flex items-center gap-1 mt-1 text-[9px] ${isMe ? "justify-end text-white/60" : "justify-start text-[var(--color-slate)]"}`}>
+                                                    <span>{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                                    {isMe && (
+                                                        msg.isRead ? (
+                                                            <CheckCheck className="w-3 h-3 text-white" />
+                                                        ) : (
+                                                            <Check className="w-3 h-3 text-white/40" />
+                                                        )
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
