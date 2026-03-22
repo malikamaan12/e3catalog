@@ -23,8 +23,8 @@ export async function GET(req: NextRequest) {
         if (currentAdmin.role === "vendor" && currentAdmin.vendorId) {
             // Vendors can only see chats tied to their bookings
             const { bookings } = await import("@/lib/db/schema");
-            const vBookings = await db.select({ id: bookings.id }).from(bookings).where(eq(bookings.vendorId, currentAdmin.vendorId));
-            vendorProjectIds = vBookings.map(b => b.id);
+            const vBookings = await db.select({ projectId: bookings.projectId, id: bookings.id }).from(bookings).where(eq(bookings.vendorId, currentAdmin.vendorId));
+            vendorProjectIds = vBookings.flatMap(b => [b.projectId, b.id]).filter(Boolean) as string[];
         }
 
         // 3. Fetch all messages involving ANY staff member

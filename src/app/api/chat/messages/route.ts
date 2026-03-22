@@ -28,14 +28,14 @@ export async function GET(req: NextRequest) {
                 if (!user.vendorId) {
                     return NextResponse.json({ error: "Unauthorized access to project chat (No Vendor ID)" }, { status: 403 });
                 }
-                const vendorBookings = await db.select().from(bookings).where(and(eq(bookings.id, projectId), eq(bookings.vendorId, user.vendorId))).limit(1);
+                const vendorBookings = await db.select().from(bookings).where(and(or(eq(bookings.id, projectId), eq(bookings.projectId, projectId)), eq(bookings.vendorId, user.vendorId))).limit(1);
                 if (vendorBookings.length === 0) {
                      return NextResponse.json({ error: "Unauthorized access to project chat" }, { status: 403 });
                 }
             } else if (user.role === "client") {
                 // Client must own the project
                 const { bookings } = await import("@/lib/db/schema");
-                const clientBookings = await db.select().from(bookings).where(and(eq(bookings.id, projectId), eq(bookings.userId, user.id))).limit(1);
+                const clientBookings = await db.select().from(bookings).where(and(or(eq(bookings.id, projectId), eq(bookings.projectId, projectId)), eq(bookings.userId, user.id))).limit(1);
                 if (clientBookings.length === 0) {
                      return NextResponse.json({ error: "Unauthorized access to project chat" }, { status: 403 });
                 }

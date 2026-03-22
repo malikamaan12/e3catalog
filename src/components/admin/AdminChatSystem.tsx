@@ -200,9 +200,10 @@ export default function AdminChatSystem({
                     .then(user => {
                         if (user && !user.error) {
                             setSelectedConv({
-                                id: `user_${user.id}`,
+                                id: initialQuoteId ? `project_${initialQuoteId}` : `user_${user.id}`,
                                 userId: user.id,
-                                name: user.name,
+                                projectId: initialQuoteId || undefined,
+                                name: initialQuoteId ? `${user.name} (Quote)` : user.name,
                                 email: user.email,
                                 companyName: user.companyName,
                                 image: user.image || null,
