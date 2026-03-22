@@ -1,27 +1,27 @@
 import { db } from "@/lib/db";
 import { commissionSettlements, vendors, bookings } from "@/lib/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/requireAdmin";
 
 export async function GET(request: Request) {
     try {
-        const { user, error } = await requireAdmin(["super_admin", "admin"]);
+        const { error } = await requireAdmin();
         if (error) return error;
 
+        // Fetch all settlements submitted for review
         const settlements = await db.query.commissionSettlements.findMany({
+            where: eq(commissionSettlements.status, "submitted_for_review"),
             with: {
                 vendor: true,
-                booking: {
-                    columns: { id: true, projectName: true, customerName: true }
-                }
+                booking: true
             },
-            orderBy: [desc(commissionSettlements.createdAt)],
+            orderBy: [desc(commissionSettlements.submittedAt)],
         });
 
         return NextResponse.json({ settlements });
     } catch (e) {
-        console.error("Admin Settlements GET Error:", e);
+        console.error("Global Settlements GET Error:", e);
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
     }
 }
