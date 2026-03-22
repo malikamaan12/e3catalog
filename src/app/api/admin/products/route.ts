@@ -221,11 +221,17 @@ export async function PUT(req: NextRequest) {
         return NextResponse.json({ error: "No vendor context assigned." }, { status: 403 });
     }
 
-    // Strip out date strings from JSON body and replace with proper Date objects
-    // Drizzle ORM PgTimestamp requires native JS Date, not ISO strings
+    // Drizzle ORM Type strictness: Convert empty strings to null for numeric fields
     delete updates.createdAt;
     updates.updatedAt = new Date();
     if (updates.minOrderQty) updates.minOrderQty = Number(updates.minOrderQty);
+    if (updates.priceRangeMax === "") updates.priceRangeMax = null;
+    else if (updates.priceRangeMax !== undefined && updates.priceRangeMax !== null) updates.priceRangeMax = Number(updates.priceRangeMax);
+    
+    if (updates.pricePerHour === "") updates.pricePerHour = null;
+    if (updates.packagingFee === "") updates.packagingFee = 0;
+    if (updates.handlingFee === "") updates.handlingFee = 0;
+    if (updates.setupFee === "") updates.setupFee = 0;
 
     const whereClause = targetVendorId
         ? and(eq(products.id, id), eq(products.vendorId, targetVendorId))
