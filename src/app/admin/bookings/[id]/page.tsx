@@ -11,6 +11,38 @@ import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import EmbeddedChat from "@/components/chat/EmbeddedChat";
 
+const formatDateTime = (dateStr: string) => {
+    if (!dateStr) return "N/A";
+    try {
+        const date = new Date(dateStr);
+        return new Intl.DateTimeFormat('en-US', {
+            weekday: 'short',
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
+        }).format(date);
+    } catch (e) {
+        return dateStr;
+    }
+};
+
+const formatShortDate = (dateStr: string) => {
+    if (!dateStr) return "N/A";
+    try {
+        const date = new Date(dateStr);
+        return new Intl.DateTimeFormat('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric'
+        }).format(date);
+    } catch (e) {
+        return dateStr;
+    }
+};
+
 interface BookingItem {
     id: string;
     units: number;
@@ -374,56 +406,72 @@ export default function BookingDetailsPage({ params }: { params: Promise<{ id: s
                 {/* Left Column: Main Content (2/3 width) */}
                 <div className="lg:col-span-2 space-y-8 order-1 lg:order-1">
                     {/* Client & Project Details sub-grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="glass rounded-2xl p-6 shadow-sm border border-white/5">
-                            <div className="flex justify-between items-start mb-4 border-b border-white/10 pb-2">
-                                <h3 className="font-semibold text-[var(--color-warm-white)] text-sm uppercase tracking-wide">Client Details</h3>
-                                <div className="px-2 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-bold text-emerald-400 animate-pulse">
-                                    Client Online
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="glass rounded-2xl p-4 shadow-sm border border-white/5 relative overflow-hidden">
+                            <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500 opacity-[0.03] blur-3xl rounded-full"></div>
+                            
+                            <div className="flex justify-between items-center mb-3">
+                                <h3 className="font-bold text-[var(--color-gold)] text-[10px] uppercase tracking-[0.2em]">Client Dossier</h3>
+                                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[9px] font-black text-emerald-400 uppercase tracking-wider">
+                                    <span className="w-1 h-1 rounded-full bg-emerald-400 animate-ping"></span>
+                                    Online
                                 </div>
                             </div>
-                            <h4 className="text-xs font-medium text-[var(--color-slate)] mb-1 uppercase tracking-wider">Project / Event Name</h4>
-                            <p className="text-lg font-bold text-[var(--color-warm-white)]">{booking.projectName}</p>
+                            
+                            <div className="space-y-3">
+                                <div>
+                                    <p className="text-[10px] font-semibold text-[var(--color-slate)] uppercase tracking-wider opacity-60">Project Reference</p>
+                                    <p className="text-base font-bold text-[var(--color-warm-white)] leading-tight">{booking.projectName}</p>
+                                </div>
 
-                            <div className="mt-6 space-y-1">
-                                <h4 className="text-xs font-medium text-[var(--color-slate)] mb-2 uppercase tracking-wider">Primary Contact</h4>
-                                <p className="text-sm font-medium text-[var(--color-warm-white)]">{booking.customerName}</p>
-                                <p className="text-sm text-[var(--color-slate)] flex items-center gap-2">
-                                    <span className="opacity-50">✉</span> {booking.customerEmail}
-                                </p>
-                                {booking.customerPhone && (
-                                    <p className="text-sm text-[var(--color-slate)] flex items-center gap-2">
-                                        <span className="opacity-50">☎</span> {booking.customerPhone}
-                                    </p>
-                                )}
+                                <div className="grid grid-cols-1 gap-2 border-t border-white/5 pt-3">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-[10px] text-[var(--color-slate)] tracking-wide">Primary Contact</span>
+                                        <span className="text-xs font-bold text-[var(--color-warm-white)]">{booking.customerName}</span>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-[10px] text-[var(--color-slate)] tracking-wide">Email Channel</span>
+                                        <span className="text-xs text-[var(--color-warm-white)] opacity-80">{booking.customerEmail}</span>
+                                    </div>
+                                    {booking.customerPhone && (
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-[10px] text-[var(--color-slate)] tracking-wide">Secure Line</span>
+                                            <span className="text-xs text-[var(--color-warm-white)] opacity-80">{booking.customerPhone}</span>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
 
                             {booking.notes && (
-                                <div className="mt-5 p-4 bg-[var(--color-navy-dark)]/50 border border-white/10 rounded-xl text-sm text-[var(--color-slate)] relative">
-                                    <span className="absolute -top-3 left-3 bg-[var(--color-navy)] px-2 text-xs font-medium text-[var(--color-gold)] border border-white/10 rounded">Client Notes</span>
-                                    {booking.notes}
+                                <div className="mt-3 p-3 bg-white/[0.03] border border-white/5 rounded-xl text-[11px] text-[var(--color-slate)] italic leading-relaxed">
+                                    <span className="text-[9px] not-italic font-bold text-[var(--color-gold)] uppercase tracking-widest block mb-1 opacity-50">Brief Notes:</span>
+                                    "{booking.notes}"
                                 </div>
                             )}
                         </div>
 
-                        <div className="glass rounded-2xl p-6 shadow-sm border border-white/5">
-                            <h3 className="font-semibold text-[var(--color-warm-white)] mb-4 border-b border-white/10 pb-2 text-sm uppercase tracking-wide">Schedule Details</h3>
-                            <div className="space-y-5 text-sm mt-4">
-                                <div className="flex justify-between items-end border-b border-white/5 pb-3">
-                                    <div>
-                                        <span className="block text-xs font-medium text-[var(--color-slate)] mb-1 uppercase tracking-wider">Start Date</span>
-                                        <span className="text-[var(--color-warm-white)] font-medium text-base">{booking.startDate}</span>
+                        <div className="glass rounded-2xl p-4 shadow-sm border border-white/5 relative overflow-hidden">
+                            <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500 opacity-[0.03] blur-3xl rounded-full"></div>
+                            
+                            <h3 className="font-bold text-blue-400/80 text-[10px] uppercase tracking-[0.2em] mb-3">Engagement Schedule</h3>
+                            
+                            <div className="space-y-4">
+                                <div className="flex items-start gap-4">
+                                    <div className="flex-1">
+                                        <span className="block text-[9px] font-bold text-[var(--color-slate)] uppercase tracking-widest opacity-60 mb-1">Commencement</span>
+                                        <span className="text-[var(--color-warm-white)] font-bold text-sm block leading-tight">{formatDateTime(booking.startDate)}</span>
                                     </div>
-                                    <span className="text-[var(--color-slate)] opacity-50 px-2">→</span>
-                                    <div className="text-right">
-                                        <span className="block text-xs font-medium text-[var(--color-slate)] mb-1 uppercase tracking-wider">End Date</span>
-                                        <span className="text-[var(--color-warm-white)] font-medium text-base">{booking.endDate}</span>
+                                </div>
+                                <div className="flex items-start gap-4 border-t border-white/5 pt-3">
+                                    <div className="flex-1">
+                                        <span className="block text-[9px] font-bold text-[var(--color-slate)] uppercase tracking-widest opacity-60 mb-1">Conclusion</span>
+                                        <span className="text-[var(--color-warm-white)] font-bold text-sm block leading-tight">{formatDateTime(booking.endDate)}</span>
                                     </div>
                                 </div>
 
-                                <div className="flex justify-between items-center pt-2 bg-white/5 p-3 rounded-lg border border-white/5">
-                                    <span className="text-[var(--color-slate)] font-medium">Billed Duration</span>
-                                    <span className="text-[var(--color-gold)] font-bold bg-[var(--color-gold)]/10 px-3 py-1.5 rounded-md border border-[var(--color-gold)]/20 shadow-sm">{days} Day{days !== 1 ? 's' : ''}</span>
+                                <div className="flex justify-between items-center mt-2 bg-gold/5 p-2 rounded-xl border border-gold/10">
+                                    <span className="text-[10px] text-[var(--color-gold)] font-black uppercase tracking-widest">Billed Duration</span>
+                                    <span className="text-xs text-[var(--color-gold)] font-black bg-[var(--color-gold)]/10 px-2 py-1 rounded-lg border border-[var(--color-gold)]/20 shadow-inner">{days} Day{days !== 1 ? 's' : ''}</span>
                                 </div>
                             </div>
                         </div>
@@ -919,41 +967,73 @@ export default function BookingDetailsPage({ params }: { params: Promise<{ id: s
                                 </div>
                             </div>
                         </div>
-                        {/* Communication Hub Toggle */}
-                        <div className="mt-8 pt-6 border-t border-white/10">
-                            <button 
-                                onClick={() => setUiState(prev => ({ ...prev, chatExpanded: !prev.chatExpanded }))}
-                                className={`w-full flex items-center justify-center gap-3 py-4 rounded-xl font-bold transition-all shadow-lg
-                                    ${uiState.chatExpanded ? 'bg-gold text-navy shadow-gold/20' : 'bg-white/5 border border-white/10 text-white hover:bg-white/10'}
-                                `}
-                            >
-                                <MessagesSquare className="w-5 h-5" />
-                                {uiState.chatExpanded ? "Hide Communication Hub" : "Show Communication Hub"}
-                            </button>
-
-                            <AnimatePresence>
-                            {uiState.chatExpanded && (
-                                <motion.div 
-                                    initial={{ height: 0, opacity: 0, marginTop: 0 }}
-                                    animate={{ height: 500, opacity: 1, marginTop: 24 }}
-                                    exit={{ height: 0, opacity: 0, marginTop: 0 }}
-                                    className="overflow-hidden"
-                                >
-                                    {currentUser && booking.userId && (
-                                        <EmbeddedChat 
-                                            currentUser={currentUser}
-                                            projectId={booking.id}
-                                            receiverId={booking.userId}
-                                            receiverName={booking.customerName}
-                                            title="Communication Hub"
-                                        />
-                                    )}
-                                </motion.div>
-                            )}
-                            </AnimatePresence>
-                        </div>
                     </div>
                 </div>
+            </div>
+
+            {/* LinkedIn-style Floating Chat Window */}
+            <div className="fixed bottom-0 right-6 z-[100] flex flex-col items-end pointer-events-none">
+                <AnimatePresence>
+                    {uiState.chatExpanded && (
+                        <motion.div
+                            initial={{ y: 20, opacity: 0, scale: 0.95 }}
+                            animate={{ y: 0, opacity: 1, scale: 1 }}
+                            exit={{ y: 20, opacity: 0, scale: 0.95 }}
+                            className="w-[380px] h-[550px] bg-[var(--color-navy-dark)] border border-white/10 rounded-t-2xl shadow-2xl flex flex-col overflow-hidden pointer-events-auto mb-2"
+                        >
+                            {/* Window Header */}
+                            <div className="bg-gold p-4 flex justify-between items-center shadow-lg">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-full bg-navy flex items-center justify-center border border-white/10">
+                                        <MessagesSquare className="w-4 h-4 text-gold" />
+                                    </div>
+                                    <div>
+                                        <h4 className="font-bold text-navy text-sm leading-none flex items-center gap-2">
+                                            {booking.customerName}
+                                            <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]"></span>
+                                        </h4>
+                                        <p className="text-[10px] text-navy/70 font-semibold uppercase tracking-wider mt-1">Direct Channel • Active</p>
+                                    </div>
+                                </div>
+                                <button 
+                                    onClick={() => setUiState(prev => ({ ...prev, chatExpanded: false }))}
+                                    className="p-1.5 hover:bg-navy/10 rounded-lg transition-colors text-navy/50 hover:text-navy"
+                                >
+                                    <span className="text-xl">×</span>
+                                </button>
+                            </div>
+
+                            {/* Chat Content */}
+                            <div className="flex-1 overflow-hidden bg-[var(--color-navy)]">
+                                {currentUser && booking.userId && (
+                                    <EmbeddedChat 
+                                        currentUser={currentUser}
+                                        projectId={booking.id}
+                                        receiverId={booking.userId}
+                                        receiverName={booking.customerName}
+                                        title=""
+                                    />
+                                )}
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
+                {/* Floating Launcher Button */}
+                {!uiState.chatExpanded && (
+                    <motion.button
+                        initial={{ scale: 0.9, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        onClick={() => setUiState(prev => ({ ...prev, chatExpanded: true }))}
+                        className="bg-gold text-navy p-4 rounded-full shadow-2xl hover:scale-105 active:scale-95 transition-all mb-6 pointer-events-auto border-4 border-navy border-opacity-50 relative group"
+                    >
+                        <MessagesSquare className="w-6 h-6" />
+                        <span className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-navy text-[8px] font-bold text-white flex items-center justify-center">1</span>
+                        <div className="absolute right-full mr-4 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-navy border border-white/10 rounded-lg text-xs font-bold text-white whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity shadow-xl">
+                            Open Chat Hub
+                        </div>
+                    </motion.button>
+                )}
             </div>
         </div >
     );
