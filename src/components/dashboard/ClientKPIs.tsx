@@ -13,7 +13,7 @@ import gsap from "gsap";
 
 interface Stat {
     label: string;
-    value: number;
+    value: string | number;
     icon: any;
     sub: string;
     urgent?: boolean;

@@ -40,6 +40,9 @@ interface DashboardClientProps {
         reviewQuote: number;
         confirmed: number;
         active: number;
+        grossEarnings?: number;
+        amountOwed?: number;
+        score?: number;
     };
 }
 
@@ -57,14 +60,25 @@ export default function DashboardClient({ user, projects: initialProjects, stats
         );
     }, [initialProjects, searchQuery]);
 
-    const statItems = [
+    const isVendor = user.role === "vendor";
+
+    const statItems = isVendor ? [
+        { label: "Gross Earnings", value: `${(stats.grossEarnings || 0).toLocaleString()} QAR`, icon: ShoppingBag, sub: "Total revenue generated" },
+        { label: "E3 Commission", value: `${(stats.amountOwed || 0).toLocaleString()} QAR`, icon: AlertCircle, sub: "Pending platform settlement", urgent: (stats.amountOwed || 0) > 0 },
+        { label: "Reliability Score", value: `${(stats.score || 5.0).toFixed(1)}/5`, icon: CheckCircle2, sub: "Your marketplace standing" },
+        { label: "Request Pipeline", value: stats.total, icon: Layers, sub: "Active quote negotiations" },
+    ] : [
         { label: "Total Quotes", value: stats.total, icon: Layers, sub: "Historical fleet requests" },
         { label: "Awaiting Quote", value: stats.awaitingQuote, icon: Clock, sub: "Pending vendor pricing" },
         { label: "Review Required", value: stats.reviewQuote, icon: MailOpen, sub: "Action needed now", urgent: stats.reviewQuote > 0 },
         { label: "Confirmed", value: stats.confirmed, icon: CheckCircle2, sub: "Booked & final" },
     ];
 
-    const quickLinks = [
+    const quickLinks = isVendor ? [
+        { icon: Package, title: "My Catalog", desc: "CRUD management for your marketplace items.", href: "/dashboard/products", cta: "Manage Products" },
+        { icon: Calendar, title: "Fleet Matrix", desc: "Live availability & maintenance tracking.", href: "/dashboard/inventory", cta: "View Timeline" },
+        { icon: User, title: "Company Profile", desc: "KYC, Bank details & Business info.", href: "/dashboard/profile", cta: "Edit Profile" },
+    ] : [
         { icon: ShoppingBag, title: "Browse Catalog", desc: "Explore our full fleet of event equipment.", href: "/catalog", cta: "Open Catalog" },
         { icon: Phone, title: "Contact Support", desc: "Real-time assistance for your logistics.", href: "mailto:info@e3rentals.com", cta: "Email Support" },
         { icon: User, title: "My Profile", desc: "Update your contact info and preferences.", href: "/dashboard/profile", cta: "Edit Profile" },
@@ -78,28 +92,31 @@ export default function DashboardClient({ user, projects: initialProjects, stats
                 <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
                     <div>
                         <h1 className="font-[family-name:var(--font-heading)] text-3xl md:text-4xl font-black text-[var(--color-warm-white)] tracking-tight">
-                            Client Operating System
+                            {isVendor ? "Vendor Operating System" : "Client Operating System"}
                         </h1>
                         <p className="text-[var(--color-slate)] mt-2 font-medium flex items-center gap-2">
                             Welcome, <span className="text-[var(--color-gold)]">{user.name}</span>
+                            {isVendor && <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 ml-2">Verified Partner</span>}
                             <span className="w-1 h-1 rounded-full bg-[var(--color-slate)]/30" />
                             Connection status: <span className="text-emerald-400">Optimal</span>
                         </p>
                     </div>
                     <div className="flex items-center gap-3">
+                        {!isVendor && (
+                            <Link 
+                                href="/dashboard/profile" 
+                                className="px-5 py-2.5 rounded-xl glass border border-white/5 text-[var(--color-warm-white)] font-bold text-sm hover:bg-white/5 transition-all flex items-center gap-2"
+                            >
+                                <User className="w-4 h-4" />
+                                Account
+                            </Link>
+                        )}
                         <Link 
-                            href="/dashboard/profile" 
-                            className="px-5 py-2.5 rounded-xl glass border border-white/5 text-[var(--color-warm-white)] font-bold text-sm hover:bg-white/5 transition-all flex items-center gap-2"
-                        >
-                            <User className="w-4 h-4" />
-                            Account
-                        </Link>
-                        <Link 
-                            href="/catalog" 
+                            href={isVendor ? "/dashboard/products" : "/catalog"} 
                             className="px-6 py-2.5 rounded-xl bg-[var(--color-gold)] text-[var(--color-navy)] font-bold text-sm hover:translate-y-[-2px] transition-all shadow-lg shadow-gold/10 flex items-center gap-2 group"
                         >
-                            New Quote
-                            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                            {isVendor ? "Add Product" : "New Quote"}
+                            <PlusCircle className="w-4 h-4 group-hover:rotate-90 transition-transform" />
                         </Link>
                     </div>
                 </header>
