@@ -2,12 +2,17 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import * as Tabs from "@radix-ui/react-tabs";
+import { motion, AnimatePresence } from "framer-motion";
 import { 
-    Loader2, Save, Plus, Trash2, User, Building2, Phone, Mail, MapPin, 
-    Hash, Briefcase, UserCheck, Camera, X, Globe, FileText, Landmark,
-    ShieldCheck, Star, Award, ShieldAlert, CheckCircle2, CloudUpload
+    Loader2, Save, User, Building2, Phone, Mail, MapPin, 
+    Hash, Briefcase, Camera, X, Globe, FileText, Landmark,
+    ShieldCheck, Star, Award, ShieldAlert, CheckCircle2, 
+    TrendingUp, LayoutDashboard, ChevronRight, Info
 } from "lucide-react";
 import { CloudImageUpload } from "@/components/CloudImageUpload";
+import { cn } from "@/lib/utils";
+import toast from "react-hot-toast";
 
 interface POC {
     projectId: string;
@@ -31,6 +36,8 @@ interface VendorProfile {
     scoreDelivery: number;
     scoreCondition: number;
     scoreRating: number;
+    kycStatus: string;
+    storeStatus: string;
 }
 
 interface ProfileData {
@@ -40,67 +47,26 @@ interface ProfileData {
     image: string;
     phoneNumber: string;
     role: string;
-    // Company (Legacy fields in user table)
     companyName: string;
     registrationNo: string;
     location: string;
     address: string;
     designation: string;
     alternatePhone: string;
-    // POCs
     pocName: string;
     pocPhone: string;
     pocEmail: string;
     pocDesignation: string;
     projectContacts: POC[];
-    // Extended Vendor Details
     vendorProfile?: VendorProfile;
 }
-
-const Input = ({ label, icon: Icon, type = "text", value, onChange, placeholder, readOnly = false }: any) => (
-    <div>
-        <label className="block text-[10px] font-black text-[var(--color-slate)] mb-1.5 uppercase tracking-widest">{label}</label>
-        <div className="relative">
-            {Icon && <Icon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--color-slate)] pointer-events-none" />}
-            <input
-                type={type}
-                value={value || ""}
-                onChange={onChange}
-                placeholder={placeholder}
-                readOnly={readOnly}
-                className={`w-full ${Icon ? "pl-10" : "pl-4"} pr-4 py-3 rounded-2xl bg-white/[0.03] border border-white/10 text-sm text-[var(--color-warm-white)] placeholder:text-[var(--color-slate)] focus:border-[var(--color-gold)] focus:outline-none transition-all ${readOnly ? "opacity-50 cursor-not-allowed" : ""}`}
-            />
-        </div>
-    </div>
-);
-
-const Section = ({ title, icon: Icon, description, children, urgent = false }: any) => (
-    <div className={`glass rounded-[32px] p-8 space-y-6 border ${urgent ? 'border-red-500/20 shadow-[0_0_30px_rgba(239,68,68,0.05)]' : 'border-white/10'}`}>
-        <div className="flex items-center justify-between pb-6 border-b border-white/5">
-            <div className="flex items-center gap-4">
-                <div className={`w-12 h-12 rounded-2xl ${urgent ? 'bg-red-500/10' : 'bg-[var(--color-gold)]/10'} flex items-center justify-center`}>
-                    <Icon className={`h-6 w-6 ${urgent ? 'text-red-400' : 'text-[var(--color-gold)]'}`} />
-                </div>
-                <div>
-                    <h2 className="font-black text-[var(--color-warm-white)] text-lg tracking-tight uppercase">{title}</h2>
-                    {description && <p className="text-xs text-[var(--color-slate)] font-medium">{description}</p>}
-                </div>
-            </div>
-        </div>
-        <div className="space-y-6">
-            {children}
-        </div>
-    </div>
-);
 
 export default function ProfilePage() {
     const router = useRouter();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
-    const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
-    const [password, setPassword] = useState("");
     const [profile, setProfile] = useState<ProfileData | null>(null);
-    const [uploading, setUploading] = useState(false);
+    const [password, setPassword] = useState("");
 
     const loadProfile = async () => {
         try {
@@ -108,7 +74,8 @@ export default function ProfilePage() {
             const data = await res.json();
             if (data.user) setProfile(data.user);
         } catch (err) {
-            console.error(err);
+            console.error("Profile Load Error:", err);
+            toast.error("Telemetry fetch failed");
         } finally {
             setLoading(false);
         }
@@ -131,16 +98,13 @@ export default function ProfilePage() {
         });
     };
 
-    const handleSave = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const handleSave = async (e?: React.FormEvent) => {
+        if (e) e.preventDefault();
         if (!profile) return;
         setSaving(true);
-        setMsg(null);
         try {
             const body: any = { ...profile };
             if (password && password.length >= 6) body.password = password;
-            
-            // Extract vendor-specific updates
             if (profile.role === "vendor" && profile.vendorProfile) {
                 body.vendorUpdate = { ...profile.vendorProfile };
             }
@@ -150,13 +114,12 @@ export default function ProfilePage() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(body),
             });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || "Save failed");
-            setMsg({ text: "Marketplace credentials updated!", ok: true });
+            if (!res.ok) throw new Error("Save operation failed");
+            toast.success("Operational credentials synchronized");
             setPassword("");
             router.refresh();
         } catch (err: any) {
-            setMsg({ text: err.message, ok: false });
+            toast.error(err.message || "Failed to sync state");
         } finally {
             setSaving(false);
         }
@@ -165,177 +128,300 @@ export default function ProfilePage() {
     if (loading || !profile) return (
         <div className="flex flex-col items-center justify-center py-40 gap-4">
             <Loader2 className="h-10 w-10 text-[var(--color-gold)] animate-spin" />
-            <p className="text-[var(--color-slate)] font-bold text-sm uppercase tracking-widest">Hydrating Secure Profile...</p>
+            <p className="text-[var(--color-slate)] font-bold text-sm uppercase tracking-[0.2em] animate-pulse">Synchronizing Neural Core...</p>
         </div>
     );
 
     const isVendor = profile.role === "vendor";
+    const v = profile.vendorProfile;
 
     return (
-        <div className="max-w-5xl mx-auto px-4 py-12 animate-fade-in">
-            <header className="flex items-center justify-between mb-12">
-                <div>
-                   <h1 className="text-4xl font-black text-[var(--color-warm-white)] tracking-tight">
-                    {isVendor ? "Partner Settings" : "My Account"}
-                   </h1>
-                   <p className="text-[var(--color-slate)] mt-1 font-medium italic opacity-80">
-                    {isVendor ? "Managing your global marketplace presence and reliability." : "Manage your personal details and booking history."}
-                   </p>
-                </div>
-                {isVendor && (
-                     <div className="flex items-center gap-3 bg-[var(--color-gold)]/10 border border-[var(--color-gold)]/20 px-4 py-2 rounded-2xl">
-                        <ShieldCheck className="w-5 h-5 text-[var(--color-gold)]" />
-                        <span className="text-xs font-black text-[var(--color-gold)] uppercase tracking-widest">Verified Partner</span>
-                     </div>
-                )}
-            </header>
-
-            {msg && (
-                <div className={`mb-8 p-6 rounded-[24px] text-sm border flex items-center justify-between animate-slide-up ${msg.ok ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" : "bg-red-500/10 border-red-500/20 text-red-400"}`}>
-                    <div className="flex items-center gap-3">
-                        {msg.ok ? <CheckCircle2 className="w-5 h-5" /> : <ShieldAlert className="w-5 h-5" />}
-                        <span className="font-bold">{msg.text}</span>
-                    </div>
-                    <button onClick={() => setMsg(null)}><X className="w-5 h-5 opacity-50" /></button>
-                </div>
-            )}
-
-            <form onSubmit={handleSave} className="space-y-8 pb-32">
-                
-                {/* ── Role-Specific: Reliability Scorecard ── */}
-                {isVendor && profile.vendorProfile && (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div className="glass p-6 rounded-3xl border border-white/10 flex flex-col items-center text-center">
-                            <Star className="w-8 h-8 text-[var(--color-gold)] mb-3" />
-                            <div className="text-3xl font-black text-[var(--color-warm-white)]">{profile.vendorProfile.scoreRating.toFixed(1)}</div>
-                            <div className="text-[10px] font-black uppercase text-[var(--color-slate)] tracking-widest mt-1">Platform Rating</div>
-                        </div>
-                        <div className="glass p-6 rounded-3xl border border-white/10 flex flex-col items-center text-center">
-                            <Award className="w-8 h-8 text-emerald-400 mb-3" />
-                            <div className="text-3xl font-black text-[var(--color-warm-white)]">{profile.vendorProfile.scoreDelivery}%</div>
-                            <div className="text-[10px] font-black uppercase text-[var(--color-slate)] tracking-widest mt-1">On-Time Delivery</div>
-                        </div>
-                        <div className="glass p-6 rounded-3xl border border-white/10 flex flex-col items-center text-center">
-                            <ShieldCheck className="w-8 h-8 text-blue-400 mb-3" />
-                            <div className="text-3xl font-black text-[var(--color-warm-white)]">{profile.vendorProfile.scoreCondition}%</div>
-                            <div className="text-[10px] font-black uppercase text-[var(--color-slate)] tracking-widest mt-1">Item Integrity</div>
-                        </div>
-                    </div>
-                )}
-
-                {/* ── Basic Identity ── */}
-                <Section title="Account Identity" icon={User} description="Manage your global display name and secure access credentials.">
-                     <div className="flex flex-col sm:flex-row items-center gap-8 mb-4">
-                        <div className="relative group">
-                            <div className="w-24 h-24 rounded-[32px] overflow-hidden bg-white/5 border-2 border-[var(--color-gold)]/20 shadow-2xl flex items-center justify-center">
-                                {profile.image ? (
-                                    <img src={profile.image} alt="Profile" className="w-full h-full object-cover" />
-                                ) : (
-                                    <User className="h-10 w-10 text-[var(--color-slate)]" />
-                                )}
-                            </div>
-                            <div className="absolute -bottom-2 -right-2">
-                                 <CloudImageUpload
-                                    onUploadComplete={(url) => handleChange("image", url)}
-                                    // Customizing the trigger to be more minimal
-                                />
-                            </div>
-                        </div>
-                        <div className="flex-1 space-y-2 text-center sm:text-left">
-                            <h3 className="text-lg font-black tracking-tight">{profile.name || "Collaborator Identity"}</h3>
-                            <p className="text-xs text-[var(--color-slate)] font-medium italic opacity-70">
-                                This image will be shown on all marketplace interactions and official quotes.
-                            </p>
-                            {profile.image && (
-                                <button type="button" onClick={() => handleChange("image", "")} className="text-[10px] font-black text-red-400 uppercase tracking-widest mt-2 hover:underline">Remove Badge</button>
+        <div className="max-w-6xl mx-auto px-6 py-12 animate-fade-in relative pb-32">
+            {/* Glassmorphic Header */}
+            <header className="flex flex-col md:flex-row md:items-end justify-between gap-10 mb-16">
+                <div className="flex items-start gap-8">
+                     <div className="relative group">
+                        <div className="w-24 h-24 rounded-[32px] overflow-hidden bg-white/5 border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.3)] flex items-center justify-center p-1 transition-transform group-hover:scale-110">
+                            {profile.image ? (
+                                <img src={profile.image} className="w-full h-full object-cover rounded-[28px]" />
+                            ) : (
+                                <User className="w-10 h-10 text-white/20" />
                             )}
                         </div>
+                        <div className="absolute -bottom-2 -right-2 transform transition-all group-hover:scale-125">
+                            <CloudImageUpload onUploadComplete={(url: string) => handleChange("image", url)} />
+                        </div>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                        <Input label="Display Name" icon={User} value={profile.name} onChange={(e: any) => handleChange("name", e.target.value)} />
-                        <Input label="Email Address" icon={Mail} value={profile.email} readOnly />
-                        <Input label="Primary Mobile" icon={Phone} value={profile.phoneNumber} onChange={(e: any) => handleChange("phoneNumber", e.target.value)} />
-                        <Input label="Designation" icon={Briefcase} value={profile.designation} onChange={(e: any) => handleChange("designation", e.target.value)} placeholder="e.g. Sales Director" />
+                    <div>
+                        <div className="flex items-center gap-3 mb-3">
+                            <h1 className="text-4xl font-black text-white tracking-tighter">{profile.companyName || profile.name}</h1>
+                            <StatusBadge status={v?.storeStatus || "pending"} kyc={v?.kycStatus || "pending"} />
+                        </div>
+                        <p className="text-sm text-[var(--color-slate)] font-medium max-w-xl italic opacity-80">
+                           Manage your isolated marketplace node, business credentials, and reliability scorecard.
+                        </p>
                     </div>
-                </Section>
-
-                {/* ── Partner Business Profile (Vendor Only) ── */}
-                {isVendor && profile.vendorProfile && (
-                    <Section title="Business Logistics" icon={Building2} description="Core company details for legal and marketplace identification.">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                            <Input label="Legal Company Name" icon={Building2} value={profile.companyName} onChange={(e: any) => handleChange("companyName", e.target.value)} />
-                            <Input label="Registration / CR No" icon={Hash} value={profile.registrationNo} onChange={(e: any) => handleChange("registrationNo", e.target.value)} />
-                            <Input label="Digital HQ (Website)" icon={Globe} value={profile.vendorProfile.website} onChange={(e: any) => handleVendorChange("website", e.target.value)} placeholder="https://..." />
-                            <Input label="Tax ID" icon={FileText} value={profile.vendorProfile.taxId} onChange={(e: any) => handleVendorChange("taxId", e.target.value)} />
-                        </div>
-                        <Input label="Warehouse Location / Address" icon={MapPin} value={profile.address} onChange={(e: any) => handleChange("address", e.target.value)} />
-                    </Section>
-                )}
-
-                {/* ── KYC: Legal Documentation (Vendor Only) ── */}
-                {isVendor && profile.vendorProfile && (
-                    <Section title="Compliance Portal" icon={ShieldCheck} urgent={!profile.vendorProfile.taxCardUrl} description="Upload legal documents to maintain your Verified Partner status.">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-                            <div className="p-6 rounded-[24px] bg-white/[0.02] border border-white/5 space-y-4">
-                                <div className="flex items-center justify-between">
-                                    <span className="text-[10px] font-black text-[var(--color-gold)] uppercase tracking-widest">Trade License</span>
-                                    {profile.vendorProfile.companyRegistrationUrl ? <CheckCircle2 className="w-5 h-5 text-emerald-400" /> : <ShieldAlert className="w-5 h-5 text-red-500" />}
-                                </div>
-                                <div className="flex flex-col items-center pt-2">
-                                    <CloudImageUpload onUploadComplete={(url) => handleVendorChange("companyRegistrationUrl", url)} />
-                                    <p className="text-[10px] text-[var(--color-slate)] mt-4 text-center">PDF or High-Res Image of your CR / Trade License.</p>
-                                </div>
-                            </div>
-                            <div className="p-6 rounded-[24px] bg-white/[0.02] border border-white/5 space-y-4">
-                                <div className="flex items-center justify-between">
-                                    <span className="text-[10px] font-black text-[var(--color-gold)] uppercase tracking-widest">Tax Card</span>
-                                    {profile.vendorProfile.taxCardUrl ? <CheckCircle2 className="w-5 h-5 text-emerald-400" /> : <ShieldAlert className="w-5 h-5 text-red-500" />}
-                                </div>
-                                <div className="flex flex-col items-center pt-2">
-                                    <CloudImageUpload onUploadComplete={(url) => handleVendorChange("taxCardUrl", url)} />
-                                    <p className="text-[10px] text-[var(--color-slate)] mt-4 text-center">Valid Tax ID card for financial compliance.</p>
-                                </div>
-                            </div>
-                        </div>
-                    </Section>
-                )}
-
-                {/* ── Financial: Payout Settings (Vendor Only) ── */}
-                {isVendor && profile.vendorProfile && (
-                    <Section title="Payout Gateway" icon={Landmark} description="Banking details for direct settlement of marketplace earnings.">
-                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                            <Input label="Bank Name" icon={Landmark} value={profile.vendorProfile.bankName} onChange={(e: any) => handleVendorChange("bankName", e.target.value)} />
-                            <Input label="Account Holder Name" icon={User} value={profile.vendorProfile.accountName} onChange={(e: any) => handleVendorChange("accountName", e.target.value)} />
-                            <Input label="IBAN / Account Number" icon={Hash} value={profile.vendorProfile.iban} onChange={(e: any) => handleVendorChange("iban", e.target.value)} />
-                            <Input label="SWIFT / BIC Code" icon={Globe} value={profile.vendorProfile.swift} onChange={(e: any) => handleVendorChange("swift", e.target.value)} />
-                        </div>
-                    </Section>
-                )}
-
-                {/* ── Security ── */}
-                <Section title="Access Security" icon={ShieldAlert} description="Update your dashboard authentication password.">
-                    <Input 
-                        label="New Marketplace Password" 
-                        type="password" 
-                        value={password} 
-                        onChange={(e: any) => setPassword(e.target.value)} 
-                        placeholder="Leave blank to maintain current credentials"
-                    />
-                </Section>
-
-                {/* Fixed Footer with Save Action */}
-                <div className="fixed bottom-0 left-0 right-0 p-6 glass border-t border-white/10 z-[100] flex justify-center">
-                    <button 
-                        type="submit" 
-                        disabled={saving}
-                        className="btn-primary px-12 py-4 flex items-center gap-3 shadow-2xl hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
-                    >
-                        {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
-                        <span className="font-black uppercase tracking-widest text-sm">Synchronize Credentials</span>
-                    </button>
                 </div>
+                <div className="hidden lg:flex items-center gap-4 bg-white/5 border border-white/10 px-6 py-4 rounded-[40px] backdrop-blur-3xl shadow-2xl">
+                    <ShieldCheck className="w-6 h-6 text-[var(--color-gold)]" />
+                    <div className="flex flex-col">
+                        <span className="text-[10px] font-black text-white uppercase tracking-widest">Encryption Level 4</span>
+                        <span className="text-[9px] text-[var(--color-slate)] font-bold uppercase opacity-50 tracking-tighter">Verified Operational Node</span>
+                    </div>
+                </div>
+            </header>
 
-            </form>
+            <Tabs.Root defaultValue="profile" className="space-y-12">
+                <Tabs.List className="flex bg-white/5 border border-white/10 p-2 rounded-[32px] overflow-x-auto custom-scrollbar no-scrollbar transition-all backdrop-blur-xl">
+                    <TabTrigger value="profile" icon={User} label="Business Profile" />
+                    {isVendor && (
+                        <>
+                            <TabTrigger value="kyc" icon={ShieldCheck} label="KYC Compliance" />
+                            <TabTrigger value="financial" icon={Landmark} label="Payout Gateway" />
+                            <TabTrigger value="reliability" icon={TrendingUp} label="Reliability Scorecard" />
+                        </>
+                    )}
+                </Tabs.List>
+
+                <div className="mt-12 focus:outline-none min-h-[500px]">
+                    <AnimatePresence mode="wait">
+                        <Tabs.Content key="profile" value="profile" asChild>
+                            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-12">
+                                <FormSection title="Core Identity" icon={Building2} desc="Essential company details and contact information.">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                        <FloatingInput label="Legal Entity Name" icon={Building2} value={profile.companyName} onChange={(val: string) => handleChange("companyName", val)} />
+                                        <FloatingInput label="Registration / CR-NO" icon={Hash} value={profile.registrationNo} onChange={(val: string) => handleChange("registrationNo", val)} />
+                                        <FloatingInput label="Primary Mobile" icon={Phone} value={profile.phoneNumber} onChange={(val: string) => handleChange("phoneNumber", val)} />
+                                        <FloatingInput label="Corporate Email" icon={Mail} value={profile.email} readOnly />
+                                        <FloatingInput label="Warehouse Address" icon={MapPin} value={profile.address} onChange={(val: string) => handleChange("address", val)} className="col-span-1 md:col-span-2" />
+                                    </div>
+                                </FormSection>
+
+                                <FormSection title="Security Protocol" icon={ShieldAlert} desc="Reset your operational access credentials.">
+                                    <div className="max-w-md">
+                                        <FloatingInput 
+                                            label="Update Neural Password" 
+                                            icon={ShieldAlert} 
+                                            type="password" 
+                                            value={password} 
+                                            onChange={(val: string) => setPassword(val)} 
+                                            placeholder="Leave empty to maintain current state"
+                                        />
+                                    </div>
+                                </FormSection>
+                            </motion.div>
+                        </Tabs.Content>
+
+                        <Tabs.Content key="kyc" value="kyc" asChild>
+                            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-12">
+                                <FormSection title="KYC Compliance Matrix" icon={ShieldCheck} desc="Official documentation required for marketplace liquidity.">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                                        <ComplianceCard 
+                                            title="Trade License (CR)" 
+                                            url={v?.companyRegistrationUrl} 
+                                            onUpload={(url: string) => handleVendorChange("companyRegistrationUrl", url)}
+                                            desc="Valid CR issued by the Ministry of Commerce."
+                                        />
+                                        <ComplianceCard 
+                                            title="Tax Registration Card" 
+                                            url={v?.taxCardUrl} 
+                                            onUpload={(url: string) => handleVendorChange("taxCardUrl", url)}
+                                            desc="Tax ID card for financial audit."
+                                        />
+                                    </div>
+                                </FormSection>
+                            </motion.div>
+                        </Tabs.Content>
+
+                        <Tabs.Content key="financial" value="financial" asChild>
+                            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-12">
+                                <FormSection title="Payout Node Configuration" icon={Landmark} desc="Verify your banking details for automated settlements.">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                                        <FloatingInput label="Financial Institution" icon={Landmark} value={v?.bankName} onChange={(val: string) => handleVendorChange("bankName", val)} />
+                                        <FloatingInput label="Beneficiary Name" icon={User} value={v?.accountName} onChange={(val: string) => handleVendorChange("accountName", val)} />
+                                        <FloatingInput label="SWIFT / BIC" icon={Globe} value={v?.swift} onChange={(val: string) => handleVendorChange("swift", val)} />
+                                        <FloatingInput label="IBAN / Account Number" icon={Hash} value={v?.iban} onChange={(val: string) => handleVendorChange("iban", val)} className="col-span-1 md:col-span-2 tracking-widest text-[var(--color-gold)]" />
+                                    </div>
+                                </FormSection>
+                            </motion.div>
+                        </Tabs.Content>
+
+                        <Tabs.Content key="reliability" value="reliability" asChild>
+                            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-12">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                                    <ScoreCard value={v?.scoreRating || 5.0} max={5.0} label="Marketplace Rating" icon={Star} color="text-[var(--color-gold)]" unit="/ 5.0" />
+                                    <ScoreCard value={v?.scoreDelivery || 100} max={100} label="On-Time Deployment" icon={Award} color="text-emerald-400" unit="%" />
+                                    <ScoreCard value={v?.scoreCondition || 100} max={100} label="Equipment Integrity" icon={ShieldCheck} color="text-blue-400" unit="%" />
+                                </div>
+
+                                <div className="glass p-10 rounded-[48px] border border-white/5 space-y-6">
+                                    <div className="flex items-center gap-4">
+                                        <div className="p-3 rounded-2xl bg-white/5">
+                                            <Info className="w-6 h-6 text-[var(--color-gold)]" />
+                                        </div>
+                                        <div>
+                                            <h4 className="text-xl font-bold text-white tracking-tight">Performance Analytics</h4>
+                                            <p className="text-sm text-[var(--color-slate)] font-medium">Your platform visibility is dynamically computed based on these scores.</p>
+                                        </div>
+                                    </div>
+                                    <div className="h-[1px] w-full bg-white/5" />
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-10">
+                                        <InsightRow label="Booking Fulfillment" value="100% Efficiency" sub="Based on last 30 transactions" />
+                                        <InsightRow label="Client Sentiment" value="Highly Positive" sub="Top 5% of marketplace partners" />
+                                    </div>
+                                </div>
+                            </motion.div>
+                        </Tabs.Content>
+                    </AnimatePresence>
+                </div>
+            </Tabs.Root>
+
+            {/* Permanent Save Action Bar */}
+            <div className="fixed bottom-0 left-0 right-0 p-6 glass border-t border-white/10 z-[100] flex justify-center">
+                <button 
+                    onClick={() => handleSave()}
+                    disabled={saving}
+                    className="btn-primary px-12 py-5 rounded-full flex items-center gap-4 shadow-[0_20px_50px_rgba(212,175,55,0.2)] hover:scale-105 active:scale-95 transition-all disabled:opacity-50 group"
+                >
+                    {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5 group-hover:rotate-12 transition-transform" />}
+                    <span className="font-black uppercase tracking-[0.2em] text-sm">Commit System State</span>
+                </button>
+            </div>
         </div>
     );
 }
+
+function TabTrigger({ value, icon: Icon, label }: { value: string, icon: any, label: string }) {
+    return (
+        <Tabs.Trigger 
+            value={value}
+            className="flex-1 min-w-[140px] px-6 py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 data-[state=active]:bg-[var(--color-gold)] data-[state=active]:text-[var(--color-navy)] data-[state=active]:shadow-lg data-[state=active]:scale-105 data-[state=inactive]:text-[var(--color-slate)] hover:bg-white/5"
+        >
+            <Icon className="w-4 h-4" />
+            {label}
+        </Tabs.Trigger>
+    );
+}
+
+function FormSection({ title, icon: Icon, desc, children }: { title: string, icon: any, desc: string, children: React.ReactNode }) {
+    return (
+        <div className="space-y-8 animate-fade-up">
+            <div className="flex items-center gap-6">
+                <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center">
+                    <Icon className="w-7 h-7 text-[var(--color-gold)]" />
+                </div>
+                <div>
+                   <h3 className="text-2xl font-black text-white tracking-tight">{title}</h3>
+                   <p className="text-sm text-[var(--color-slate)] font-medium opacity-60">{desc}</p>
+                </div>
+            </div>
+            <div className="glass p-10 rounded-[48px] border border-white/5">
+                {children}
+            </div>
+        </div>
+    );
+}
+
+function FloatingInput({ label, icon: Icon, value, onChange, placeholder, readOnly, className, type = "text" }: { 
+    label: string, icon: any, value?: string, onChange?: (val: string) => void, placeholder?: string, readOnly?: boolean, className?: string, type?: string 
+}) {
+    return (
+        <div className={cn("space-y-2", className)}>
+            <label className="text-[10px] font-black text-[var(--color-slate)] uppercase tracking-[0.2em] ml-2 block">{label}</label>
+            <div className="relative group">
+                <Icon className="absolute left-6 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--color-slate)] group-focus-within:text-[var(--color-gold)] transition-colors" />
+                <input 
+                    type={type}
+                    value={value || ""}
+                    onChange={(e) => onChange?.(e.target.value)}
+                    placeholder={placeholder}
+                    readOnly={readOnly}
+                    className={cn(
+                        "w-full bg-white/[0.03] border border-white/10 rounded-2xl py-4 pl-14 pr-6 text-sm text-white focus:border-[var(--color-gold)] focus:bg-white/[0.05] outline-none transition-all",
+                        readOnly && "opacity-50 cursor-not-allowed"
+                    )}
+                />
+            </div>
+        </div>
+    );
+}
+
+function ComplianceCard({ title, url, onUpload, desc }: { title: string, url?: string, onUpload: (url: string) => void, desc: string }) {
+    return (
+        <div className="p-8 rounded-[40px] bg-white/[0.02] border border-white/5 flex flex-col items-center text-center group hover:border-[var(--color-gold)]/20 transition-all">
+            <div className="mb-6 relative">
+                <div className="w-20 h-20 rounded-[24px] bg-white/5 flex items-center justify-center border border-white/10 group-hover:scale-110 transition-transform">
+                    {url ? <FileText className="w-10 h-10 text-emerald-400" /> : <ShieldAlert className="w-10 h-10 text-red-500/50" />}
+                </div>
+                {url && (
+                    <div className="absolute -top-2 -right-2 bg-emerald-500 rounded-full p-1 shadow-lg">
+                        <CheckCircle2 className="w-4 h-4 text-white" />
+                    </div>
+                )}
+            </div>
+            <h4 className="text-base font-black text-white mb-2 uppercase tracking-tight">{title}</h4>
+            <p className="text-[10px] font-bold text-[var(--color-slate)] uppercase tracking-widest leading-relaxed mb-6 px-4">{desc}</p>
+            <CloudImageUpload onUploadComplete={onUpload} />
+        </div>
+    );
+}
+
+function ScoreCard({ value, max, label, icon: Icon, color, unit }: { value: number, max: number, label: string, icon: any, color: string, unit: string }) {
+    return (
+        <motion.div 
+            whileHover={{ y: -5 }}
+            className="glass p-10 rounded-[48px] border border-white/5 flex flex-col items-center text-center relative overflow-hidden group"
+        >
+            <div className={cn("p-4 rounded-[28px] bg-white/5 mb-6 transition-transform group-hover:rotate-6", color)}>
+                <Icon className="w-8 h-8" />
+            </div>
+            <div className="flex items-baseline gap-1">
+                <span className="text-5xl font-black text-white tracking-tighter transition-all group-hover:scale-110">{value}</span>
+                <span className="text-xs font-black text-[var(--color-slate)] opacity-40 uppercase tracking-widest">{unit}</span>
+            </div>
+            <p className="text-[10px] font-black uppercase text-[var(--color-slate)] tracking-[0.2em] mt-2 mb-6">{label}</p>
+            
+            <div className="w-full h-1.5 rounded-full bg-white/5 overflow-hidden">
+                <motion.div 
+                    initial={{ width: 0 }}
+                    animate={{ width: `${(value/max)*100}%` }}
+                    transition={{ duration: 1.5, ease: "easeOut" }}
+                    className={cn("h-full shadow-[0_0_15px_rgba(212,175,55,0.3)]", color.replace('text', 'bg'))} 
+                />
+            </div>
+
+            <div className={cn("absolute -right-10 -bottom-10 w-40 h-40 blur-[80px] opacity-10 rounded-full", color.replace('text', 'bg'))} />
+        </motion.div>
+    );
+}
+
+function InsightRow({ label, value, sub }: { label: string, value: string, sub: string }) {
+    return (
+        <div className="flex items-start gap-4">
+            <div className="w-1.5 h-12 rounded-full bg-[var(--color-gold)]/20" />
+            <div>
+                <p className="text-[10px] font-black text-[var(--color-slate)] uppercase tracking-widest mb-1">{label}</p>
+                <p className="text-lg font-black text-white tracking-tight">{value}</p>
+                <p className="text-[10px] text-[var(--color-slate)] opacity-60 font-bold">{sub}</p>
+            </div>
+        </div>
+    );
+}
+
+function StatusBadge({ status, kyc }: { status: string, kyc: string }) {
+    const config = {
+        active: "text-emerald-400 bg-emerald-400/10 border-emerald-400/20",
+        suspended: "text-red-400 bg-red-400/10 border-red-400/20",
+        pending: "text-yellow-400 bg-yellow-400/10 border-yellow-400/20",
+    } as any;
+
+    const displayStatus = kyc !== "approved" ? "KYC Review Needed" : status;
+    const finalStatus = kyc !== "approved" ? "pending" : status;
+
+    return (
+        <span className={cn("px-4 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border backdrop-blur-md shadow-xl", config[finalStatus] || config.pending)}>
+            {displayStatus}
+        </span>
+    );
+}
+
