@@ -374,8 +374,8 @@ interface QuotePDFProps extends React.ComponentProps<typeof Document> {
         quantity: number;
         startDate: string;
         endDate: string;
-        pricePerDay: number;
-        totalLinePrice: number;
+        pricePerDay: number | string;
+        totalLinePrice: number | string;
         material?: string;
         certifications?: string[];
         smartTags?: string[];
@@ -383,12 +383,12 @@ interface QuotePDFProps extends React.ComponentProps<typeof Document> {
         modelLink?: string;
     }>;
     financials: {
-        subtotal: number;
-        logisticsCost: number;
-        setupLaborCost: number;
+        subtotal: number | string;
+        logisticsCost: number | string;
+        setupLaborCost: number | string;
         discount: number;
         tax: number;
-        grandTotal: number;
+        grandTotal: number | string;
     };
     termsAndConditions: string[];
     customNotes?: string;
@@ -552,7 +552,7 @@ export function QuotePDFTemplate({
                             </View>
                             <View style={styles.mathRow}>
                                 <Text style={styles.mathText}>Line Item Total:</Text>
-                                <Text style={[styles.mathValue, { color: "#0f172a" }]}>{item.totalLinePrice.toFixed(2)} QAR</Text>
+                                <Text style={[styles.mathValue, { color: "#0f172a" }]}>{typeof item.totalLinePrice === 'number' ? `${item.totalLinePrice.toFixed(2)} QAR` : item.totalLinePrice}</Text>
                             </View>
                         </View>
                         
@@ -605,7 +605,7 @@ export function QuotePDFTemplate({
                             </View>
                             <Text style={[styles.text, styles.tableColCenter, { fontSize: 8 }]}>{item.startDate} - {item.endDate}</Text>
                             <Text style={[styles.text, styles.tableColCenter, { fontWeight: "bold" }]}>{item.quantity}</Text>
-                            <Text style={[styles.text, styles.tableColRight, { fontWeight: "bold", color: "#0f172a" }]}>{item.totalLinePrice.toFixed(2)} QAR</Text>
+                            <Text style={[styles.text, styles.tableColRight, { fontWeight: "bold", color: "#0f172a" }]}>{typeof item.totalLinePrice === 'number' ? `${item.totalLinePrice.toFixed(2)} QAR` : item.totalLinePrice}</Text>
                         </View>
                     ))}
                 </View>
@@ -614,15 +614,15 @@ export function QuotePDFTemplate({
                 <View style={styles.totalsContainer}>
                     <View style={styles.totalsRow}>
                         <Text style={styles.totalsLabel}>Equipment Subtotal:</Text>
-                        <Text style={styles.totalsValue}>{financials.subtotal.toFixed(2)} QAR</Text>
+                        <Text style={styles.totalsValue}>{typeof financials.subtotal === 'number' ? `${financials.subtotal.toFixed(2)} QAR` : financials.subtotal}</Text>
                     </View>
                     <View style={styles.totalsRow}>
                         <Text style={styles.totalsLabel}>Logistics & Transport:</Text>
-                        <Text style={styles.totalsValue}>{financials.logisticsCost.toFixed(2)} QAR</Text>
+                        <Text style={styles.totalsValue}>{typeof financials.logisticsCost === 'number' ? `${financials.logisticsCost.toFixed(2)} QAR` : financials.logisticsCost}</Text>
                     </View>
                     <View style={styles.totalsRow}>
                         <Text style={styles.totalsLabel}>Setup & Labor:</Text>
-                        <Text style={styles.totalsValue}>{financials.setupLaborCost.toFixed(2)} QAR</Text>
+                        <Text style={styles.totalsValue}>{typeof financials.setupLaborCost === 'number' ? `${financials.setupLaborCost.toFixed(2)} QAR` : financials.setupLaborCost}</Text>
                     </View>
                     {financials.discount > 0 && (
                         <View style={styles.totalsRow}>
@@ -642,7 +642,7 @@ export function QuotePDFTemplate({
                     <View style={[styles.totalsRow, { marginBottom: 0, alignItems: "center" }]}>
                         <Text style={[styles.totalsLabel, { color: "#0f172a", fontWeight: "bold", fontSize: 12 }]}>Payable Subtotal:</Text>
                         <Text style={[styles.totalsValue, { color: "#0f172a", fontSize: 12 }]}>
-                            {(financials.grandTotal || 0).toFixed(2)} QAR
+                            {typeof financials.grandTotal === 'number' ? `${financials.grandTotal.toFixed(2)} QAR` : financials.grandTotal}
                         </Text>
                     </View>
                 </View>
@@ -650,7 +650,7 @@ export function QuotePDFTemplate({
                 {/* GRAND TOTAL CALLOUT */}
                 <View style={[styles.grandTotalBox, { marginTop: 0 }]}>
                     <Text style={styles.grandTotalLabel}>Total Proposal Value (QAR)</Text>
-                    <Text style={styles.grandTotalValue}>{financials.grandTotal.toFixed(2)}</Text>
+                    <Text style={styles.grandTotalValue}>{typeof financials.grandTotal === 'number' ? financials.grandTotal.toFixed(2) : financials.grandTotal}</Text>
                 </View>
 
                 {/* BANK DETAILS INJECTION */}

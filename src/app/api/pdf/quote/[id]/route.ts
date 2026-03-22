@@ -201,6 +201,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
             )
             : [booking];
 
+        const isPendingQuote = ["request", "pending_quote", "changes_requested"].includes(booking.status);
+
         const hydratedItems = await Promise.all(
             siblingBookings.map(async (b: any) => {
                 const product = await db.query.products.findFirst({ where: eq(products.id, b.productId) });
@@ -208,7 +210,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
                 const start = new Date(b.startDate);
                 const end = new Date(b.endDate);
                 const days = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
+                
+                const showPrice = product?.showPrice !== false;
+                const hidePrice = isPendingQuote || !showPrice;
                 const pricePerDay = product?.pricePerDay || 0;
+                const lineTotal = pricePerDay * b.units * days;
+
                 return {
                     name: product?.name || "Unknown Item",
                     itemCode: product?.itemCode || "",
@@ -220,8 +227,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
                     quantity: b.units,
                     startDate: format(start, "dd MMM yyyy"),
                     endDate: format(end, "dd MMM yyyy"),
-                    pricePerDay,
-                    totalLinePrice: pricePerDay * b.units * days,
+                    pricePerDay: hidePrice ? "TBD" : pricePerDay,
+                    totalLinePrice: hidePrice ? "TBD" : lineTotal,
+                    _rawLineTotal: showPrice ? lineTotal : 0, // For internal subtotal math
                     vendorId: product?.vendorId,
                     smartTags: ["Premium Grade", "Inspected"],
                     certifications: ["TUV Certified"],
@@ -256,7 +264,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
             }
         }
 
-        const subtotal = hydratedItems.reduce((acc, i) => acc + i.totalLinePrice, 0);
+        const subtotal = hydratedItems.reduce((acc, i) => acc + i._rawLineTotal, 0);
         const discountPct = booking.discount || 0;
         const logistics = booking.logisticsCost || 0;
         const grandTotal = subtotal - (subtotal * (discountPct / 100)) + logistics;
@@ -272,12 +280,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
             letterheadFooterUrl: primaryVendorFooter,
             items: hydratedItems,
             financials: {
-                subtotal,
-                logisticsCost: logistics,
-                setupLaborCost: booking.laborCost || 0,
+                subtotal: isPendingQuote ? "TBD" : subtotal,
+                logisticsCost: isPendingQuote ? "TBD" : logistics,
+                setupLaborCost: isPendingQuote ? "TBD" : (booking.laborCost || 0),
                 discount: discountPct,
                 tax: 0,
-                grandTotal: booking.totalPrice || grandTotal,
+                grandTotal: isPendingQuote ? "TBD" : (booking.totalPrice || grandTotal),
             },
             bankDetails: pBankDetails,
             paymentTerms: pPaymentTerms,
