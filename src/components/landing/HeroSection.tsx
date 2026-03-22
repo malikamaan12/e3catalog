@@ -8,16 +8,13 @@ import { useSiteSettings } from "@/components/SiteSettingsProvider";
 import { useInView } from "react-intersection-observer";
 import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 import { Box, FileText, Truck, CheckCircle2 } from "lucide-react";
-import Spline from "@splinetool/react-spline";
 
 gsap.registerPlugin(ScrollTrigger);
 
 export default function HeroSection() {
     const containerRef = useRef<HTMLDivElement>(null);
     const contentRef = useRef<HTMLDivElement>(null);
-    const splineRef = useRef<any>(null);
     const { getSetting } = useSiteSettings();
-    const [splineLoaded, setSplineLoaded] = useState(false);
  
     // Mouse Tracking for 3D Interaction
     const mouseX = useMotionValue(0);
@@ -104,15 +101,9 @@ export default function HeroSection() {
                     rotateX,
                 }}
             >
-                <Spline 
-                    scene="https://prod.spline.design/6Wq1Q7YELNqM31OR/scene.splinecode" 
-                    className="w-full h-full"
-                    onLoad={(splineApp) => {
-                        splineRef.current = splineApp;
-                    }}
-                />
+                {/* 3D Scene Removed - Failed to load resource (403/404) */}
                 
-                {/* Fallback Overlays (if Spline fails or is loading) */}
+                {/* Fallback Overlays (previously underneath Spline) */}
                 <div className="absolute inset-0 bg-gradient-to-br from-navy/60 via-transparent to-navy/60 pointer-events-none" />
             </motion.div>
 
