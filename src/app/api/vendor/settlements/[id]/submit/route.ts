@@ -6,10 +6,10 @@ import { requireAuth } from "@/lib/auth";
 
 export async function POST(
     request: Request,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const { id: settlementId } = params;
+        const { id: settlementId } = await params;
         const { user, error } = await requireAuth();
         if (error || !user || user.role !== "vendor") return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
 

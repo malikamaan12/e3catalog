@@ -6,13 +6,13 @@ import { requireAdmin } from "@/lib/requireAdmin";
 
 export async function PATCH(
     request: Request,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         const { error } = await requireAdmin();
         if (error) return error;
 
-        const { id: settlementId } = params;
+        const { id: settlementId } = await params;
         const body = await request.json();
         const { adminNotes } = body;
 

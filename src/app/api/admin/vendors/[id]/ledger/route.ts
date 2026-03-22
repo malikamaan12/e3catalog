@@ -6,13 +6,13 @@ import { requireAdmin } from "@/lib/requireAdmin";
 
 export async function GET(
     request: Request,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         const { error } = await requireAdmin();
         if (error) return error;
 
-        const { id: vendorId } = params;
+        const { id: vendorId } = await params;
 
         // Fetch all bookings for this vendor
         const vendorBookings = await db.query.bookings.findMany({
