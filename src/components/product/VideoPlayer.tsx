@@ -3,22 +3,25 @@
 export default function VideoPlayer({ url, posterUrl }: { url?: string; posterUrl?: string }) {
     if (url) {
         return (
-            <div className="h-96 rounded-xl overflow-hidden bg-black flex items-center justify-center relative">
+            <div className="w-full aspect-video rounded-2xl overflow-hidden bg-black flex items-center justify-center relative shadow-2xl ring-1 ring-white/10 group">
                 <video
                     src={url}
                     poster={posterUrl}
                     controls
                     controlsList="nodownload"
                     onContextMenu={(e) => e.preventDefault()}
-                    preload="none"
+                    preload="metadata"
                     className="w-full h-full object-contain"
                 />
+                
+                {/* Visual Polish: Bottom gradient for controls readability */}
+                <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black/60 to-transparent pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
         );
     }
 
     return (
-        <div className="h-96 rounded-xl overflow-hidden bg-[var(--color-navy-lighter)] flex items-center justify-center relative">
+        <div className="w-full aspect-video rounded-2xl overflow-hidden bg-[var(--color-navy-lighter)] flex items-center justify-center relative ring-1 ring-white/5">
             {/* Demo video placeholder — in production would load actual product video */}
             <div className="text-center">
                 <div className="w-20 h-20 rounded-full bg-[var(--color-gold)] bg-opacity-10 flex items-center justify-center mx-auto mb-4">

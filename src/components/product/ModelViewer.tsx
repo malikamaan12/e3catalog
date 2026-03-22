@@ -1,7 +1,7 @@
 "use client";
 
 import { Canvas } from "@react-three/fiber";
-import { OrbitControls, Environment, ContactShadows, PresentationControls, useGLTF, Bounds, Center } from "@react-three/drei";
+import { OrbitControls, Environment, useGLTF, Center, Stage } from "@react-three/drei";
 import { Suspense, useState } from "react";
 
 function DemoStage() {
@@ -73,7 +73,7 @@ export default function ModelViewer({ url, posterUrl }: { url?: string; posterUr
     const [isLoaded, setIsLoaded] = useState(false);
 
     return (
-        <div className="h-96 rounded-xl overflow-hidden bg-[var(--color-navy-lighter)] relative group">
+        <div className="w-full aspect-video rounded-2xl overflow-hidden bg-[var(--color-navy-lighter)] relative group ring-1 ring-white/5 shadow-2xl">
             {/* Poster Image Overlay — Shown until Canvas/Model is ready */}
             {!isLoaded && posterUrl && (
                 <div className="absolute inset-0 z-10 transition-opacity duration-700">
@@ -82,43 +82,47 @@ export default function ModelViewer({ url, posterUrl }: { url?: string; posterUr
                         alt="3D Model Poster"
                         className="w-full h-full object-cover blur-sm scale-105 opacity-40"
                     />
-                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-[var(--color-navy)] bg-opacity-40 backdrop-blur-md">
-                        <div className="w-10 h-10 border-2 border-[var(--color-gold)] border-t-transparent rounded-full animate-spin mb-4" />
-                        <p className="text-sm font-medium text-[var(--color-warm-white)]">Initializing 3D Engine...</p>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-[var(--color-navy)] bg-opacity-40 backdrop-blur-md text-center px-6">
+                        <div className="w-10 h-10 border-2 border-[var(--color-gold)] border-t-transparent rounded-full animate-spin mb-4 shadow-[0_0_15px_rgba(201,168,76,0.3)]" />
+                        <p className="text-sm font-semibold text-[var(--color-warm-white)] tracking-wide uppercase">Initializing <span className="text-[var(--color-gold)]">3D Propulsion</span></p>
+                        <p className="text-[10px] text-[var(--color-slate)] mt-1 uppercase tracking-tighter">Preparing spatial coordinates...</p>
                     </div>
                 </div>
             )}
 
             <Canvas
-                camera={{ position: [4, 3, 4], fov: 45 }}
+                camera={{ position: [5, 5, 5], fov: 35 }}
                 shadows
+                gl={{ antialias: true, alpha: true }}
                 style={{ background: "transparent" }}
                 onCreated={() => setIsLoaded(true)}
             >
                 <Suspense fallback={null}>
-                    <ambientLight intensity={0.4} />
-                    <directionalLight position={[5, 8, 3]} intensity={0.8} castShadow />
-
-                    <PresentationControls
-                        global
-                        zoom={0.8}
-                        rotation={[0, -Math.PI / 4, 0]}
-                        polar={[-Math.PI / 4, Math.PI / 4]}
-                        azimuth={[-Math.PI / 4, Math.PI / 4]}
+                    <Environment preset="city" />
+                    
+                    <Stage 
+                        intensity={0.4} 
+                        environment="city" 
+                        adjustCamera={1.2} 
+                        shadows={{ type: 'contact', opacity: 0.2, blur: 2 }}
+                        center={{ disableY: false }}
                     >
                         {url ? (
-                            <Bounds fit clip observe margin={1.2}>
-                                <DynamicModel url={url} />
-                            </Bounds>
+                            <DynamicModel url={url} />
                         ) : (
                             <DemoStage />
                         )}
-                    </PresentationControls>
-
-                    <ContactShadows position={[0, -0.7, 0]} opacity={0.4} blur={2} far={4} />
-                    <Environment preset="city" />
+                    </Stage>
                 </Suspense>
-                <OrbitControls enablePan={false} enableZoom={true} maxPolarAngle={Math.PI / 2} />
+                
+                <OrbitControls 
+                    makeDefault 
+                    enablePan={false} 
+                    minPolarAngle={0} 
+                    maxPolarAngle={Math.PI / 1.8} 
+                    autoRotate={true}
+                    autoRotateSpeed={0.5}
+                />
             </Canvas>
 
             {/* Overlay instructions */}
