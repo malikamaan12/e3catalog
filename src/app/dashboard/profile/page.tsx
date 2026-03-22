@@ -235,8 +235,8 @@ export default function ProfilePage() {
                                 )}
                             </div>
                             <div className="absolute -bottom-2 -right-2">
-                                <CloudImageUpload
-                                    onUpload={(url) => handleChange("image", url)}
+                                 <CloudImageUpload
+                                    onUploadComplete={(url) => handleChange("image", url)}
                                     // Customizing the trigger to be more minimal
                                 />
                             </div>
@@ -282,7 +282,7 @@ export default function ProfilePage() {
                                     {profile.vendorProfile.companyRegistrationUrl ? <CheckCircle2 className="w-5 h-5 text-emerald-400" /> : <ShieldAlert className="w-5 h-5 text-red-500" />}
                                 </div>
                                 <div className="flex flex-col items-center pt-2">
-                                    <CloudImageUpload onUpload={(url) => handleVendorChange("companyRegistrationUrl", url)} />
+                                    <CloudImageUpload onUploadComplete={(url) => handleVendorChange("companyRegistrationUrl", url)} />
                                     <p className="text-[10px] text-[var(--color-slate)] mt-4 text-center">PDF or High-Res Image of your CR / Trade License.</p>
                                 </div>
                             </div>
@@ -292,7 +292,7 @@ export default function ProfilePage() {
                                     {profile.vendorProfile.taxCardUrl ? <CheckCircle2 className="w-5 h-5 text-emerald-400" /> : <ShieldAlert className="w-5 h-5 text-red-500" />}
                                 </div>
                                 <div className="flex flex-col items-center pt-2">
-                                    <CloudImageUpload onUpload={(url) => handleVendorChange("taxCardUrl", url)} />
+                                    <CloudImageUpload onUploadComplete={(url) => handleVendorChange("taxCardUrl", url)} />
                                     <p className="text-[10px] text-[var(--color-slate)] mt-4 text-center">Valid Tax ID card for financial compliance.</p>
                                 </div>
                             </div>
