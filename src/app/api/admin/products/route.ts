@@ -205,6 +205,8 @@ export async function PUT(req: NextRequest) {
         installationGuides: installationGuidesInput, 
         totalUnits, 
         condition: unitCondition,
+        installGuideUrl, 
+        dismantleGuideUrl,
         ...updates 
     } = body;
 
