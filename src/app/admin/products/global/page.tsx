@@ -32,7 +32,7 @@ export default function GlobalCatalogPage() {
         fetch("/api/products")
             .then((r) => r.json())
             .then((data) => {
-                setProducts(Array.isArray(data) ? data : []);
+                setProducts(data.products || []);
                 setLoading(false);
             })
             .catch(() => setLoading(false));
