@@ -61,7 +61,7 @@ export async function PUT(req: Request) {
             pocName, pocPhone, pocEmail, pocDesignation, projectContacts, image,
         } = body;
 
-        const update: any = { updatedAt: new Date().toISOString() };
+        const update: any = { updatedAt: new Date() };
 
         if (name?.trim()) update.name = name.trim();
         if (phoneNumber !== undefined) update.phoneNumber = phoneNumber?.trim() || null;

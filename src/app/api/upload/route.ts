@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
 
         let user = null;
         if (folder !== "kyc") {
-            const authCheck = await requireAdmin(["super_admin", "admin", "vendor"]);
+            const authCheck = await requireAdmin(["super_admin", "admin", "vendor", "client"]);
             if (authCheck.error) {
                 console.error("UPLOAD AUTH ERROR: User not authorized to upload to folder:", folder);
                 return authCheck.error;

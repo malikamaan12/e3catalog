@@ -135,19 +135,39 @@ export default function ProfilePage() {
         if (!file) return;
 
         setUploading(true);
-        const formData = new FormData();
-        formData.append("files", file);
+        setMsg(null);
 
         try {
+            // 1. Get Presigned URL
             const res = await fetch("/api/upload", {
                 method: "POST",
-                body: formData,
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    filename: file.name,
+                    contentType: file.type,
+                    folder: "profiles"
+                })
             });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || "Upload failed");
 
-            const uploadedFile = data.files[0];
-            setProfile(p => ({ ...p, image: uploadedFile.url }));
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => ({}));
+                throw new Error(errorData.error || `Upload failed with status ${res.status}`);
+            }
+            
+            const data = await res.json();
+
+            // 2. Upload file directly to S3/R2
+            const uploadRes = await fetch(data.url, {
+                method: "PUT",
+                headers: { "Content-Type": file.type },
+                body: file
+            });
+
+            if (!uploadRes.ok) throw new Error("Failed to upload image to storage");
+
+            // 3. Update local state
+            setProfile(p => ({ ...p, image: data.publicUrl }));
+            setMsg({ text: "Photo uploaded! Don't forget to save your profile.", ok: true });
         } catch (err: any) {
             setMsg({ text: err.message, ok: false });
         } finally {
