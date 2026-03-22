@@ -32,7 +32,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const navItems = [
         { href: "/admin", label: "Dashboard", icon: LayoutDashboard, roles: ["admin", "super_admin", "sales_rep", "warehouse_manager", "vendor"] },
         { href: "/admin/products", label: user?.role === "vendor" || user?.role === "sales_rep" ? "My Catalog" : "Products", icon: Package, roles: ["admin", "super_admin", "sales_rep", "vendor"] },
-        { href: "/admin/products/global", label: "Global Catalog", icon: Package, roles: ["vendor", "sales_rep"] },
+        { href: "/admin/products/global", label: "Global Catalog", icon: Package, roles: ["vendor", "sales_rep", "admin", "super_admin"] },
         { href: "/admin/inventory", label: "Inventory", icon: Warehouse, roles: ["admin", "super_admin", "warehouse_manager", "vendor"] },
         { href: "/admin/categories", label: "Categories", icon: Tags, roles: ["admin", "super_admin", "sales_rep"] },
         { href: "/admin/analytics", label: "Analytics & Finance", icon: LineChart, roles: ["admin", "super_admin", "vendor"] },
