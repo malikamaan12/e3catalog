@@ -16,28 +16,60 @@ const PAGE_LIMIT = 20;
  * First tries the precomputed cache (written by /api/cron/precompute-facets).
  * Falls back to a live DB query on a cold start (no cron yet, or cache miss).
  */
-async function getAvailabilityMap(productIds: string[]): Promise<Record<string, number>> {
-    // 1. Try warm cache first
-    const cached = getCache<Record<string, number>>(CACHE_KEYS.AVAILABILITY_MAP);
-    if (cached) return cached;
-
-    // 2. Cold-start: compute it live and cache the result
-    return computeAndCacheAvailability(productIds);
+interface AvailabilityResult {
+    totalMap: Record<string, number>;
+    availabilityMap: Record<string, number>;
 }
 
 /**
- * Actually query the DB and write to cache. Called by the cron route and on
- * cold-starts. Accepts an optional productIds filter for the cold-start path.
+ * Compute an availability map for today.
+ * Handles both full-fleet precomputation and partial cold-start queries.
+ */
+async function getAvailabilityMap(productIds: string[]): Promise<AvailabilityResult> {
+    const cached = getCache<Record<string, number>>(CACHE_KEYS.AVAILABILITY_MAP);
+    
+    // If we have a warm cache, we still need totalUnits (which isn't in this specific cache key)
+    if (cached) {
+        const totalMap = await computeTotalsOnly(productIds);
+        return { totalMap, availabilityMap: cached };
+    }
+
+    // 2. Cold-start: compute everything to warm the cache properly
+    return computeAndCacheAvailability();
+}
+
+/**
+ * Helper to get just the total counts (no booking math) for a subset.
+ */
+async function computeTotalsOnly(productIds: string[]): Promise<Record<string, number>> {
+    const unitCounts = await db
+        .select({
+            productId: inventoryUnits.productId,
+            total: sql<number>`count(*)`,
+        })
+        .from(inventoryUnits)
+        .where(inArray(inventoryUnits.productId, productIds))
+        .groupBy(inventoryUnits.productId);
+
+    const totalMap: Record<string, number> = {};
+    for (const row of unitCounts) {
+        totalMap[row.productId] = Number(row.total);
+    }
+    return totalMap;
+}
+
+/**
+ * Actually query the DB and write to cache.
  */
 export async function computeAndCacheAvailability(
     productIds?: string[]
-): Promise<Record<string, number>> {
+): Promise<AvailabilityResult> {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
     tomorrow.setDate(today.getDate() + 1);
 
-    // Count total inventory units per product in a single aggregate query
+    // 1. Count total inventory units
     const unitCounts = await db
         .select({
             productId: inventoryUnits.productId,
@@ -55,7 +87,7 @@ export async function computeAndCacheAvailability(
         totalMap[row.productId] = Number(row.total);
     }
 
-    // Count booked units per product for today (two queries, each single-pass)
+    // 2. Count booked units
     const activeBookings = await db
         .select({
             productId: bookings.productId,
@@ -100,8 +132,12 @@ export async function computeAndCacheAvailability(
         availabilityMap[productId] = Math.max(0, total - (bookedMap[productId] || 0));
     }
 
-    setCache(CACHE_KEYS.AVAILABILITY_MAP, availabilityMap, TTL.AVAILABILITY);
-    return availabilityMap;
+    // Capture FULL fleet cache ONLY if no productIds filter supplied
+    if (!productIds || productIds.length === 0) {
+        setCache(CACHE_KEYS.AVAILABILITY_MAP, availabilityMap, TTL.AVAILABILITY);
+    }
+
+    return { totalMap, availabilityMap };
 }
 
 // ─── GET /api/products ────────────────────────────────────────────────────
@@ -231,9 +267,9 @@ export async function GET(req: NextRequest) {
 
         // ── 6. Availability (from cache or computed) ───────────────────────
         const productIds = pageRows.map((r) => r.id);
-        const availabilityMap = productIds.length > 0
+        const { totalMap, availabilityMap } = productIds.length > 0
             ? await getAvailabilityMap(productIds)
-            : {};
+            : { totalMap: {}, availabilityMap: {} };
 
         // ── 7. Shape the response ──────────────────────────────────────────
         const result = pageRows.map((row) => ({
@@ -257,9 +293,7 @@ export async function GET(req: NextRequest) {
             vendor: row.vendorCompanyName
                 ? { companyName: row.vendorCompanyName, scoreRating: row.vendorScoreRating }
                 : null,
-            totalUnits: productIds.includes(row.id)
-                ? (availabilityMap[row.id] ?? 0) + 0  // will be overwritten below
-                : 0,
+            totalUnits: totalMap[row.id] ?? 0,
             currentAvailableUnits: availabilityMap[row.id] ?? 0,
         }));
 
