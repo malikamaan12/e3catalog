@@ -351,6 +351,69 @@ const styles = StyleSheet.create({
         fontSize: 9,
         color: "#0f172a",
         fontWeight: "bold",
+    },
+    // Compact Item Grid Styles
+    compactItemContainer: {
+        flexDirection: "row",
+        marginBottom: 15,
+        padding: 10,
+        backgroundColor: "#f8fafc",
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: "#e2e8f0",
+    },
+    compactItemImage: {
+        width: 100,
+        height: 100,
+        objectFit: "cover",
+        borderRadius: 6,
+    },
+    compactItemContent: {
+        flex: 1,
+        marginLeft: 12,
+    },
+    compactItemHeader: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "flex-start",
+        marginBottom: 4,
+    },
+    compactItemTitle: {
+        fontSize: 12,
+        fontWeight: "bold",
+        color: "#0f172a",
+        flex: 1,
+    },
+    compactItemCode: {
+        fontSize: 8,
+        color: "#64748b",
+        fontFamily: "Courier",
+        backgroundColor: "#f1f5f9",
+        padding: 2,
+    },
+    compactItemSpecs: {
+        flexDirection: "row",
+        flexWrap: "wrap",
+        gap: 8,
+        marginTop: 6,
+    },
+    compactSpecItem: {
+        width: "30%",
+        marginBottom: 6,
+    },
+    compactItemQR: {
+        width: 60,
+        height: 60,
+        marginLeft: 10,
+        alignItems: "center",
+        justifyContent: "center",
+        borderLeftWidth: 1,
+        borderLeftColor: "#e2e8f0",
+        paddingLeft: 10,
+    },
+    compactQRImage: {
+        width: 50,
+        height: 50,
     }
 });
 
@@ -439,280 +502,127 @@ export function QuotePDFTemplate({
 
     return (
         <Document {...documentProps}>
-            {/* PAGE 1: COVER & INTRODUCTION */}
+            {/* MAIN CONTENT FLOW: HEADER -> CLIENT INFO -> COMPACT ITEMS -> SUMMARIES */}
             <Page size="A4" style={styles.page}>
                 {renderHeader()}
 
+                {/* 1. Header & Client Details */}
                 <View style={styles.section}>
-                    <Text style={styles.title}>Formal Rental Proposal</Text>
-                    <Text style={styles.subtitle}>Reference: #{quoteNumber} | Date: {date}</Text>
-                </View>
-
-                <View style={styles.grid2}>
-                    <View style={styles.col}>
-                        <Text style={styles.label}>Prepared For</Text>
-                        <Text style={styles.value}>{clientName}</Text>
-
-                        <Text style={styles.label}>Contact</Text>
-                        <Text style={styles.text}>{clientEmail}</Text>
-                        {clientPhone && <Text style={styles.text}>{clientPhone}</Text>}
-                    </View>
-                    <View style={styles.col}>
-                        <Text style={styles.label}>Event / Project Name</Text>
-                        <Text style={styles.value}>{eventProjectName || "Standard Rental"}</Text>
-                    </View>
-                </View>
-
-                {customNotes && (
-                    <View style={[styles.section, styles.specBox]}>
-                        <Text style={[styles.label, { marginBottom: 6 }]}>Proposal Notes</Text>
-                        <Text style={styles.text}>{customNotes}</Text>
-                    </View>
-                )}
-
-                <View style={[styles.section, { marginTop: 40 }]}>
-                    <Text style={styles.text}>
-                        Thank you for the opportunity to quote for your upcoming requirement.
-                        Please find enclosed the formal specifications for the requested equipment,
-                        followed by the finalized commercial breakdown.
-                    </Text>
-                </View>
-
-                {renderFooter()}
-            </Page>
-
-            {/* MIDDLE PAGES: PRODUCT SPEC SHEETS (One product per page) */}
-            {items.map((item, idx) => (
-                <Page key={idx} size="A4" style={styles.page} wrap={false}>
-                    {renderHeader()}
-
-                    {/* HERO & TITLE SECTION */}
-                    <View style={styles.heroSection}>
-                        {item.thumbnailUrl && (
-                            <Image src={item.thumbnailUrl} style={styles.productHeroImageLarge} />
-                        )}
-                        <View style={styles.productTitleBox}>
-                            <Text style={styles.productTitle}>{item.name}</Text>
-                            {item.itemCode && (
-                                <Text style={styles.itemCode}>ITEM CODE: {item.itemCode}</Text>
-                            )}
+                    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", borderBottomWidth: 1, borderBottomColor: "#e2e8f0", paddingBottom: 10, marginBottom: 15 }}>
+                        <View>
+                            <Text style={[styles.title, { marginBottom: 0 }]}>Rental Proposal</Text>
+                            <Text style={{ fontSize: 10, color: "#64748b" }}>Ref: #{quoteNumber} | {date}</Text>
                         </View>
-                    </View>
-
-                    {/* BADGES / CERTIFICATIONS */}
-                    <View style={styles.badgeContainer}>
-                        {(item.smartTags && item.smartTags.length > 0) && item.smartTags.map((tag, tIdx) => (
-                            <View key={`tag-${tIdx}`} style={[styles.badge, { backgroundColor: "#fef3c7" }]}>
-                                <Text style={[styles.badgeText, { color: "#d97706" }]}>{tag}</Text>
-                            </View>
-                        ))}
-                        {(item.certifications && item.certifications.length > 0) && item.certifications.map((cert, cIdx) => (
-                            <View key={`cert-${cIdx}`} style={styles.badge}>
-                                <Text style={styles.badgeText}>{cert}</Text>
-                            </View>
-                        ))}
-                    </View>
-
-                    {/* DESCRIPTION */}
-                    <View style={styles.section}>
-                        <Text style={styles.text}>{item.shortDescription}</Text>
-                    </View>
-
-                    {/* SPECIFICATIONS GRID */}
-                    <View style={styles.specBox}>
-                        <View style={styles.grid2}>
-                            <View style={styles.col}>
-                                <Text style={styles.label}>Dimensions</Text>
-                                <Text style={styles.value}>{item.dimensions || "Standard"}</Text>
-
-                                <Text style={styles.label}>Weight</Text>
-                                <Text style={styles.value}>{item.weight || "N/A"}</Text>
-                            </View>
-                            <View style={styles.col}>
-                                <Text style={styles.label}>Power</Text>
-                                <Text style={styles.value}>{item.powerRequirements || "None"}</Text>
-
-                                <Text style={styles.label}>Material</Text>
-                                <Text style={styles.value}>{item.material || "Standard"}</Text>
-                            </View>
+                        <View style={{ alignItems: "flex-end" }}>
+                            <Text style={styles.label}>Event / Project</Text>
+                            <Text style={[styles.value, { marginBottom: 0 }]}>{eventProjectName || "Standard Rental"}</Text>
                         </View>
                     </View>
 
                     <View style={styles.grid2}>
-                        {/* RENTAL MATH */}
-                        <View style={[styles.col, styles.mathBox]}>
-                            <Text style={styles.label}>Rental Breakdown</Text>
-                            <View style={styles.mathRow}>
-                                <Text style={styles.mathText}>Quantity Requested:</Text>
-                                <Text style={styles.mathValue}>{item.quantity} Units</Text>
-                            </View>
-                            <View style={styles.mathRow}>
-                                <Text style={styles.mathText}>Rental Duration:</Text>
-                                <Text style={styles.mathValue}>{item.startDate} to {item.endDate}</Text>
-                            </View>
-                            <View style={styles.mathRow}>
-                                <Text style={styles.mathText}>Line Item Total:</Text>
-                                <Text style={[styles.mathValue, { color: "#0f172a" }]}>{typeof item.totalLinePrice === 'number' ? `${item.totalLinePrice.toFixed(2)} QAR` : item.totalLinePrice}</Text>
-                            </View>
+                        <View style={styles.col}>
+                            <Text style={styles.label}>Prepared For</Text>
+                            <Text style={[styles.value, { fontSize: 14 }]}>{clientName}</Text>
+                            <Text style={styles.text}>{clientEmail} {clientPhone ? `| ${clientPhone}` : ""}</Text>
                         </View>
-                        
-                        {/* SMART MEDIA (QR) */}
-                        <View style={[styles.col, styles.qrBox]}>
-                            {item.qrCodeUrl ? (
-                                <Image src={item.qrCodeUrl} style={styles.qrImage} />
-                            ) : (
-                                <View style={styles.qrPlaceholder}>
-                                    <Text style={styles.qrPlaceholderText}>SCAN FOR{"\n"}3D VIEW</Text>
-                                </View>
-                            )}
-                            <Text style={styles.qrLinkText}>
-                                {item.modelLink || "Interactive Media Available"}
-                            </Text>
-                        </View>
+                        {customNotes && (
+                            <View style={[styles.col, { backgroundColor: "#f8fafc", padding: 8, borderRadius: 4 }]}>
+                                <Text style={styles.label}>Proposal Notes</Text>
+                                <Text style={[styles.text, { fontSize: 8 }]}>{customNotes}</Text>
+                            </View>
+                        )}
                     </View>
-
-                    {renderFooter()}
-                </Page>
-            ))}
-
-            {/* FINAL PAGE: FINANCIALS & TERMS */}
-            <Page size="A4" style={styles.page}>
-                {renderHeader()}
-
-                <View style={styles.summaryHeaderBox}>
-                    <Text style={[styles.title, { marginBottom: 4 }]}>Commercial Summary</Text>
-                    <Text style={styles.text}>Comprehensive breakdown of rental equipment, logistics, and additional services.</Text>
                 </View>
 
-                {/* PREMIUM TABLE */}
-                <View style={styles.tableContainer}>
-                    {/* Header Row */}
-                    <View style={styles.premiumTableHeader}>
-                        <Text style={[styles.label, styles.tableColLeft]}>Equipment Details</Text>
-                        <Text style={[styles.label, styles.tableColCenter]}>Duration</Text>
-                        <Text style={[styles.label, styles.tableColCenter]}>Qty</Text>
-                        <Text style={[styles.label, styles.tableColRight]}>Line Total</Text>
-                    </View>
-
-                    {/* Line Items */}
+                {/* 2. Compact Items Section */}
+                <View style={styles.section}>
+                    <Text style={[styles.label, { marginBottom: 8, color: "#0f172a" }]}>Equipment Specifications & Media</Text>
                     {items.map((item, idx) => (
-                        <View key={idx} style={styles.premiumTableRow}>
-                            <View style={styles.tableColLeft}>
-                                <Text style={[styles.text, { fontWeight: "bold", color: "#0f172a" }]}>{item.name}</Text>
-                                {item.itemCode && (
-                                    <Text style={{ fontSize: 7, color: "#64748b", fontFamily: "Courier", marginTop: 2 }}>REF: {item.itemCode}</Text>
-                                )}
+                        <View key={idx} style={styles.compactItemContainer} wrap={false}>
+                            {item.thumbnailUrl && <Image src={item.thumbnailUrl} style={styles.compactItemImage} />}
+                            <View style={styles.compactItemContent}>
+                                <View style={styles.compactItemHeader}>
+                                    <Text style={styles.compactItemTitle}>{item.name}</Text>
+                                    {item.itemCode && <Text style={styles.compactItemCode}>{item.itemCode}</Text>}
+                                </View>
+                                <Text style={[styles.text, { fontSize: 8, marginBottom: 6 }]}>
+                                    {item.shortDescription}
+                                </Text>
+                                <View style={styles.compactItemSpecs}>
+                                    <View style={styles.compactSpecItem}>
+                                        <Text style={styles.label}>Dimensions</Text>
+                                        <Text style={[styles.text, { fontSize: 9, fontWeight: "bold" }]}>{item.dimensions || "N/A"}</Text>
+                                    </View>
+                                    <View style={styles.compactSpecItem}>
+                                        <Text style={styles.label}>Power</Text>
+                                        <Text style={[styles.text, { fontSize: 9, fontWeight: "bold" }]}>{item.powerRequirements || "N/A"}</Text>
+                                    </View>
+                                    <View style={styles.compactSpecItem}>
+                                        <Text style={styles.label}>Weight</Text>
+                                        <Text style={[styles.text, { fontSize: 9, fontWeight: "bold" }]}>{item.weight || "N/A"}</Text>
+                                    </View>
+                                    <View style={styles.compactSpecItem}>
+                                        <Text style={styles.label}>Quantity</Text>
+                                        <Text style={[styles.text, { fontSize: 9, fontWeight: "bold" }]}>{item.quantity} Units</Text>
+                                    </View>
+                                    <View style={styles.compactSpecItem}>
+                                        <Text style={styles.label}>Line Total</Text>
+                                        <Text style={[styles.text, { fontSize: 9, fontWeight: "bold", color: "#0f172a" }]}>{typeof item.totalLinePrice === 'number' ? `${item.totalLinePrice.toLocaleString()} QAR` : item.totalLinePrice}</Text>
+                                    </View>
+                                </View>
                             </View>
-                            <Text style={[styles.text, styles.tableColCenter, { fontSize: 8 }]}>{item.startDate} - {item.endDate}</Text>
-                            <Text style={[styles.text, styles.tableColCenter, { fontWeight: "bold" }]}>{item.quantity}</Text>
-                            <Text style={[styles.text, styles.tableColRight, { fontWeight: "bold", color: "#0f172a" }]}>{typeof item.totalLinePrice === 'number' ? `${item.totalLinePrice.toFixed(2)} QAR` : item.totalLinePrice}</Text>
+                            <View style={styles.compactItemQR}>
+                                {item.qrCodeUrl && <Image src={item.qrCodeUrl} style={styles.compactQRImage} />}
+                                <Text style={{ fontSize: 6, color: "#64748b", marginTop: 4, textAlign: "center", fontWeight: "bold" }}>SCAN 3D</Text>
+                            </View>
                         </View>
                     ))}
                 </View>
 
-                {/* DETAILED TOTALS */}
-                <View style={styles.totalsContainer}>
-                    <View style={styles.totalsRow}>
-                        <Text style={styles.totalsLabel}>Equipment Subtotal:</Text>
-                        <Text style={styles.totalsValue}>{typeof financials.subtotal === 'number' ? `${financials.subtotal.toFixed(2)} QAR` : financials.subtotal}</Text>
+                {/* 3. Financial Summary */}
+                <View style={{ marginTop: 10 }}>
+                    <View style={[styles.totalsContainer, { width: "100%", flexDirection: "row", justifyContent: "space-between", alignItems: "center" }]}>
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.label}>Commercial Breakdown</Text>
+                            <View style={{ flexDirection: "row", gap: 15, marginTop: 4 }}>
+                                <Text style={styles.text}>Subtotal: {typeof financials.subtotal === 'number' ? financials.subtotal.toLocaleString() : financials.subtotal}</Text>
+                                <Text style={styles.text}>Logistics: {typeof financials.logisticsCost === 'number' ? financials.logisticsCost.toLocaleString() : financials.logisticsCost}</Text>
+                                {financials.discount > 0 && <Text style={[styles.text, { color: "#ef4444" }]}>Disc: -{financials.discount}%</Text>}
+                            </View>
+                        </View>
+                        <View style={[styles.grandTotalBox, { marginTop: 0, padding: 12, minWidth: 200 }]}>
+                            <Text style={[styles.grandTotalLabel, { fontSize: 9 }]}>Total Payable Value</Text>
+                            <Text style={[styles.grandTotalValue, { fontSize: 16 }]}>{typeof financials.grandTotal === 'number' ? financials.grandTotal.toLocaleString() : financials.grandTotal} QAR</Text>
+                        </View>
                     </View>
-                    <View style={styles.totalsRow}>
-                        <Text style={styles.totalsLabel}>Logistics & Transport:</Text>
-                        <Text style={styles.totalsValue}>{typeof financials.logisticsCost === 'number' ? `${financials.logisticsCost.toFixed(2)} QAR` : financials.logisticsCost}</Text>
-                    </View>
-                    <View style={styles.totalsRow}>
-                        <Text style={styles.totalsLabel}>Setup & Labor:</Text>
-                        <Text style={styles.totalsValue}>{typeof financials.setupLaborCost === 'number' ? `${financials.setupLaborCost.toFixed(2)} QAR` : financials.setupLaborCost}</Text>
-                    </View>
-                    {financials.discount > 0 && (
-                        <View style={styles.totalsRow}>
-                            <Text style={[styles.totalsLabel, { color: "#ef4444" }]}>Discount Applied:</Text>
-                            <Text style={[styles.totalsValue, { color: "#ef4444" }]}>-{financials.discount.toFixed(2)} QAR</Text>
+                </View>
+
+                {/* 4. Bank Details & Terms */}
+                <View style={{ flexDirection: "row", gap: 15, marginTop: 15 }}>
+                    {bankDetails && (
+                        <View style={[styles.bankDetailsBox, { flex: 1, marginTop: 0, padding: 10 }]}>
+                            <Text style={styles.bankDetailsTitle}>Bank Remittance</Text>
+                            <Text style={[styles.text, { fontSize: 8 }]}>{bankDetails.bankName} | Acc: {bankDetails.accountNumber}</Text>
+                            <Text style={[styles.text, { fontSize: 8 }]}>IBAN: {bankDetails.iban}</Text>
                         </View>
                     )}
-                    {(financials.tax && financials.tax > 0) ? (
-                        <View style={styles.totalsRow}>
-                            <Text style={styles.totalsLabel}>Taxes / VAT:</Text>
-                            <Text style={styles.totalsValue}>{financials.tax.toFixed(2)} QAR</Text>
-                        </View>
-                    ) : null}
-                    
-                    <View style={styles.divider} />
-                    
-                    <View style={[styles.totalsRow, { marginBottom: 0, alignItems: "center" }]}>
-                        <Text style={[styles.totalsLabel, { color: "#0f172a", fontWeight: "bold", fontSize: 12 }]}>Payable Subtotal:</Text>
-                        <Text style={[styles.totalsValue, { color: "#0f172a", fontSize: 12 }]}>
-                            {typeof financials.grandTotal === 'number' ? `${financials.grandTotal.toFixed(2)} QAR` : financials.grandTotal}
-                        </Text>
-                    </View>
-                </View>
-
-                {/* GRAND TOTAL CALLOUT */}
-                <View style={[styles.grandTotalBox, { marginTop: 0 }]}>
-                    <Text style={styles.grandTotalLabel}>Total Proposal Value (QAR)</Text>
-                    <Text style={styles.grandTotalValue}>{typeof financials.grandTotal === 'number' ? financials.grandTotal.toFixed(2) : financials.grandTotal}</Text>
-                </View>
-
-                {/* BANK DETAILS INJECTION */}
-                {bankDetails && (
-                    <View style={styles.bankDetailsBox}>
-                        <Text style={styles.bankDetailsTitle}>Bank Details for Payment</Text>
-                        <View style={styles.bankDetailsRow}>
-                            <Text style={styles.bankDetailsLabel}>Bank Name:</Text>
-                            <Text style={styles.bankDetailsValue}>{bankDetails.bankName || "N/A"}</Text>
-                        </View>
-                        <View style={styles.bankDetailsRow}>
-                            <Text style={styles.bankDetailsLabel}>Account Name:</Text>
-                            <Text style={styles.bankDetailsValue}>{bankDetails.accountName || "N/A"}</Text>
-                        </View>
-                        <View style={styles.bankDetailsRow}>
-                            <Text style={styles.bankDetailsLabel}>Account Number:</Text>
-                            <Text style={styles.bankDetailsValue}>{bankDetails.accountNumber || "N/A"}</Text>
-                        </View>
-                        {bankDetails.iban && (
-                            <View style={styles.bankDetailsRow}>
-                                <Text style={styles.bankDetailsLabel}>IBAN:</Text>
-                                <Text style={styles.bankDetailsValue}>{bankDetails.iban}</Text>
-                            </View>
-                        )}
-                        {bankDetails.swift && (
-                            <View style={styles.bankDetailsRow}>
-                                <Text style={styles.bankDetailsLabel}>SWIFT Code:</Text>
-                                <Text style={styles.bankDetailsValue}>{bankDetails.swift}</Text>
-                            </View>
-                        )}
-                        {paymentTerms && (
-                            <View style={[styles.bankDetailsRow, { marginTop: 8 }]}>
-                                <Text style={styles.bankDetailsLabel}>Payment Terms:</Text>
-                                <Text style={styles.bankDetailsValue}>{paymentTerms}</Text>
-                            </View>
-                        )}
-                    </View>
-                )}
-
-                {/* TERMS AND CONDITIONS */}
-                {termsAndConditions && termsAndConditions.length > 0 && (
-                    <View style={[styles.termsBox, { marginTop: bankDetails ? 0 : 40 }]}>
-                        <Text style={[styles.label, { marginBottom: 8, color: "#0f172a" }]}>Commercial Terms & Conditions</Text>
-                        {termsAndConditions.map((term, idx) => (
-                            <Text key={idx} style={styles.termsText}>{idx + 1}. {term}</Text>
+                    <View style={[styles.termsBox, { flex: 1, marginTop: 0, paddingTop: 0, borderTopWidth: 0 }]}>
+                        <Text style={[styles.label, { fontSize: 8, color: "#0f172a" }]}>Terms & Conditions</Text>
+                        {termsAndConditions.slice(0, 4).map((term, idx) => (
+                            <Text key={idx} style={[styles.termsText, { fontSize: 7 }]}>{idx + 1}. {term}</Text>
                         ))}
                     </View>
-                )}
+                </View>
 
-                {/* PHYSICAL SIGNATURE BLOCK */}
-                <View style={styles.signatureContainer} wrap={false}>
+                {/* 5. Signature Block */}
+                <View style={[styles.signatureContainer, { marginTop: 30, paddingTop: 20 }]}>
                     <View style={styles.signatureBlock}>
                         <View style={styles.signatureLine} />
                         <Text style={styles.signatureLabel}>Authorized Signature</Text>
                     </View>
                     <View style={styles.signatureBlock}>
                         <View style={styles.signatureLine} />
-                        <Text style={styles.signatureLabel}>Date</Text>
-                    </View>
-                    <View style={styles.signatureBlock}>
-                        <View style={styles.signatureLine} />
-                        <Text style={styles.signatureLabel}>Company Stamp</Text>
+                        <Text style={styles.signatureLabel}>Date & Stamp</Text>
                     </View>
                 </View>
 
