@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { bookings, products } from "@/lib/db/schema";

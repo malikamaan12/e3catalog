@@ -1,4 +1,5 @@
 import { getCurrentUser } from "@/lib/auth";
+export const dynamic = "force-dynamic";
 import { redirect } from "next/navigation";
 import AdminChatSystem from "@/components/admin/AdminChatSystem";
 

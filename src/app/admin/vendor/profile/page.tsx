@@ -1,5 +1,7 @@
 "use client";
 
+export const dynamic = "force-dynamic";
+
 import React, { useState, useEffect, useRef } from "react";
 import { Save, Store, User, Building, Banknote, Loader2, Upload, X, Image as ImageIcon } from "lucide-react";
 

@@ -1,5 +1,7 @@
 "use client";
 
+export const dynamic = "force-dynamic";
+
 import { useEffect, useState } from "react";
 import { CreditCard, DollarSign, Download, Calendar, Activity, TrendingUp, AlertCircle } from "lucide-react";
 

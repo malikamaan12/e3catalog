@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/dist/ScrollTrigger";
 import { useSiteSettings } from "@/components/SiteSettingsProvider";
 import { useInView } from "react-intersection-observer";
-import { motion, useMotionValue, useSpring } from "framer-motion";
+import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 import { Box, FileText, Truck, CheckCircle2 } from "lucide-react";
 import Spline from "@splinetool/react-spline";
 
@@ -17,12 +17,17 @@ export default function HeroSection() {
     const contentRef = useRef<HTMLDivElement>(null);
     const splineRef = useRef<any>(null);
     const { getSetting } = useSiteSettings();
-
+    const [splineLoaded, setSplineLoaded] = useState(false);
+ 
     // Mouse Tracking for 3D Interaction
     const mouseX = useMotionValue(0);
     const mouseY = useMotionValue(0);
     const springX = useSpring(mouseX, { stiffness: 50, damping: 20 });
     const springY = useSpring(mouseY, { stiffness: 50, damping: 20 });
+
+    // Move dynamic transforms out of the style object to follow MotionValue best practices
+    const rotateY = useTransform(springX, (value: number) => value * 10);
+    const rotateX = useTransform(springY, (value: number) => value * -10);
 
     const handleMouseMove = (e: React.MouseEvent) => {
         const { clientX, clientY } = e;
@@ -95,9 +100,8 @@ export default function HeroSection() {
             <motion.div 
                 className="absolute inset-0 z-0 spline-container"
                 style={{
-                    x: useMotionValue(0), // Placeholder for potential parallax
-                    rotateY: springX.get() * 10,
-                    rotateX: -springY.get() * 10,
+                    rotateY,
+                    rotateX,
                 }}
             >
                 <Spline 

@@ -1,7 +1,9 @@
 "use strict";
 "use client";
 
-import { useState, useEffect } from "react";
+export const dynamic = "force-dynamic";
+
+import React, { useState, useEffect } from "react";
 import { Settings, Image as ImageIcon, Save, CheckCircle2 } from "lucide-react";
 import { CloudImageUpload } from "@/components/CloudImageUpload";
 
