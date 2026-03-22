@@ -4,9 +4,11 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { 
     ChevronDown, ArrowLeft, MoreVertical, Package, 
-    ExternalLink, Mail, Phone, Clock, Download, MessageCircle 
+    ExternalLink, Mail, Phone, Clock, Download, MessageCircle,
+    MessagesSquare
 } from "lucide-react";
 import Link from "next/link";
+import EmbeddedChat from "@/components/chat/EmbeddedChat";
 
 interface BookingItem {
     id: string;
@@ -117,6 +119,8 @@ export default function BookingDetailsPage({ params }: { params: Promise<{ id: s
         warehouseNotes: "",
     });
 
+    const [currentUser, setCurrentUser] = useState<{ id: string; role: string } | null>(null);
+
     useEffect(() => {
         Promise.all([
             fetch(`/api/admin/bookings/${id}`).then(r => r.json()),
@@ -152,7 +156,10 @@ export default function BookingDetailsPage({ params }: { params: Promise<{ id: s
         // Fetch User Role
         fetch("/api/auth/me")
             .then(r => r.json())
-            .then(data => { if (data?.user?.role) setUserRole(data.user.role); })
+            .then(data => { 
+                if (data?.user?.role) setUserRole(data.user.role); 
+                if (data?.user) setCurrentUser({ id: data.user.id, role: data.user.role });
+            })
             .catch(() => { });
     }, [id]);
 
@@ -354,15 +361,9 @@ export default function BookingDetailsPage({ params }: { params: Promise<{ id: s
                         <div className="glass rounded-2xl p-6 shadow-sm border border-white/5">
                             <div className="flex justify-between items-start mb-4 border-b border-white/10 pb-2">
                                 <h3 className="font-semibold text-[var(--color-warm-white)] text-sm uppercase tracking-wide">Client Details</h3>
-                                {booking.userId && (
-                                    <Link 
-                                        href={`/admin/chat?userId=${booking.userId}&quoteId=${booking.id}`}
-                                        className="text-[10px] font-bold text-[var(--color-gold)] hover:text-white flex items-center gap-1 bg-[var(--color-gold)]/10 py-1 px-2.5 rounded-full transition-colors border border-[var(--color-gold)]/20"
-                                    >
-                                        <MessageCircle className="w-3 h-3" />
-                                        Chat
-                                    </Link>
-                                )}
+                                <div className="px-2 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-bold text-emerald-400 animate-pulse">
+                                    Client Online
+                                </div>
                             </div>
                             <h4 className="text-xs font-medium text-[var(--color-slate)] mb-1 uppercase tracking-wider">Project / Event Name</h4>
                             <p className="text-lg font-bold text-[var(--color-warm-white)]">{booking.projectName}</p>
@@ -886,6 +887,17 @@ export default function BookingDetailsPage({ params }: { params: Promise<{ id: s
                                     <p className="text-[10px] text-red-400/40 text-center mt-1.5">Removes all booking records. Cannot be undone.</p>
                                 </div>
                             </div>
+                        </div>
+                        <div className="h-[400px]">
+                            {currentUser && booking.userId && (
+                                <EmbeddedChat 
+                                    currentUser={currentUser}
+                                    projectId={booking.id}
+                                    receiverId={booking.userId}
+                                    receiverName={booking.customerName}
+                                    title="Communication Hub"
+                                />
+                            )}
                         </div>
                     </div>
                 </div>

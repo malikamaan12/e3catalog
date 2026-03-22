@@ -46,8 +46,8 @@ interface QuoteDetail {
         additionalChargeAmount: number;
         additionalChargeType: string | null;
         extraCharge: number;
-        subtotal: number;
-        grandTotal: number;
+        subtotal: number | string;
+        grandTotal: number | string;
     };
 }
 
@@ -437,7 +437,10 @@ export default function DashboardQuotePage({ params }: { params: Promise<{ id: s
                             <div className="space-y-3 text-sm mb-6">
                                 <div className="flex justify-between text-[var(--color-slate)]">
                                     <span>Base Hardware Rental</span>
-                                    <span className="text-[var(--color-warm-white)] font-medium">{quote.financials.baseRental.toLocaleString()} QAR</span>
+                                    <span className="text-[var(--color-warm-white)] font-medium">
+                                        {typeof quote.financials.baseRental === "number" ? quote.financials.baseRental.toLocaleString() : quote.financials.baseRental} 
+                                        {typeof quote.financials.baseRental === "number" && " QAR"}
+                                    </span>
                                 </div>
                                 {quote.financials.discountPercent > 0 && (
                                     <div className="flex justify-between text-emerald-400">
@@ -469,7 +472,10 @@ export default function DashboardQuotePage({ params }: { params: Promise<{ id: s
                         {quote.status !== "request" && quote.status !== "changes_requested" && (
                             <div className="flex justify-between items-end pt-4 border-t border-white/8 mb-6">
                                 <span className="text-[var(--color-warm-white)] font-bold">Total Quote</span>
-                                <span className="text-2xl font-bold text-[var(--color-gold)]">{quote.financials.grandTotal.toLocaleString()} QAR</span>
+                                <span className="text-2xl font-bold text-[var(--color-gold)]">
+                                    {typeof quote.financials.grandTotal === "number" ? quote.financials.grandTotal.toLocaleString() : quote.financials.grandTotal} 
+                                    {typeof quote.financials.grandTotal === "number" && <span className="text-sm font-bold ml-1">QAR</span>}
+                                </span>
                             </div>
                         )}
 

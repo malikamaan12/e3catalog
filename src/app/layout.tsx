@@ -6,6 +6,7 @@ import { MarketingBanner } from "@/components/landing/MarketingBanner";
 import { MarketingPopup } from "@/components/landing/MarketingPopup";
 import { Toaster } from "react-hot-toast";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { SmoothScroll } from "@/components/SmoothScroll";
 
 export const metadata: Metadata = {
   title: "E3 Rentals — Premium Event Equipment",
@@ -22,6 +23,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className="antialiased" suppressHydrationWarning={true}>
         <SiteSettingsProvider>
+          <SmoothScroll />
           <MarketingBanner />
           <Navbar />
           {children}

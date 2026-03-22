@@ -174,57 +174,64 @@ export default function CartPage() {
     return (
         <>
             <div className="min-h-screen pt-28 pb-16">
-                <div className="max-w-6xl mx-auto px-6">
-                    <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-4">
-                        <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
-                            <h1 className="font-[family-name:var(--font-heading)] text-4xl md:text-5xl font-bold text-[var(--color-warm-white)] tracking-tighter">
-                                Quote <span className="gradient-text-gold">Builder</span>
+                <div className="max-w-7xl mx-auto px-6">
+                    {/* ── Enhanced Header ── */}
+                    <div className="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-6">
+                        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+                            <span className="text-[10px] font-black text-gold uppercase tracking-[0.4em] mb-3 block italic">Step 02: Logistics & Configuration</span>
+                            <h1 className="font-[family-name:var(--font-heading)] text-4xl md:text-6xl font-bold text-white tracking-tighter leading-tight">
+                                Live <span className="gradient-text-gold">Proposal</span> Builder
                             </h1>
-                            <p className="text-[var(--color-slate)] mt-2 font-medium">
-                                Review your selection and establish a project request.
+                            <p className="text-slate/60 mt-4 font-medium text-lg max-w-xl">
+                                Review your fleet selection, configure project logistics, and establish a secure proposal request for our logistics team.
                             </p>
                         </motion.div>
                         {items.length > 0 && (
-                            <button onClick={clearCart} className="text-xs font-black uppercase tracking-widest text-red-400/60 hover:text-red-400 transition-colors flex items-center gap-2">
-                                <span>×</span> Clear Entire Selection
+                            <button onClick={clearCart} className="text-[10px] font-black uppercase tracking-[0.2em] text-red-400/40 hover:text-red-400 transition-all flex items-center gap-2 border border-red-400/10 px-4 py-2 rounded-full hover:bg-red-400/5">
+                                <span>×</span> Reset Proposal
                             </button>
                         )}
                     </div>
 
                     {loading ? (
-                        <div className="space-y-4">
+                        <div className="space-y-6">
                             {[1, 2, 3].map(i => (
-                                <div key={i} className="h-32 glass-dark rounded-3xl animate-pulse" />
+                                <div key={i} className="h-40 glass-dark rounded-[3rem] animate-pulse" />
                             ))}
                         </div>
                     ) : items.length === 0 ? (
-                        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center py-32 glass-dark rounded-[3rem] border border-white/5">
-                            <div className="text-6xl mb-6">📦</div>
-                            <h3 className="text-2xl font-bold text-white mb-2">Selection is Empty</h3>
-                            <p className="text-slate mb-10 max-w-sm mx-auto">Add assets from our catalog to begin building your professional quote.</p>
-                            <Link href="/catalog" className="btn-primary px-10">Return to Catalog</Link>
+                        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-40 glass-dark rounded-[4rem] border border-white/5 relative overflow-hidden">
+                            <div className="absolute inset-0 bg-gold/5 blur-[120px]" />
+                            <div className="relative z-10">
+                                <div className="text-7xl mb-8 opacity-20">📂</div>
+                                <h3 className="text-3xl font-bold text-white mb-3 italic tracking-tighter uppercase">Proposal is Empty</h3>
+                                <p className="text-slate/60 mb-12 max-w-sm mx-auto text-lg">Add assets from our high-end catalog to begin architecting your project proposal.</p>
+                                <Link href="/catalog" className="bg-gold text-navy px-12 py-5 rounded-2xl font-black text-xs uppercase tracking-[0.3em] shadow-2xl shadow-gold/20 hover:scale-105 transition-all active:scale-95">Open Live Catalog</Link>
+                            </div>
                         </motion.div>
                     ) : (
-                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
                             {/* LEFT: Items List */}
-                            <div className="lg:col-span-8 space-y-12">
+                            <div className="lg:col-span-8 space-y-16">
                                 {Object.entries(
                                     items.reduce((acc, item) => {
                                         const vId = item.product.vendorId || "platform";
-                                        const vName = item.product.vendor?.companyName || "E3 Premium Rentals";
+                                        const vName = item.product.vendor?.companyName || "E3 Premium Logistics";
                                         if (!acc[vId]) acc[vId] = { name: vName, items: [] };
                                         acc[vId].items.push(item);
                                         return acc;
                                     }, {} as Record<string, { name: string; items: CartItem[] }>)
                                 ).map(([vendorId, group]) => (
-                                    <div key={vendorId} className="space-y-6">
-                                        <div className="flex items-center gap-4">
-                                            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gold/40">Fulfillment Source</span>
-                                            <h2 className="text-sm font-bold text-slate uppercase tracking-widest">{group.name}</h2>
+                                    <div key={vendorId} className="space-y-8">
+                                        <div className="flex items-center gap-6">
+                                            <div className="flex flex-col">
+                                                <span className="text-[9px] font-black uppercase tracking-[0.4em] text-gold/30">Fulfillment Hub</span>
+                                                <h2 className="text-xs font-black text-slate uppercase tracking-[0.2em] mt-1">{group.name}</h2>
+                                            </div>
                                             <div className="h-px flex-1 bg-white/5" />
                                         </div>
                                         
-                                        <div className="space-y-4">
+                                        <div className="space-y-6">
                                             <AnimatePresence initial={false}>
                                                 {group.items.map((item) => {
                                                     const days = calcDays(item.startDate, item.endDate);
@@ -232,45 +239,62 @@ export default function CartPage() {
                                                         <motion.div 
                                                             key={item.id}
                                                             layout
-                                                            initial={{ opacity: 0, scale: 0.95 }}
-                                                            animate={{ opacity: 1, scale: 1 }}
-                                                            exit={{ opacity: 0, x: -20 }}
-                                                            className="glass-dark rounded-3xl p-4 md:p-6 border border-white/5 group hover:border-gold/20 transition-all shadow-xl"
+                                                            initial={{ opacity: 0, y: 20 }}
+                                                            animate={{ opacity: 1, y: 0 }}
+                                                            exit={{ opacity: 0, scale: 0.9 }}
+                                                            className="glass-dark rounded-[2.5rem] p-6 md:p-8 border border-white/10 group hover:border-gold/30 transition-all shadow-[0_30px_60px_rgba(0,0,0,0.4)] relative overflow-hidden"
                                                         >
-                                                            <div className="flex flex-col sm:flex-row gap-6">
-                                                                <div className="w-24 h-24 shrink-0 rounded-2xl bg-navy-lighter overflow-hidden border border-white/5 relative">
+                                                            <div className="absolute top-0 right-0 w-40 h-40 bg-gold/5 blur-[60px] opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                            
+                                                            <div className="flex flex-col sm:flex-row gap-8 relative z-10">
+                                                                <div className="w-32 h-32 shrink-0 rounded-3xl bg-navy-dark overflow-hidden border border-white/5 relative shadow-2xl">
                                                                     {item.product.thumbnailUrl && (
-                                                                        <Image src={item.product.thumbnailUrl} alt={item.product.name} fill className="object-cover" />
+                                                                        <Image src={item.product.thumbnailUrl} alt={item.product.name} fill className="object-cover transition-transform duration-700 group-hover:scale-110" />
                                                                     )}
                                                                 </div>
                                                                 <div className="flex-1 min-w-0">
-                                                                    <div className="flex justify-between items-start mb-1">
-                                                                        <Link href={`/catalog/${item.product.slug}`} className="text-lg font-bold text-white hover:text-gold transition-colors truncate">
-                                                                            {item.product.name}
-                                                                        </Link>
-                                                                        <button onClick={() => removeItem(item.id)} className="text-slate/40 hover:text-red-400 transition-colors text-lg">×</button>
+                                                                    <div className="flex justify-between items-start mb-2">
+                                                                        <div className="min-w-0">
+                                                                            <Link href={`/catalog/${item.product.slug}`} className="text-xl md:text-2xl font-bold text-white hover:text-gold transition-colors block truncate tracking-tighter">
+                                                                                {item.product.name}
+                                                                            </Link>
+                                                                            <span className="text-[9px] font-black text-gold/40 uppercase tracking-[0.3em] mt-1 block">Asset Reference: {item.product.id.slice(0,8).toUpperCase()}</span>
+                                                                        </div>
+                                                                        <button onClick={() => removeItem(item.id)} className="w-8 h-8 rounded-full flex items-center justify-center text-slate/40 hover:text-red-400 hover:bg-red-400/10 transition-all text-xl">×</button>
                                                                     </div>
                                                                     
-                                                                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[10px] font-black uppercase tracking-widest text-slate/60 mb-4">
-                                                                        <span className="flex items-center gap-1"><span className="text-gold">📅</span> {item.startDate} — {item.endDate} ({days} days)</span>
-                                                                        {item.product.dimensions && <span className="flex items-center gap-1">📏 {item.product.dimensions}</span>}
+                                                                    <div className="flex flex-wrap items-center gap-x-6 gap-y-3 mt-6 mb-8 pb-6 border-b border-white/5">
+                                                                        <div className="flex items-center gap-2 bg-white/5 px-4 py-2 rounded-xl border border-white/5">
+                                                                            <span className="text-gold text-xs">📅</span>
+                                                                            <span className="text-[10px] font-black uppercase text-white tracking-widest">{item.startDate} — {item.endDate}</span>
+                                                                            <span className="text-[9px] font-black text-gold/60 ml-1">({days} DAYS)</span>
+                                                                        </div>
+                                                                        {item.product.dimensions && (
+                                                                            <div className="flex items-center gap-2 bg-white/5 px-4 py-2 rounded-xl border border-white/5">
+                                                                                <span className="text-gold text-xs">📏</span>
+                                                                                <span className="text-[10px] font-black uppercase text-white tracking-widest">{item.product.dimensions}</span>
+                                                                            </div>
+                                                                        )}
                                                                     </div>
 
-                                                                    <div className="flex flex-wrap items-center justify-between gap-4">
-                                                                        <div className="flex items-center gap-2 bg-white/5 p-1 rounded-xl border border-white/5">
-                                                                            <button onClick={() => updateQuantity(item.id, item.quantity, -1)} className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-gold hover:text-navy transition-all font-bold">−</button>
-                                                                            <span className="px-3 text-sm font-black text-white">{item.quantity} <span className="text-[10px] opacity-40">{item.product.unit || 'Units'}</span></span>
-                                                                            <button onClick={() => updateQuantity(item.id, item.quantity, 1)} className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-gold hover:text-navy transition-all font-bold">+</button>
+                                                                    <div className="flex flex-wrap items-center justify-between gap-6">
+                                                                        <div className="flex items-center gap-4 bg-navy-dark p-2 rounded-2xl border border-white/10 shadow-inner">
+                                                                            <button onClick={() => updateQuantity(item.id, item.quantity, -1)} className="w-10 h-10 rounded-xl flex items-center justify-center hover:bg-gold hover:text-navy transition-all font-bold border border-white/5">−</button>
+                                                                            <span className="px-4 text-sm font-black text-white min-w-[3rem] text-center">{item.quantity} <span className="text-[9px] opacity-30 text-slate ml-1 uppercase">{item.product.unit || 'Units'}</span></span>
+                                                                            <button onClick={() => updateQuantity(item.id, item.quantity, 1)} className="w-10 h-10 rounded-xl flex items-center justify-center hover:bg-gold hover:text-navy transition-all font-bold border border-white/5">+</button>
                                                                         </div>
                                                                         
                                                                         <div className="text-right">
                                                                             {item.product.showPrice ? (
                                                                                 <div className="flex flex-col items-end">
-                                                                                    <span className="text-xl font-black text-white">{(item.product.pricePerDay * item.quantity * days).toLocaleString()} <span className="text-xs text-slate">QAR</span></span>
-                                                                                    <span className="text-[10px] text-slate/40 font-bold uppercase tracking-widest">Rate: {item.product.pricePerDay} / Day</span>
+                                                                                    <span className="text-2xl font-black text-white italic tracking-tighter">{(item.product.pricePerDay * item.quantity * days).toLocaleString()} <span className="text-[10px] text-slate opacity-40 non-italic ml-1">QAR</span></span>
+                                                                                    <span className="text-[9px] text-slate/40 font-bold uppercase tracking-[0.2em] mt-1">RATE: {item.product.pricePerDay} QAR / DAY</span>
                                                                                 </div>
                                                                             ) : (
-                                                                                <span className="text-[10px] px-3 py-1 rounded-full bg-gold/5 border border-gold/10 text-gold font-black uppercase tracking-widest italic">Price on Quotation</span>
+                                                                                <div className="flex flex-col items-end">
+                                                                                    <span className="text-[10px] px-4 py-2 rounded-2xl bg-gold/5 border border-gold/20 text-gold font-black uppercase tracking-[0.2em] italic">Awaiting Quotation</span>
+                                                                                    <span className="text-[8px] text-slate/30 font-bold uppercase tracking-widest mt-2">Team Review Required</span>
+                                                                                </div>
                                                                             )}
                                                                         </div>
                                                                     </div>
@@ -283,82 +307,106 @@ export default function CartPage() {
                                         </div>
                                     </div>
                                 ))}
+
+                                {/* ── Chat Negotiation Briefing ── */}
+                                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-8 rounded-[3rem] bg-indigo-500/5 border border-indigo-500/10 flex items-start gap-8 relative overflow-hidden group">
+                                    <div className="absolute top-0 left-0 w-32 h-32 bg-indigo-500/10 blur-[60px]" />
+                                    <div className="w-16 h-16 rounded-[1.5rem] bg-indigo-500/10 flex items-center justify-center shrink-0 border border-indigo-500/20 group-hover:scale-110 transition-transform">
+                                        <span className="text-2xl">💬</span>
+                                    </div>
+                                    <div>
+                                        <h4 className="text-xs font-black uppercase tracking-[0.3em] text-indigo-300 mb-2 italic">Real-Time Negotiation Aware</h4>
+                                        <p className="text-sm text-slate/60 leading-relaxed font-medium">
+                                            Established proposals unlock a direct, multi-party chat channel between you, the vendors, and our logistics team. You can refine specs, negotiate pricing, and finalize logistics in real-time within your Project Dashboard.
+                                        </p>
+                                    </div>
+                                </motion.div>
                             </div>
 
                             {/* RIGHT: Summary Card */}
                             <div className="lg:col-span-4 sticky top-28">
-                                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass-dark rounded-[2.5rem] border border-white/10 p-8 shadow-2xl relative overflow-hidden">
-                                    <div className="absolute top-0 right-0 w-32 h-32 bg-gold/5 blur-[80px]" />
+                                <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="glass-dark rounded-[3rem] border border-white/10 p-10 shadow-2xl relative overflow-hidden">
+                                    <div className="absolute top-0 right-0 w-48 h-48 bg-gold/5 blur-[100px]" />
                                     
-                                    <h3 className="text-xs font-black uppercase tracking-[0.3em] text-gold mb-8 italic">Project Logistics</h3>
+                                    <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-gold mb-10 italic flex items-center gap-3">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-gold animate-pulse" />
+                                        Proposal Overview
+                                    </h3>
 
-                                    <div className="space-y-4 mb-10 pb-10 border-b border-white/5">
+                                    <div className="space-y-6 mb-12 pb-10 border-b border-white/5">
                                         <div className="flex justify-between items-end">
-                                            <span className="text-[10px] font-black uppercase tracking-widest text-slate/40">Subtotal Assets</span>
-                                            <span className="text-lg font-black text-white">{subtotal.toLocaleString()} <span className="text-xs text-slate">QAR</span></span>
+                                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate/40">Secure Subtotal</span>
+                                            <span className="text-2xl font-black text-white italic tracking-tighter">
+                                                {hasHiddenPrices ? "TBD" : subtotal.toLocaleString()} 
+                                                {!hasHiddenPrices && <span className="text-[10px] text-slate non-italic ml-1">QAR</span>}
+                                            </span>
                                         </div>
                                         <div className="flex justify-between items-end">
-                                            <span className="text-[10px] font-black uppercase tracking-widest text-slate/40">Logistics & Mob.</span>
-                                            <span className="text-[10px] font-black text-gold uppercase tracking-widest">Calculated on Review</span>
+                                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate/40">Logistics Fee</span>
+                                            <span className="text-[9px] font-black text-gold uppercase tracking-[0.3em] bg-gold/5 px-3 py-1 rounded-full border border-gold/10">TBD ON REVIEW</span>
                                         </div>
                                         {hasHiddenPrices && (
-                                            <p className="text-[10px] text-slate/50 italic leading-relaxed pt-2">
-                                                * This quote contains unpriced items. Final totals will be computed by our logistics team within 24 hours.
-                                            </p>
+                                            <div className="mt-6 p-4 rounded-2xl bg-white/5 border border-white/5">
+                                                <p className="text-[9px] text-slate/50 italic leading-relaxed uppercase tracking-widest font-bold">
+                                                    * Includes unpriced assets. Official Quote will be generated following logistics assessment.
+                                                </p>
+                                            </div>
                                         )}
                                     </div>
 
-                                    <form onSubmit={generateQuoteAndRequest} className="space-y-6">
-                                        <div>
-                                            <label className="text-[10px] font-black text-slate uppercase tracking-widest ml-1 mb-2 block">Project Reference</label>
-                                            <div className="space-y-3">
+                                    <form onSubmit={generateQuoteAndRequest} className="space-y-8">
+                                        <div className="space-y-4">
+                                            <label className="text-[9px] font-black text-slate/50 uppercase tracking-[0.3em] ml-1 block">Project Identity</label>
+                                            <div className="space-y-4">
                                                 {existingQuotes.length > 0 && (
                                                     <select
                                                         value={selectedProjectId}
                                                         onChange={(e) => setSelectedProjectId(e.target.value)}
-                                                        className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-sm text-white focus:border-gold focus:outline-none transition-all"
+                                                        className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-sm font-bold text-white focus:border-gold focus:outline-none transition-all appearance-none cursor-pointer"
                                                     >
-                                                        <option value="new" className="bg-navy">Create New Project Folder</option>
+                                                        <option value="new" className="bg-navy">New Strategic Project</option>
                                                         {existingQuotes.map(q => (
                                                             <option key={q.id} value={q.id} className="bg-navy">{q.projectName}</option>
                                                         ))}
                                                     </select>
                                                 )}
                                                 {selectedProjectId === "new" && (
-                                                    <input required type="text" name="projectName" value={formData.projectName} onChange={handleFormChange} placeholder="Enter Project Name..." className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-sm text-white focus:border-gold focus:outline-none transition-all placeholder:text-slate/20" />
+                                                    <input required type="text" name="projectName" value={formData.projectName} onChange={handleFormChange} placeholder="Strategic Project Name..." className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-sm font-bold text-white focus:border-gold focus:outline-none transition-all placeholder:text-slate/20" />
                                                 )}
                                             </div>
                                         </div>
 
                                         <div className="space-y-4">
-                                            <input required type="text" name="customerName" value={formData.customerName} onChange={handleFormChange} placeholder="Client / Entity Name" className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-sm text-white focus:border-gold focus:outline-none transition-all placeholder:text-slate/20" />
-                                            <input required type="email" name="customerEmail" value={formData.customerEmail} onChange={handleFormChange} placeholder="Official Contact Email" className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-sm text-white focus:border-gold focus:outline-none transition-all placeholder:text-slate/20" />
+                                            <label className="text-[9px] font-black text-slate/50 uppercase tracking-[0.3em] ml-1 block">Entity Details</label>
+                                            <input required type="text" name="customerName" value={formData.customerName} onChange={handleFormChange} placeholder="Client / Entity Name" className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-sm font-bold text-white focus:border-gold focus:outline-none transition-all placeholder:text-slate/20 shadow-inner" />
+                                            <input required type="email" name="customerEmail" value={formData.customerEmail} onChange={handleFormChange} placeholder="Authorized Contact Email" className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-sm font-bold text-white focus:border-gold focus:outline-none transition-all placeholder:text-slate/20 shadow-inner" />
                                         </div>
 
                                         <button
                                             type="submit"
                                             disabled={submitting || userRole === "admin"}
-                                            className="w-full py-6 rounded-2xl bg-gold text-navy font-black text-sm uppercase tracking-[0.3em] shadow-xl shadow-gold/10 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-30 flex items-center justify-center gap-3"
+                                            className="w-full py-8 rounded-[2rem] bg-gold text-navy font-black text-xs uppercase tracking-[0.4em] shadow-[0_20px_50px_rgba(251,191,36,0.3)] hover:scale-[1.03] active:scale-[0.98] transition-all disabled:opacity-30 flex items-center justify-center gap-4 relative overflow-hidden group"
                                         >
+                                            <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-500" />
                                             {submitting ? (
                                                 <>
                                                     <div className="w-4 h-4 border-2 border-navy border-t-transparent rounded-full animate-spin" />
-                                                    Encrypting Request...
+                                                    Encrypting Proposal...
                                                 </>
                                             ) : (
-                                                "Establish Quote"
+                                                <span className="relative z-10">Submit for Review</span>
                                             )}
                                         </button>
                                         
-                                        <p className="text-[9px] text-center font-black text-slate uppercase tracking-widest opacity-30 px-4">
-                                            Submission triggers automated logistics review and PDF generation.
+                                        <p className="text-[8px] text-center font-black text-slate/30 uppercase tracking-[0.3em] px-8 leading-relaxed">
+                                            Automated logistics appraisal and PDF generation initiated upon submission.
                                         </p>
                                     </form>
 
                                     {/* Success Message */}
                                     {successMessage && (
-                                        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="mt-6 p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-black uppercase tracking-widest text-center">
-                                            {successMessage}
+                                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mt-8 p-5 rounded-[2rem] bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[9px] font-black uppercase tracking-[0.2em] text-center">
+                                            <span className="mr-2">✓</span> {successMessage}
                                         </motion.div>
                                     )}
                                 </motion.div>

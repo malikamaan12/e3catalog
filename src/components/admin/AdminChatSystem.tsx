@@ -121,15 +121,7 @@ export default function AdminChatSystem({
         }
     }, [viewingQuoteId]);
 
-    // Handle initial selection from props
-    useEffect(() => {
-        if (initialUserId && conversations.length > 0) {
-            const conv = conversations.find(c => c.userId === initialUserId);
-            if (conv) {
-                setSelectedConv(conv);
-            }
-        }
-    }, [initialUserId, conversations]);
+    // Consolidating initial selection logic to the effect below (line ~187 in original)
 
     useEffect(() => {
         if (initialQuoteId) {
@@ -227,12 +219,15 @@ export default function AdminChatSystem({
     }, [initialQuoteId]);
 
     const handleSelectFoundUser = (user: any) => {
+        // Look for existing generic conversation first (no project)
         const existing = conversations.find(c => c.userId === user.id && !c.projectId);
+        
         if (existing) {
             setSelectedConv(existing);
             setIsNewChatPlaceholder(false);
         } else {
-            setSelectedConv({
+            // Create a temporary conversation object for the UI
+            const newConv: Conversation = {
                 id: `user_${user.id}`,
                 userId: user.id,
                 name: user.name,
@@ -244,11 +239,13 @@ export default function AdminChatSystem({
                 unreadCount: 0,
                 lastMessageSenderId: "",
                 lastMessageIsRead: true
-            });
+            };
+            setSelectedConv(newConv);
             setIsNewChatPlaceholder(true);
         }
         setSearchModalOpen(false);
         setUserSearchQuery("");
+        setMobileState("chat"); // Ensure we switch to chat view on mobile
     };
 
     const fetchRecentQuotes = async () => {

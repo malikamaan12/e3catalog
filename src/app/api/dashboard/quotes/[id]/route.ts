@@ -61,6 +61,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
         let additionalChargeAmount = firstBooking.additionalChargeAmount || 0;
         let additionalChargeType = firstBooking.additionalChargeType || "fixed";
         let finalGrandTotal = firstBooking.totalPrice || null;
+        const anyHidden = quoteItems.some(qi => qi.product.showPrice === false);
 
         const items = quoteItems.map(({ booking, product }) => {
             const start = new Date(booking.startDate);
@@ -136,8 +137,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
                 additionalChargeAmount,
                 additionalChargeType,
                 extraCharge,
-                subtotal,
-                grandTotal: finalGrandTotal || calculatedTotal
+                subtotal: (anyHidden && !firstBooking.totalPrice) ? "TBD" : subtotal,
+                grandTotal: finalGrandTotal || (anyHidden ? "TBD" : calculatedTotal)
             }
         });
 

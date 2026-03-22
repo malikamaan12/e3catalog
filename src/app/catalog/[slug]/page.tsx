@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import dynamic from "next/dynamic";
+import * as Accordion from "@radix-ui/react-accordion";
 import { Footer } from "@/components/Footer";
 import Link from "next/link";
 import Image from "next/image";
@@ -371,103 +372,131 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
                                 )}
                             </div>
 
-                            <div className="space-y-4 mb-8">
-                                <AccordionItem 
-                                    title="TECHNICAL SPECIFICATIONS" 
-                                    isOpen={openGuide === 'specs'} 
-                                    onToggle={() => setOpenGuide(openGuide === 'specs' ? null : 'specs')}
-                                >
-                                    <div className="grid grid-cols-2 gap-6 text-sm py-4">
-                                        {product.dimensions && (
-                                            <div>
-                                                <span className="text-slate/60 font-black text-[10px] uppercase tracking-widest block mb-1">Dimensions</span>
-                                                <p className="text-white font-bold">{product.dimensions}</p>
+                            {/* ── Technical Specifications (Radix UI) ── */}
+                            <Accordion.Root type="single" collapsible className="space-y-4 mb-12">
+                                <Accordion.Item value="specs" className="glass-dark rounded-[2.5rem] border border-white/10 overflow-hidden shadow-2xl">
+                                    <Accordion.Header>
+                                        <Accordion.Trigger className="w-full flex items-center justify-between p-8 md:p-10 text-left group">
+                                            <span className="text-sm font-black text-slate group-hover:text-gold uppercase tracking-[0.3em] transition-all italic flex items-center gap-4">
+                                                <span className="w-8 h-px bg-gold/30 group-hover:w-12 transition-all" />
+                                                Technical Specifications
+                                            </span>
+                                            <span className="text-gold transition-transform duration-500 group-data-[state=open]:rotate-180">▼</span>
+                                        </Accordion.Trigger>
+                                    </Accordion.Header>
+                                    <Accordion.Content className="px-8 md:px-10 pb-10 data-[state=open]:animate-accordion-down data-[state=closed]:animate-accordion-up overflow-hidden">
+                                        <div className="grid grid-cols-2 md:grid-cols-3 gap-10 py-8 border-t border-white/5">
+                                            {product.dimensions && (
+                                                <div className="space-y-1">
+                                                    <span className="text-slate/40 font-black text-[9px] uppercase tracking-[0.2em] block">Dimensions</span>
+                                                    <p className="text-white font-bold text-sm md:text-base tracking-tight">{product.dimensions}</p>
+                                                </div>
+                                            )}
+                                            {product.weight && (
+                                                <div className="space-y-1">
+                                                    <span className="text-slate/40 font-black text-[9px] uppercase tracking-[0.2em] block">Total Weight</span>
+                                                    <p className="text-white font-bold text-sm md:text-base tracking-tight">{product.weight}</p>
+                                                </div>
+                                            )}
+                                            {product.powerRequirements && (
+                                                <div className="space-y-1">
+                                                    <span className="text-slate/40 font-black text-[9px] uppercase tracking-[0.2em] block">Energy Requirements</span>
+                                                    <p className="text-gold font-bold text-sm md:text-base tracking-tight">{product.powerRequirements}</p>
+                                                </div>
+                                            )}
+                                            {product.materials && (
+                                                <div className="space-y-1">
+                                                    <span className="text-slate/40 font-black text-[9px] uppercase tracking-[0.2em] block">Build Materials</span>
+                                                    <p className="text-white font-bold text-sm md:text-base tracking-tight">{product.materials}</p>
+                                                </div>
+                                            )}
+                                            <div className="space-y-1">
+                                                <span className="text-slate/40 font-black text-[9px] uppercase tracking-[0.2em] block">Active Condition</span>
+                                                <p className={`font-bold text-sm md:text-base capitalize ${conditionColor}`}>{product.condition?.replace("_", " ")}</p>
                                             </div>
-                                        )}
-                                        {product.weight && (
-                                            <div>
-                                                <span className="text-slate/60 font-black text-[10px] uppercase tracking-widest block mb-1">Total Weight</span>
-                                                <p className="text-white font-bold">{product.weight}</p>
+                                            <div className="space-y-1">
+                                                <span className="text-slate/40 font-black text-[9px] uppercase tracking-[0.2em] block">Fleet Availability</span>
+                                                <p className="text-white font-bold text-sm md:text-base">{product.totalUnits} Units Available</p>
                                             </div>
-                                        )}
-                                        {product.powerRequirements && (
-                                            <div>
-                                                <span className="text-slate/60 font-black text-[10px] uppercase tracking-widest block mb-1">Energy Req.</span>
-                                                <p className="text-gold font-bold">{product.powerRequirements}</p>
-                                            </div>
-                                        )}
-                                        {product.materials && (
-                                            <div>
-                                                <span className="text-slate/60 font-black text-[10px] uppercase tracking-widest block mb-1">Materials</span>
-                                                <p className="text-white font-bold">{product.materials}</p>
-                                            </div>
-                                        )}
-                                        <div>
-                                            <span className="text-slate/60 font-black text-[10px] uppercase tracking-widest block mb-1">Condition</span>
-                                            <p className={`font-bold capitalize ${conditionColor}`}>{product.condition?.replace("_", " ")}</p>
                                         </div>
-                                        <div>
-                                            <span className="text-slate/60 font-black text-[10px] uppercase tracking-widest block mb-1">Fleet Stock</span>
-                                            <p className="text-white font-bold">{product.totalUnits} Units Available</p>
-                                        </div>
-                                    </div>
-                                </AccordionItem>
+                                    </Accordion.Content>
+                                </Accordion.Item>
 
                                 {(product.installTime || product.dismantleTime || product.manpower) && (
-                                    <AccordionItem 
-                                        title="LOGISTICS & MOBILIZATION" 
-                                        isOpen={openGuide === 'logistics'} 
-                                        onToggle={() => setOpenGuide(openGuide === 'logistics' ? null : 'logistics')}
-                                    >
-                                        <div className="grid grid-cols-2 gap-6 text-sm py-4">
-                                            {product.installTime !== null && (
-                                                <div>
-                                                    <span className="text-slate/60 font-black text-[10px] uppercase tracking-widest block mb-1">Est. Install</span>
-                                                    <p className="text-white font-bold">{product.installTime} Hours</p>
-                                                </div>
-                                            )}
-                                            {product.dismantleTime !== null && (
-                                                <div>
-                                                    <span className="text-slate/60 font-black text-[10px] uppercase tracking-widest block mb-1">Est. Dismantle</span>
-                                                    <p className="text-white font-bold">{product.dismantleTime} Hours</p>
-                                                </div>
-                                            )}
-                                            {product.manpower && (
-                                                <div className="col-span-2">
-                                                    <span className="text-slate/60 font-black text-[10px] uppercase tracking-widest block mb-1">Manpower Requirement</span>
-                                                    <p className="text-white font-bold">{product.manpower}</p>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </AccordionItem>
+                                    <Accordion.Item value="logistics" className="glass-dark rounded-[2.5rem] border border-white/10 overflow-hidden shadow-2xl">
+                                        <Accordion.Header>
+                                            <Accordion.Trigger className="w-full flex items-center justify-between p-8 md:p-10 text-left group">
+                                                <span className="text-sm font-black text-slate group-hover:text-gold uppercase tracking-[0.3em] transition-all italic flex items-center gap-4">
+                                                    <span className="w-8 h-px bg-gold/30 group-hover:w-12 transition-all" />
+                                                    Logistics & Deployment
+                                                </span>
+                                                <span className="text-gold transition-transform duration-500 group-data-[state=open]:rotate-180">▼</span>
+                                            </Accordion.Trigger>
+                                        </Accordion.Header>
+                                        <Accordion.Content className="px-8 md:px-10 pb-10 data-[state=open]:animate-accordion-down data-[state=closed]:animate-accordion-up overflow-hidden">
+                                            <div className="grid grid-cols-2 gap-10 py-8 border-t border-white/5">
+                                                {product.installTime !== null && (
+                                                    <div className="space-y-1">
+                                                        <span className="text-slate/40 font-black text-[9px] uppercase tracking-[0.2em] block">Est. Installation</span>
+                                                        <p className="text-white font-bold text-sm md:text-base tracking-tight">{product.installTime} Hours</p>
+                                                    </div>
+                                                )}
+                                                {product.dismantleTime !== null && (
+                                                    <div className="space-y-1">
+                                                        <span className="text-slate/40 font-black text-[9px] uppercase tracking-[0.2em] block">Est. Dismantle</span>
+                                                        <p className="text-white font-bold text-sm md:text-base tracking-tight">{product.dismantleTime} Hours</p>
+                                                    </div>
+                                                )}
+                                                {product.manpower && (
+                                                    <div className="col-span-2 space-y-1">
+                                                        <span className="text-slate/40 font-black text-[9px] uppercase tracking-[0.2em] block">Personnel Requirements</span>
+                                                        <p className="text-white font-bold text-sm md:text-base">{product.manpower}</p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </Accordion.Content>
+                                    </Accordion.Item>
                                 )}
 
                                 {Array.isArray(product.safetyCertificates) && product.safetyCertificates.length > 0 && (
-                                    <AccordionItem 
-                                        title="COMPLIANCE & DOCUMENTATION" 
-                                        isOpen={openGuide === 'safety'} 
-                                        onToggle={() => setOpenGuide(openGuide === 'safety' ? null : 'safety')}
-                                    >
-                                        <div className="space-y-4 py-4">
-                                            {product.safetyCertificates.map((cert) => (
-                                                <div key={cert.id} className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/5">
-                                                    <div>
-                                                        <p className="text-sm font-bold text-white">{cert.certName}</p>
-                                                        <p className="text-[10px] font-black text-slate uppercase tracking-widest">{cert.issuingBody}</p>
+                                    <Accordion.Item value="compliance" className="glass-dark rounded-[2.5rem] border border-white/10 overflow-hidden shadow-2xl">
+                                        <Accordion.Header>
+                                            <Accordion.Trigger className="w-full flex items-center justify-between p-8 md:p-10 text-left group">
+                                                <span className="text-sm font-black text-slate group-hover:text-gold uppercase tracking-[0.3em] transition-all italic flex items-center gap-4">
+                                                    <span className="w-8 h-px bg-gold/30 group-hover:w-12 transition-all" />
+                                                    Compliance & Documentation
+                                                </span>
+                                                <span className="text-gold transition-transform duration-500 group-data-[state=open]:rotate-180">▼</span>
+                                            </Accordion.Trigger>
+                                        </Accordion.Header>
+                                        <Accordion.Content className="px-8 md:px-10 pb-10 data-[state=open]:animate-accordion-down data-[state=closed]:animate-accordion-up overflow-hidden">
+                                            <div className="space-y-5 py-8 border-t border-white/5">
+                                                {product.safetyCertificates.map((cert) => (
+                                                    <div key={cert.id} className="flex items-center justify-between p-6 rounded-[2rem] bg-white/5 border border-white/5 hover:border-gold/20 transition-all shadow-lg">
+                                                        <div>
+                                                            <p className="text-sm md:text-base font-bold text-white">{cert.certName}</p>
+                                                            <p className="text-[10px] font-black text-gold/40 uppercase tracking-[0.2em] mt-1">{cert.issuingBody}</p>
+                                                        </div>
+                                                        <span className="text-[9px] font-black uppercase tracking-widest px-4 py-2 bg-emerald-500/10 text-emerald-400 rounded-full border border-emerald-500/20">Certified Asset</span>
                                                     </div>
-                                                    <span className="text-[9px] font-black uppercase tracking-widest px-3 py-1 bg-emerald-500/10 text-emerald-400 rounded-full border border-emerald-500/20">Certified</span>
-                                                </div>
-                                            ))}
-                                            {product.documents?.map(doc => (
-                                                <a key={doc.id} href={doc.url} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-dashed border-white/20 hover:border-gold/30 transition-all group">
-                                                    <span className="text-sm font-bold text-slate group-hover:text-white transition-colors">{doc.name}</span>
-                                                    <span className="text-[10px] font-black text-gold uppercase tracking-widest">Download PDF ↓</span>
-                                                </a>
-                                            ))}
-                                        </div>
-                                    </AccordionItem>
+                                                ))}
+                                                {product.documents?.map(doc => (
+                                                    <a key={doc.id} href={doc.url} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-6 rounded-[2rem] bg-white/5 border border-dashed border-white/20 hover:border-gold/30 transition-all group shadow-lg">
+                                                        <div>
+                                                            <span className="text-sm md:text-base font-bold text-slate group-hover:text-white transition-colors">{doc.name}</span>
+                                                            <p className="text-[9px] font-black text-slate/30 uppercase tracking-[0.2em] mt-1">Official Resource</p>
+                                                        </div>
+                                                        <div className="flex items-center gap-2 bg-gold/10 px-4 py-2 rounded-xl group-hover:bg-gold transition-all">
+                                                            <span className="text-[10px] font-black text-gold group-hover:text-navy uppercase tracking-[0.2em]">Open PDF</span>
+                                                            <span className="text-gold group-hover:text-navy">↓</span>
+                                                        </div>
+                                                    </a>
+                                                ))}
+                                            </div>
+                                        </Accordion.Content>
+                                    </Accordion.Item>
                                 )}
-                            </div>
+                            </Accordion.Root>
 
                             {/* Advanced Availability Timeline */}
                             <div className="mb-8">
@@ -588,28 +617,4 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
     );
 }
 
-// ── Components Helper ──
-function AccordionItem({ title, children, isOpen, onToggle }: { title: string, children: React.ReactNode, isOpen: boolean, onToggle: () => void }) {
-    return (
-        <div className="glass-dark rounded-[1.5rem] border border-white/5 overflow-hidden">
-            <button onClick={onToggle} className="w-full flex items-center justify-between p-6 text-left group transition-all">
-                <span className="text-[11px] font-black text-slate group-hover:text-gold uppercase tracking-widest">{title}</span>
-                <span className={`text-gold transition-transform duration-500 ${isOpen ? 'rotate-180' : ''}`}>▼</span>
-            </button>
-            <AnimatePresence>
-                {isOpen && (
-                    <motion.div 
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: 'auto', opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.4, ease: "circOut" }}
-                    >
-                        <div className="px-6 pb-6 border-t border-white/5">
-                            {children}
-                        </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-        </div>
-    );
-}
+

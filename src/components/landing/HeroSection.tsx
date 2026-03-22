@@ -6,15 +6,30 @@ import gsap from "gsap";
 import { ScrollTrigger } from "gsap/dist/ScrollTrigger";
 import { useSiteSettings } from "@/components/SiteSettingsProvider";
 import { useInView } from "react-intersection-observer";
-import { motion } from "framer-motion";
+import { motion, useMotionValue, useSpring } from "framer-motion";
 import { Box, FileText, Truck, CheckCircle2 } from "lucide-react";
+import Spline from "@splinetool/react-spline";
 
 gsap.registerPlugin(ScrollTrigger);
 
 export default function HeroSection() {
     const containerRef = useRef<HTMLDivElement>(null);
     const contentRef = useRef<HTMLDivElement>(null);
+    const splineRef = useRef<any>(null);
     const { getSetting } = useSiteSettings();
+
+    // Mouse Tracking for 3D Interaction
+    const mouseX = useMotionValue(0);
+    const mouseY = useMotionValue(0);
+    const springX = useSpring(mouseX, { stiffness: 50, damping: 20 });
+    const springY = useSpring(mouseY, { stiffness: 50, damping: 20 });
+
+    const handleMouseMove = (e: React.MouseEvent) => {
+        const { clientX, clientY } = e;
+        const { innerWidth, innerHeight } = window;
+        mouseX.set((clientX / innerWidth) - 0.5);
+        mouseY.set((clientY / innerHeight) - 0.5);
+    };
 
     useEffect(() => {
         if (!containerRef.current || !contentRef.current) return;
@@ -35,6 +50,22 @@ export default function HeroSection() {
                 delay: 0.8,
                 ease: "power4.out"
             });
+
+            // 3D "Dive-In" Depth Zoom
+            if (containerRef.current) {
+                gsap.to(".spline-container", {
+                    scrollTrigger: {
+                        trigger: containerRef.current,
+                        start: "top top",
+                        end: "bottom top",
+                        scrub: 1,
+                    },
+                    scale: 2,
+                    z: 500,
+                    opacity: 0.3,
+                    ease: "power2.inOut"
+                });
+            }
         }, containerRef);
 
         // Pull-back and fade effect on scroll
@@ -57,10 +88,31 @@ export default function HeroSection() {
     return (
         <section
             ref={containerRef}
-            className="relative h-screen w-full bg-[#0a0f1e] flex items-center justify-center overflow-hidden z-20"
+            onMouseMove={handleMouseMove}
+            className="relative h-[120vh] w-full bg-[#0a0f1e] flex items-center justify-center overflow-hidden z-20"
         >
-            {/* High-Performance Background System */}
-            <div className="absolute inset-0 z-0">
+            {/* ── Interactive 3D Background System ── */}
+            <motion.div 
+                className="absolute inset-0 z-0 spline-container"
+                style={{
+                    x: useMotionValue(0), // Placeholder for potential parallax
+                    rotateY: springX.get() * 10,
+                    rotateX: -springY.get() * 10,
+                }}
+            >
+                <Spline 
+                    scene="https://prod.spline.design/6Wq1Q7YELNqM31OR/scene.splinecode" 
+                    className="w-full h-full"
+                    onLoad={(splineApp) => {
+                        splineRef.current = splineApp;
+                    }}
+                />
+                
+                {/* Fallback Overlays (if Spline fails or is loading) */}
+                <div className="absolute inset-0 bg-gradient-to-br from-navy/60 via-transparent to-navy/60 pointer-events-none" />
+            </motion.div>
+
+            <div className="absolute inset-0 z-[1] pointer-events-none">
                 {/* Deep Gradient Base */}
                 <div className="absolute inset-0 bg-gradient-to-br from-navy via-[#0d152a] to-navy" />
 

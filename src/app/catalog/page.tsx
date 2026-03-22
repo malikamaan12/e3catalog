@@ -410,12 +410,12 @@ function CatalogContent() {
             </AnimatePresence>
 
             {/* ── Sticky Filter Trigger (Mobile) ── */}
-            <div className="fixed bottom-8 left-0 right-0 z-50 flex justify-center lg:hidden px-6 pointer-events-none">
+            <div className="fixed bottom-10 left-0 right-0 z-50 flex justify-center lg:hidden px-6 pointer-events-none">
                 <button 
                     onClick={() => setIsFilterOpen(true)}
-                    className="pointer-events-auto shadow-2xl shadow-gold/20 bg-gold text-navy px-8 py-5 rounded-2xl flex items-center gap-3 font-black text-sm uppercase tracking-widest hover:scale-105 transition-transform active:scale-95"
+                    className="pointer-events-auto bg-gold text-navy px-10 py-5 rounded-[2rem] flex items-center gap-3 font-black text-xs uppercase tracking-[0.3em] shadow-[0_20px_50px_rgba(251,191,36,0.3)] hover:scale-105 transition-all active:scale-95 border-2 border-white/20 active:translate-y-1"
                 >
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
                         <line x1="4" y1="21" x2="4" y2="14" />
                         <line x1="4" y1="10" x2="4" y2="3" />
                         <line x1="12" y1="21" x2="12" y2="12" />
@@ -426,7 +426,7 @@ function CatalogContent() {
                         <line x1="9" y1="8" x2="15" y2="8" />
                         <line x1="17" y1="16" x2="23" y2="16" />
                     </svg>
-                    Filter Assets
+                    Configure View
                 </button>
             </div>
 
