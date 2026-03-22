@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { bookings, products, vendors, vendorLedgers } from "./db/schema";
+import { bookings, products, vendors, vendorLedgers, commissionSettlements } from "./db/schema";
 import { eq, or, and } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 
@@ -32,12 +32,24 @@ export async function processBookingCommissions(projectIdOrId: string) {
 
         if (existingLedger) continue; // Already processed
 
-        // Fetch vendor's specific contract rate (default 20%)
         const vendorProfile = await db.query.vendors.findFirst({
             where: eq(vendors.id, vId)
         });
         
-        const commissionRate = vendorProfile?.commissionRate ?? 20;
+        if (!vendorProfile) continue;
+
+        const cType = vendorProfile.commissionType || "percentage";
+        const cVal = vendorProfile.commissionValue ?? 20;
+        
+        // Ensure we don't duplicate settlements for the exact same booking run
+        const existingSettlement = await db.query.commissionSettlements.findFirst({
+            where: and(
+                eq(commissionSettlements.bookingId, item.id),
+                eq(commissionSettlements.vendorId, vId)
+            )
+        });
+
+        if (existingSettlement) continue;
 
         const start = new Date(item.startDate);
         const end = new Date(item.endDate);
@@ -51,9 +63,36 @@ export async function processBookingCommissions(projectIdOrId: string) {
         // For simplicity of MVP, ledger reflects base subtotal for the item. The platform absorbs global discounts.
         // Unless detailed itemized discounts are requested later.
 
-        const platformFeePercentage = commissionRate / 100;
-        const platformFee = amount * platformFeePercentage;
+        // ─── Calculate Debt to Platform ───
+        
+        let platformFee = 0;
+
+        if (cType === "percentage") {
+            platformFee = amount * (cVal / 100);
+        } else if (cType === "fixed_per_item") {
+            platformFee = cVal * item.units * days;
+        } else if (cType === "per_project_fee") {
+            platformFee = cVal;
+        } else if (cType === "fixed_monthly") {
+            // Subscription based - debts generated via a separate chron job, not per booking.
+            platformFee = 0;
+        }
+
         const vendorPayout = amount - platformFee;
+
+        // ─── Insert settlement (Receivables) ───
+        if (platformFee > 0) {
+            await db.insert(commissionSettlements).values({
+                id: uuidv4(),
+                vendorId: vId,
+                bookingId: item.id,
+                amountOwed: platformFee,
+                status: "pending",
+                adminNotes: `Generated via ${cType} rule at ${cVal}`,
+                createdAt: new Date(),
+                updatedAt: new Date()
+            });
+        }
 
         // Insert ledger record
         await db.insert(vendorLedgers).values({
@@ -62,7 +101,7 @@ export async function processBookingCommissions(projectIdOrId: string) {
             bookingId: item.id,
             projectId: item.projectId || item.id,
             amount: amount,
-            commissionRate: commissionRate,
+            commissionRate: cVal,
             platformFee: platformFee,
             vendorPayout: vendorPayout,
             status: "pending_payout",

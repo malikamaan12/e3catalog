@@ -365,6 +365,27 @@ export const vendorLedgers = pgTable("vendor_ledgers", {
     };
 });
 
+// ─── Commission Settlements (Receivables) ───
+export const commissionSettlements = pgTable("commission_settlements", {
+    id: varchar("id", { length: 255 }).primaryKey(),
+    vendorId: varchar("vendor_id", { length: 255 }).notNull().references(() => vendors.id),
+    bookingId: varchar("booking_id", { length: 255 }).notNull().references(() => bookings.id),
+    amountOwed: real("amount_owed").notNull(),
+    status: varchar("status", { length: 50 }).notNull().default("pending"), // pending | submitted_for_review | approved_paid | overdue
+    paymentEvidenceUrl: varchar("payment_evidence_url", { length: 500 }),
+    adminNotes: varchar("admin_notes", { length: 1000 }),
+    submittedAt: timestamp("submitted_at"),
+    approvedAt: timestamp("approved_at"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => {
+    return {
+        vendorIdIdx: index("commission_settlements_vendor_id_idx").on(table.vendorId),
+        bookingIdIdx: index("commission_settlements_booking_id_idx").on(table.bookingId),
+        statusIdx: index("commission_settlements_status_idx").on(table.status),
+    };
+});
+
 // ─── Cart Items ───
 export const cartItems = pgTable("cart_items", {
     id: varchar("id", { length: 255 }).primaryKey(),
@@ -487,6 +508,17 @@ export const vendorLedgersRelations = relations(vendorLedgers, ({ one }) => ({
     }),
 }));
 
+export const commissionSettlementsRelations = relations(commissionSettlements, ({ one }) => ({
+    vendor: one(vendors, {
+        fields: [commissionSettlements.vendorId],
+        references: [vendors.id],
+    }),
+    booking: one(bookings, {
+        fields: [commissionSettlements.bookingId],
+        references: [bookings.id],
+    }),
+}));
+
 export const usersRelations = relations(users, ({ many }) => ({
     bookings: many(bookings),
     cartItems: many(cartItems),
@@ -505,6 +537,7 @@ export const vendorsRelations = relations(vendors, ({ one, many }) => ({
     }),
     products: many(products),
     ledgers: many(vendorLedgers),
+    settlements: many(commissionSettlements),
     reviews: many(reviews),
 }));
 

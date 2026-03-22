@@ -1,5 +1,6 @@
 import { jwtVerify, SignJWT } from "jose";
 import { cookies } from "next/headers";
+import { NextResponse } from "next/server";
 import { db } from "./db";
 import { users } from "./db/schema";
 import { eq } from "drizzle-orm";
@@ -59,4 +60,11 @@ export async function getCurrentUser() {
         console.error("[DB] getCurrentUser failed — returning null:", (dbErr as Error).message);
         return null;
     }
+}
+export async function requireAuth() {
+    const user = await getCurrentUser();
+    if (!user) {
+        return { user: null, error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
+    }
+    return { user, error: null };
 }

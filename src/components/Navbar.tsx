@@ -102,6 +102,7 @@ export function Navbar() {
                             {hasProductsAccess && <NavLink href="/admin/products" label={isVendor ? "My Catalog" : "Products"} />}
                             {hasInventoryAccess && <NavLink href="/admin/inventory" label="Inventory" />}
                             {isAnyAdmin && <NavLink href="/admin/bookings" label="Bookings" />}
+                            {isVendor && <NavLink href="/admin/financials" label="My Financials" />}
                             {isSalesRepAdmin && <NavLink href="/admin/categories" label="Categories" />}
                             {isCatalogVisible && <NavLink href="/catalog" label="View Catalog" />}
                         </>
