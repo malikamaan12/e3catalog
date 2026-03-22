@@ -186,7 +186,10 @@ export default function AdminChatSystem({
     // Handle initial selection from props
     useEffect(() => {
         if (initialUserId && conversations.length > 0) {
-            const conv = conversations.find(c => c.userId === initialUserId);
+            let conv = conversations.find(c => c.userId === initialUserId && c.projectId === initialQuoteId);
+            if (!conv) {
+                conv = conversations.find(c => c.userId === initialUserId);
+            }
             if (conv) {
                 setSelectedConv(conv);
                 setIsNewChatPlaceholder(false);
@@ -223,7 +226,7 @@ export default function AdminChatSystem({
     }, [initialQuoteId]);
 
     const handleSelectFoundUser = (user: any) => {
-        const existing = conversations.find(c => c.userId === user.id);
+        const existing = conversations.find(c => c.userId === user.id && !c.projectId);
         if (existing) {
             setSelectedConv(existing);
             setIsNewChatPlaceholder(false);
@@ -438,9 +441,9 @@ export default function AdminChatSystem({
                     ) : (
                         filteredConversations.map((conv) => (
                             <button
-                                key={conv.userId}
+                                key={conv.id || conv.userId}
                                 onClick={() => setSelectedConv(conv)}
-                                className={`w-full p-4 flex gap-3 border-b border-white/5 hover:bg-white/10 transition-colors text-left ${selectedConv?.userId === conv.userId ? "bg-white/10 border-l-4 border-l-[var(--color-gold)]" : ""}`}
+                                className={`w-full p-4 flex gap-3 border-b border-white/5 hover:bg-white/10 transition-colors text-left ${selectedConv?.id === conv.id ? "bg-white/10 border-l-4 border-l-[var(--color-gold)]" : ""}`}
                             >
                                 <div className="relative shrink-0">
                                     <div className="w-12 h-12 rounded-full bg-[var(--color-gold)]/10 border border-white/10 flex items-center justify-center overflow-hidden">

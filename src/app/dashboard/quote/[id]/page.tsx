@@ -6,8 +6,9 @@ import Link from "next/link";
 import {
     ArrowLeft, Edit2, Loader2, Package, Trash2,
     CheckCircle, AlertTriangle, Download, CheckCircle2,
-    Clock, FileText, XCircle
+    Clock, FileText, XCircle, MessageCircle
 } from "lucide-react";
+import ClientChatWindow from "@/components/chat/ClientChatWindow";
 
 interface QuoteItem {
     id: string;
@@ -69,6 +70,7 @@ export default function DashboardQuotePage({ params }: { params: Promise<{ id: s
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [processing, setProcessing] = useState(false);
+    const [currentUser, setCurrentUser] = useState<any>(null);
 
     const [showRevisionBox, setShowRevisionBox] = useState(false);
     const [revisionNote, setRevisionNote] = useState("");
@@ -95,6 +97,10 @@ export default function DashboardQuotePage({ params }: { params: Promise<{ id: s
 
     useEffect(() => {
         loadQuote();
+        fetch("/api/auth/me")
+            .then(r => r.json())
+            .then(d => { if (d.user) setCurrentUser(d.user); })
+            .catch(() => {});
     }, [id]);
 
     const handleQuoteAction = async (actionStatus: string, notes?: string) => {
@@ -532,6 +538,18 @@ export default function DashboardQuotePage({ params }: { params: Promise<{ id: s
                     </div>
                 </div>
             </div>
+
+            {currentUser && quote && (
+                <ClientChatWindow 
+                    currentUser={currentUser} 
+                    projects={[{
+                        id: quote.id,
+                        projectName: quote.projectName,
+                        status: quote.status,
+                        vendorName: quote.vendorName
+                    }]} 
+                />
+            )}
         </div>
     );
 }
