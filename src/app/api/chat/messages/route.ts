@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { chatMessages, users, bookings, vendors } from "@/lib/db/schema";
-import { eq, or, and, desc } from "drizzle-orm";
+import { eq, or, and, desc, inArray } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { v4 as uuid } from "uuid";
@@ -22,16 +22,20 @@ export async function GET(req: NextRequest) {
 
         if (["admin", "super_admin", "vendor", "sales_rep"].includes(user.role)) {
             if (otherUserId) {
+                // Staff roles that constitute the "Support Team"
+                const STAFF_ROLES = ["admin", "super_admin", "vendor", "sales_rep"];
+                const staffList = await db.select({ id: users.id }).from(users).where(or(...STAFF_ROLES.map(role => eq(users.role, role))));
+                const staffIds = staffList.map(s => s.id);
+
+                // Staff can see any message between the otherUserId and ANY staff member
                 conditions.push(
                     or(
-                        and(eq(chatMessages.senderId, user.id), eq(chatMessages.receiverId, otherUserId)),
-                        and(eq(chatMessages.senderId, otherUserId), eq(chatMessages.receiverId, user.id))
+                        and(eq(chatMessages.senderId, otherUserId), inArray(chatMessages.receiverId, staffIds)),
+                        and(inArray(chatMessages.senderId, staffIds), eq(chatMessages.receiverId, otherUserId))
                     )
                 );
             } else {
-                // Admin might want all messages or grouped by user? 
-                // For a specific user view, otherUserId is required.
-                return NextResponse.json({ error: "otherUserId is required for admin" }, { status: 400 });
+                return NextResponse.json({ error: "otherUserId is required for staff" }, { status: 400 });
             }
         } else {
             // Client: messages involving themselves
