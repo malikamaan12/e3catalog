@@ -7,6 +7,7 @@ import {
     ExternalLink, Mail, Phone, Clock, Download, MessageCircle,
     MessagesSquare
 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import EmbeddedChat from "@/components/chat/EmbeddedChat";
 
@@ -117,6 +118,12 @@ export default function BookingDetailsPage({ params }: { params: Promise<{ id: s
         customNotes: "",
         fulfillmentStatus: "pending",
         warehouseNotes: "",
+    });
+
+    const [uiState, setUiState] = useState({
+        termsExpanded: false,
+        fulfillmentExpanded: true,
+        chatExpanded: false,
     });
 
     const [currentUser, setCurrentUser] = useState<{ id: string; role: string } | null>(null);
@@ -324,32 +331,42 @@ export default function BookingDetailsPage({ params }: { params: Promise<{ id: s
                 <span className="transition-transform group-hover:-translate-x-1">←</span> Back to Pipeline
             </button>
 
-            <div className="flex items-start justify-between mb-8">
-                <div>
-                    <h1 className="font-[family-name:var(--font-heading)] text-2xl md:text-3xl font-bold text-[var(--color-warm-white)] flex flex-wrap items-center gap-3">
-                        Booking {booking.id.split("-")[0].toUpperCase()}
-                        <span className="text-xs font-normal px-3 py-1.5 rounded-full glass text-[var(--color-gold)] border border-[var(--color-gold)]/20">
-                            {STATUS_LABELS[booking.status] || booking.status}
-                        </span>
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-10 bg-[var(--color-navy-dark)]/40 p-6 rounded-[2rem] border border-white/5 shadow-xl">
+                <div className="flex items-center gap-4">
+                    <div className="w-14 h-14 rounded-2xl bg-gold/10 flex items-center justify-center border border-gold/20 shadow-inner">
+                        <Package className="w-7 h-7 text-gold" />
+                    </div>
+                    <div>
+                        <h1 className="font-[family-name:var(--font-heading)] text-xl md:text-2xl font-bold text-[var(--color-warm-white)] flex items-center gap-3">
+                            Booking {booking.id.split("-")[0].toUpperCase()}
+                        </h1>
+                        <p className="text-[var(--color-slate)] text-xs mt-1">Submitted on {new Date(booking.createdAt).toLocaleDateString()}</p>
+                    </div>
+                </div>
 
-                        {/* Interactive Payment Badge */}
-                        <div className="relative group">
-                            <select
-                                value={pricing.paymentStatus} disabled={!canEditFinancials || saving}
-                                onChange={(e) => {
-                                    setPricing({ ...pricing, paymentStatus: e.target.value });
-                                    handleSave(undefined, e.target.value); // Auto-save payment changes immediately
-                                }}
-                                className="text-xs font-normal px-3 py-1.5 rounded-full bg-black/40 border border-white/10 outline-none text-[var(--color-warm-white)] focus:border-[var(--color-gold)] transition-colors cursor-pointer appearance-none pr-8 disabled:opacity-50"
-                            >
-                                <option value="unpaid" className="bg-[var(--color-navy-dark)] text-white">🔴 Unpaid</option>
-                                <option value="deposit_paid" className="bg-[var(--color-navy-dark)] text-white">🟡 Deposit Paid</option>
-                                <option value="paid" className="bg-[var(--color-navy-dark)] text-white">🟢 Paid In Full</option>
-                            </select>
-                            <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-[var(--color-gold)] pointer-events-none group-hover:scale-110 transition-transform" />
-                        </div>
-                    </h1>
-                    <p className="text-[var(--color-slate)] text-sm mt-2">Request submitted on {new Date(booking.createdAt).toLocaleDateString()}</p>
+                <div className="flex flex-wrap items-center gap-3">
+                    <span className="text-[10px] font-black px-4 py-2 rounded-xl glass text-[var(--color-gold)] border border-[var(--color-gold)]/20 uppercase tracking-widest shadow-lg shadow-gold/5">
+                        {STATUS_LABELS[booking.status] || booking.status}
+                    </span>
+
+                    <div className="relative group">
+                        <select
+                            value={pricing.paymentStatus} disabled={!canEditFinancials || saving}
+                            onChange={(e) => {
+                                setPricing({ ...pricing, paymentStatus: e.target.value });
+                                handleSave(undefined, e.target.value);
+                            }}
+                            className={`text-[10px] font-black px-4 py-2 rounded-xl border outline-none transition-all cursor-pointer appearance-none pr-10 uppercase tracking-widest shadow-lg
+                                ${pricing.paymentStatus === 'paid' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' :
+                                    pricing.paymentStatus === 'deposit_paid' ? 'bg-amber-500/10 border-amber-500/30 text-amber-400' :
+                                        'bg-red-500/10 border-red-500/30 text-red-400'}`}
+                        >
+                            <option value="unpaid" className="bg-[var(--color-navy-dark)] text-white">🔴 Unpaid</option>
+                            <option value="deposit_paid" className="bg-[var(--color-navy-dark)] text-white">🟡 Deposit Paid</option>
+                            <option value="paid" className="bg-[var(--color-navy-dark)] text-white">🟢 Paid In Full</option>
+                        </select>
+                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3 h-3 pointer-events-none group-hover:scale-110 transition-transform opacity-50" />
+                    </div>
                 </div>
             </div>
 
@@ -547,38 +564,55 @@ export default function BookingDetailsPage({ params }: { params: Promise<{ id: s
                     </div>
 
                     {/* Terms & Conditions (Bottom Left) */}
-                    <div className="glass rounded-2xl p-6 border border-white/5">
-                        <h3 className="font-semibold text-[var(--color-warm-white)] mb-5 border-b border-white/10 pb-3 text-sm uppercase tracking-wide">Contract Terms & Admin Notes</h3>
+                    <div className="glass rounded-2xl border border-white/5 overflow-hidden shadow-sm">
+                        <button 
+                            onClick={() => setUiState(prev => ({ ...prev, termsExpanded: !prev.termsExpanded }))}
+                            className="w-full flex items-center justify-between p-6 hover:bg-white/5 transition-colors"
+                        >
+                            <h3 className="font-semibold text-[var(--color-warm-white)] text-sm uppercase tracking-wide flex items-center gap-2">
+                                <span className={uiState.termsExpanded ? "text-gold" : "text-slate"}>📄</span> Contract Terms & Admin Notes
+                            </h3>
+                            <ChevronDown className={`w-5 h-5 text-[var(--color-gold)] transition-transform duration-300 ${uiState.termsExpanded ? "rotate-180" : ""}`} />
+                        </button>
 
-                        <div className="mb-6">
-                            <label className="block text-xs font-semibold text-[var(--color-slate)] mb-3 uppercase tracking-wider">
-                                Standard Terms & Conditions (Included in PDF)
-                            </label>
-                            <div className="space-y-1 bg-[var(--color-navy-dark)] border border-white/10 rounded-xl p-4 shadow-inner">
-                                {globalSettings.filter(s => s.type === 'term_condition').map((setting) => (
-                                    <label key={setting.id} className="flex items-start gap-3 cursor-pointer group py-1.5 flex-1">
-                                        <input
-                                            type="checkbox"
-                                            checked={pricing.selectedTerms.includes(setting.content)}
-                                            onChange={(e) => {
-                                                const checked = e.target.checked;
-                                                setPricing(prev => ({
-                                                    ...prev,
-                                                    selectedTerms: checked
-                                                        ? [...prev.selectedTerms, setting.content]
-                                                        : prev.selectedTerms.filter(t => t !== setting.content)
-                                                }));
-                                            }}
-                                            className="mt-1 w-4 h-4 rounded bg-black/40 border-white/20 checked:bg-[var(--color-gold)] focus:ring-[var(--color-gold)] text-[var(--color-gold)] transition cursor-pointer"
-                                        />
-                                        <div>
-                                            <span className="block text-xs font-bold text-[var(--color-gold)] uppercase tracking-wider mb-0.5">{setting.label}</span>
-                                            <span className="block text-sm text-[var(--color-warm-white)] group-hover:text-[var(--color-gold)] transition-colors text-opacity-80 select-none whitespace-pre-wrap">{setting.content}</span>
+                        <AnimatePresence>
+                        {uiState.termsExpanded && (
+                            <motion.div 
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: "auto", opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                className="overflow-hidden border-t border-white/10"
+                            >
+                                <div className="p-6">
+                                    <div className="mb-6">
+                                        <label className="block text-xs font-semibold text-[var(--color-slate)] mb-3 uppercase tracking-wider">
+                                            Standard Terms & Conditions (Included in PDF)
+                                        </label>
+                                        <div className="space-y-1 bg-[var(--color-navy-dark)] border border-white/10 rounded-xl p-4 shadow-inner max-h-[300px] overflow-y-auto custom-scrollbar">
+                                            {globalSettings.filter(s => s.type === 'term_condition').map((setting) => (
+                                                <label key={setting.id} className="flex items-start gap-3 cursor-pointer group py-1.5 flex-1 border-b border-white/5 last:border-0">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={pricing.selectedTerms.includes(setting.content)}
+                                                        onChange={(e) => {
+                                                            const checked = e.target.checked;
+                                                            setPricing(prev => ({
+                                                                ...prev,
+                                                                selectedTerms: checked
+                                                                    ? [...prev.selectedTerms, setting.content]
+                                                                    : prev.selectedTerms.filter(t => t !== setting.content)
+                                                            }));
+                                                        }}
+                                                        className="mt-1 w-4 h-4 rounded bg-black/40 border-white/20 checked:bg-[var(--color-gold)] focus:ring-[var(--color-gold)] text-[var(--color-gold)] transition cursor-pointer"
+                                                    />
+                                                    <div>
+                                                        <span className="block text-[10px] font-bold text-[var(--color-gold)] uppercase tracking-wider mb-0.5">{setting.label}</span>
+                                                        <span className="block text-xs text-[var(--color-warm-white)] group-hover:text-[var(--color-gold)] transition-colors text-opacity-80 select-none whitespace-pre-wrap">{setting.content}</span>
+                                                    </div>
+                                                </label>
+                                            ))}
                                         </div>
-                                    </label>
-                                ))}
-                            </div>
-                        </div>
+                                    </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                             <div>
@@ -637,75 +671,72 @@ export default function BookingDetailsPage({ params }: { params: Promise<{ id: s
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div>
-                                <label className="block text-xs font-semibold text-[var(--color-slate)] mb-2 uppercase tracking-wider">
-                                    Private Notes / Custom Terms
-                                </label>
-                                <textarea
-                                    value={pricing.customNotes} disabled={!canEditFinancials}
-                                    onChange={(e) => setPricing({ ...pricing, customNotes: e.target.value })}
-                                    placeholder="Specific delivery rules, gate codes... (Invisible to client)"
-                                    rows={4}
-                                    className="w-full bg-[var(--color-navy-dark)] border border-white/10 rounded-xl px-4 py-3 text-sm text-[var(--color-warm-white)] focus:border-[var(--color-gold)] outline-none resize-none shadow-inner disabled:opacity-50"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-semibold text-[var(--color-slate)] mb-2 uppercase tracking-wider">
-                                    Message to Client (Email Notification)
-                                </label>
-                                <textarea
-                                    value={pricing.adminNotes}
-                                    onChange={(e) => setPricing({ ...pricing, adminNotes: e.target.value })}
-                                    placeholder="Add clarifications or special instructions to the email..."
-                                    rows={4}
-                                    className="w-full bg-[var(--color-navy-dark)] border border-white/10 rounded-xl px-4 py-3 text-sm text-[var(--color-warm-white)] focus:border-[var(--color-gold)] outline-none resize-none shadow-inner"
-                                />
-                            </div>
-                        </div>
+                                </div>
+                            </motion.div>
+                        )}
+                        </AnimatePresence>
                     </div>
 
                     {/* Warehouse & Fulfillment */}
-                    <div className="glass rounded-2xl p-6 border border-white/5 mt-6 border-l-4 border-l-blue-500/50 relative overflow-hidden">
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500 opacity-5 blur-[60px] rounded-full"></div>
-                        <h3 className="font-semibold text-[var(--color-warm-white)] mb-5 border-b border-white/10 pb-3 text-sm uppercase tracking-wide flex items-center gap-2">
-                            <span className="text-blue-400">📦</span> Warehouse & Fulfillment
-                        </h3>
+                    <div className="glass rounded-2xl border border-white/5 overflow-hidden shadow-sm border-l-4 border-l-blue-500/50">
+                        <button 
+                            onClick={() => setUiState(prev => ({ ...prev, fulfillmentExpanded: !prev.fulfillmentExpanded }))}
+                            className="w-full flex items-center justify-between p-6 hover:bg-white/5 transition-colors"
+                        >
+                            <h3 className="font-semibold text-[var(--color-warm-white)] text-sm uppercase tracking-wide flex items-center gap-2">
+                                <span className="text-blue-400">📦</span> Warehouse & Fulfillment
+                            </h3>
+                            <ChevronDown className={`w-5 h-5 text-blue-400 transition-transform duration-300 ${uiState.fulfillmentExpanded ? "rotate-180" : ""}`} />
+                        </button>
 
-                        <div className="grid grid-cols-1 gap-6 mb-2">
-                            <div>
-                                <label className="block text-xs font-semibold text-[var(--color-slate)] mb-2 uppercase tracking-wider">
-                                    Fulfillment Status
-                                </label>
-                                <div className="relative group mb-2">
-                                    <select
-                                        value={pricing.fulfillmentStatus} disabled={!canEditFulfillment}
-                                        onChange={(e) => setPricing({ ...pricing, fulfillmentStatus: e.target.value })}
-                                        className="w-full bg-[var(--color-navy-dark)] border border-white/10 rounded-xl px-4 py-3 text-sm text-[var(--color-warm-white)] focus:border-blue-500 outline-none appearance-none cursor-pointer pr-10 hover:border-blue-500/50 transition-colors disabled:opacity-50"
-                                    >
-                                        <option value="pending" className="bg-[var(--color-navy-dark)] text-white">⏳ Pending Allocation</option>
-                                        <option value="processing" className="bg-[var(--color-navy-dark)] text-white">⚙️ Processing / Packing</option>
-                                        <option value="packed" className="bg-[var(--color-navy-dark)] text-white">📦 Packed & Ready for Dispatch</option>
-                                        <option value="out_for_delivery" className="bg-[var(--color-navy-dark)] text-white">🚚 Out for Delivery</option>
-                                        <option value="delivered" className="bg-[var(--color-navy-dark)] text-white">✅ Delivered / Installed</option>
-                                        <option value="returned" className="bg-[var(--color-navy-dark)] text-white">↩️ Returned to Warehouse</option>
-                                    </select>
-                                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-500 pointer-events-none group-hover:scale-110 transition-transform" />
+                        <AnimatePresence>
+                        {uiState.fulfillmentExpanded && (
+                            <motion.div 
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: "auto", opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                className="overflow-hidden border-t border-white/10"
+                            >
+                                <div className="p-6 relative">
+                                    <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500 opacity-5 blur-[60px] rounded-full"></div>
+                                    <div className="grid grid-cols-1 gap-6 mb-2 relative z-10">
+                                        <div>
+                                            <label className="block text-xs font-semibold text-[var(--color-slate)] mb-2 uppercase tracking-wider">
+                                                Fulfillment Status
+                                            </label>
+                                            <div className="relative group mb-2">
+                                                <select
+                                                    value={pricing.fulfillmentStatus} disabled={!canEditFulfillment}
+                                                    onChange={(e) => setPricing({ ...pricing, fulfillmentStatus: e.target.value })}
+                                                    className="w-full bg-[var(--color-navy-dark)] border border-white/10 rounded-xl px-4 py-3 text-sm text-[var(--color-warm-white)] focus:border-blue-500 outline-none appearance-none cursor-pointer pr-10 hover:border-blue-500/50 transition-colors disabled:opacity-50"
+                                                >
+                                                    <option value="pending" className="bg-[var(--color-navy-dark)] text-white">⏳ Pending Allocation</option>
+                                                    <option value="processing" className="bg-[var(--color-navy-dark)] text-white">⚙️ Processing / Packing</option>
+                                                    <option value="packed" className="bg-[var(--color-navy-dark)] text-white">📦 Packed & Ready for Dispatch</option>
+                                                    <option value="out_for_delivery" className="bg-[var(--color-navy-dark)] text-white">🚚 Out for Delivery</option>
+                                                    <option value="delivered" className="bg-[var(--color-navy-dark)] text-white">✅ Delivered / Installed</option>
+                                                    <option value="returned" className="bg-[var(--color-navy-dark)] text-white">↩️ Returned to Warehouse</option>
+                                                </select>
+                                                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-500 pointer-events-none group-hover:scale-110 transition-transform" />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-semibold text-[var(--color-slate)] mb-2 uppercase tracking-wider">
+                                                Warehouse Notes / Comments
+                                            </label>
+                                            <textarea
+                                                value={pricing.warehouseNotes} disabled={!canEditFulfillment}
+                                                onChange={(e) => setPricing({ ...pricing, warehouseNotes: e.target.value })}
+                                                placeholder="Notes for the admin or team about the packing/delivery status..."
+                                                rows={3}
+                                                className="w-full bg-[var(--color-navy-dark)] border border-white/10 rounded-xl px-4 py-3 text-sm text-[var(--color-warm-white)] focus:border-blue-500 hover:border-blue-500/50 transition-colors outline-none resize-none shadow-inner disabled:opacity-50"
+                                            />
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
-                            <div>
-                                <label className="block text-xs font-semibold text-[var(--color-slate)] mb-2 uppercase tracking-wider">
-                                    Warehouse Notes / Comments
-                                </label>
-                                <textarea
-                                    value={pricing.warehouseNotes} disabled={!canEditFulfillment}
-                                    onChange={(e) => setPricing({ ...pricing, warehouseNotes: e.target.value })}
-                                    placeholder="Notes for the admin or team about the packing/delivery status..."
-                                    rows={3}
-                                    className="w-full bg-[var(--color-navy-dark)] border border-white/10 rounded-xl px-4 py-3 text-sm text-[var(--color-warm-white)] focus:border-blue-500 hover:border-blue-500/50 transition-colors outline-none resize-none shadow-inner disabled:opacity-50"
-                                />
-                            </div>
-                        </div>
+                            </motion.div>
+                        )}
+                        </AnimatePresence>
                     </div>
                 </div>
 
@@ -888,16 +919,38 @@ export default function BookingDetailsPage({ params }: { params: Promise<{ id: s
                                 </div>
                             </div>
                         </div>
-                        <div className="h-[400px]">
-                            {currentUser && booking.userId && (
-                                <EmbeddedChat 
-                                    currentUser={currentUser}
-                                    projectId={booking.id}
-                                    receiverId={booking.userId}
-                                    receiverName={booking.customerName}
-                                    title="Communication Hub"
-                                />
+                        {/* Communication Hub Toggle */}
+                        <div className="mt-8 pt-6 border-t border-white/10">
+                            <button 
+                                onClick={() => setUiState(prev => ({ ...prev, chatExpanded: !prev.chatExpanded }))}
+                                className={`w-full flex items-center justify-center gap-3 py-4 rounded-xl font-bold transition-all shadow-lg
+                                    ${uiState.chatExpanded ? 'bg-gold text-navy shadow-gold/20' : 'bg-white/5 border border-white/10 text-white hover:bg-white/10'}
+                                `}
+                            >
+                                <MessagesSquare className="w-5 h-5" />
+                                {uiState.chatExpanded ? "Hide Communication Hub" : "Show Communication Hub"}
+                            </button>
+
+                            <AnimatePresence>
+                            {uiState.chatExpanded && (
+                                <motion.div 
+                                    initial={{ height: 0, opacity: 0, marginTop: 0 }}
+                                    animate={{ height: 500, opacity: 1, marginTop: 24 }}
+                                    exit={{ height: 0, opacity: 0, marginTop: 0 }}
+                                    className="overflow-hidden"
+                                >
+                                    {currentUser && booking.userId && (
+                                        <EmbeddedChat 
+                                            currentUser={currentUser}
+                                            projectId={booking.id}
+                                            receiverId={booking.userId}
+                                            receiverName={booking.customerName}
+                                            title="Communication Hub"
+                                        />
+                                    )}
+                                </motion.div>
                             )}
+                            </AnimatePresence>
                         </div>
                     </div>
                 </div>

@@ -45,8 +45,14 @@ export default function EmbeddedChat({ currentUser, projectId, receiverId, recei
         return () => clearInterval(interval);
     }, [projectId, receiverId]);
 
+    const [isInitialLoad, setIsInitialLoad] = useState(true);
+
     useEffect(() => {
-        scrollToBottom();
+        if (!isInitialLoad) {
+            scrollToBottom();
+        } else if (messages.length > 0) {
+            setIsInitialLoad(false);
+        }
     }, [messages]);
 
     const fetchMessages = async () => {
