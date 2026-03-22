@@ -46,6 +46,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             siblingBookings.map(async (b: any) => {
                 const product = await db.query.products.findFirst({
                     where: eq(products.id, b.productId),
+                    with: { vendor: true }
                 });
                 const media = await db.query.productMedia.findFirst({
                     where: eq(productMedia.productId, b.productId)
@@ -54,8 +55,20 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
                 const startDate = new Date(b.startDate);
                 const endDate = new Date(b.endDate);
                 const days = Math.max(1, Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)));
-                const pricePerDay = product?.pricePerDay || 0;
-                const lineTotal = pricePerDay * b.units * days;
+                
+                let basePricePerDay = product?.pricePerDay || 0;
+                let finalPricePerDay = basePricePerDay;
+                const vendor = product?.vendor;
+
+                if (vendor) {
+                    if (vendor.commissionType === "percentage") {
+                        finalPricePerDay = basePricePerDay * (1 + vendor.commissionValue / 100);
+                    } else if (vendor.commissionType === "fixed_per_item") {
+                        finalPricePerDay = basePricePerDay + vendor.commissionValue;
+                    }
+                }
+
+                const lineTotal = finalPricePerDay * b.units * days;
 
                 return {
                     name: product?.name || "Unknown Item",
@@ -68,7 +81,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
                     quantity: b.units,
                     startDate: format(startDate, "dd MMM yyyy"),
                     endDate: format(endDate, "dd MMM yyyy"),
-                    pricePerDay,
+                    pricePerDay: finalPricePerDay,
                     totalLinePrice: lineTotal,
                     vendorId: product?.vendorId,
                     smartTags: ["Premium Grade", "Inspected"], // Adding dummy tags for visual effect or swap with real ones if added to DB
@@ -78,6 +91,37 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
                 };
             })
         );
+
+        // Add per_project_fee line items
+        const processedVendors = new Set<string>();
+        for (const item of hydratedItems) {
+            const vId = item.vendorId;
+            if (vId && !processedVendors.has(vId)) {
+                processedVendors.add(vId);
+                const vendor = await db.query.vendors.findFirst({ where: eq(vendors.id, vId) });
+                if (vendor && vendor.commissionType === "per_project_fee") {
+                    hydratedItems.push({
+                        name: "Platform Service Fee",
+                        itemCode: "FEE-001",
+                        shortDescription: "One-time platform service fee for this project.",
+                        dimensions: "N/A",
+                        weight: "N/A",
+                        powerRequirements: "N/A",
+                        thumbnailUrl: undefined,
+                        quantity: 1,
+                        startDate: "N/A",
+                        endDate: "N/A",
+                        pricePerDay: vendor.commissionValue,
+                        totalLinePrice: vendor.commissionValue,
+                        vendorId: vId,
+                        smartTags: ["Service"],
+                        certifications: [],
+                        qrCodeUrl: "",
+                        modelLink: ""
+                    });
+                }
+            }
+        }
 
         // 4. Optional: Detect primary vendor for letterhead and bank details
         let primaryVendorHeader = null;
@@ -205,7 +249,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
         const hydratedItems = await Promise.all(
             siblingBookings.map(async (b: any) => {
-                const product = await db.query.products.findFirst({ where: eq(products.id, b.productId) });
+                const product = await db.query.products.findFirst({ 
+                    where: eq(products.id, b.productId),
+                    with: { vendor: true }
+                });
                 const media = await db.query.productMedia.findFirst({ where: eq(productMedia.productId, b.productId) });
                 const start = new Date(b.startDate);
                 const end = new Date(b.endDate);
@@ -213,8 +260,20 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
                 
                 const showPrice = product?.showPrice !== false;
                 const hidePrice = isPendingQuote || !showPrice;
-                const pricePerDay = product?.pricePerDay || 0;
-                const lineTotal = pricePerDay * b.units * days;
+                
+                let basePricePerDay = product?.pricePerDay || 0;
+                let finalPricePerDay = basePricePerDay;
+                const vendor = product?.vendor;
+
+                if (vendor) {
+                    if (vendor.commissionType === "percentage") {
+                        finalPricePerDay = basePricePerDay * (1 + vendor.commissionValue / 100);
+                    } else if (vendor.commissionType === "fixed_per_item") {
+                        finalPricePerDay = basePricePerDay + vendor.commissionValue;
+                    }
+                }
+
+                const lineTotal = finalPricePerDay * b.units * days;
 
                 return {
                     name: product?.name || "Unknown Item",
@@ -227,7 +286,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
                     quantity: b.units,
                     startDate: format(start, "dd MMM yyyy"),
                     endDate: format(end, "dd MMM yyyy"),
-                    pricePerDay: hidePrice ? "TBD" : pricePerDay,
+                    pricePerDay: hidePrice ? "TBD" : finalPricePerDay,
                     totalLinePrice: hidePrice ? "TBD" : lineTotal,
                     _rawLineTotal: showPrice ? lineTotal : 0, // For internal subtotal math
                     vendorId: product?.vendorId,
@@ -238,6 +297,40 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
                 };
             })
         );
+
+        // Add per_project_fee line items for GET logic
+        const processedGetVendors = new Set<string>();
+        // Using a copy of array so we don't infinitely loop if pushing
+        const initialHydratedItems = [...hydratedItems];
+        for (const item of initialHydratedItems) {
+            const vId = item.vendorId;
+            if (vId && !processedGetVendors.has(vId)) {
+                processedGetVendors.add(vId);
+                const v = await db.query.vendors.findFirst({ where: eq(vendors.id, vId) });
+                if (v && v.commissionType === "per_project_fee") {
+                    hydratedItems.push({
+                        name: "Platform Service Fee",
+                        itemCode: "FEE-001",
+                        shortDescription: "One-time platform service fee for this project.",
+                        dimensions: "N/A",
+                        weight: "N/A",
+                        powerRequirements: "N/A",
+                        thumbnailUrl: undefined,
+                        quantity: 1,
+                        startDate: "N/A",
+                        endDate: "N/A",
+                        pricePerDay: isPendingQuote ? "TBD" : v.commissionValue,
+                        totalLinePrice: isPendingQuote ? "TBD" : v.commissionValue,
+                        _rawLineTotal: v.commissionValue,
+                        vendorId: vId,
+                        smartTags: ["Service"],
+                        certifications: [],
+                        qrCodeUrl: "",
+                        modelLink: ""
+                    });
+                }
+            }
+        }
 
         let primaryVendorHeader = null;
         let primaryVendorFooter = null;

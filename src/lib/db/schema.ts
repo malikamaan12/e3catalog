@@ -63,7 +63,12 @@ export const vendors = pgTable("vendors", {
     kycStatus: varchar("kyc_status", { length: 50 }).notNull().default("pending"),
     agreementStatus: varchar("agreement_status", { length: 50 }).notNull().default("unsigned"),
     payoutDetails: varchar("payout_details", { length: 500 }),
-    commissionRate: real("commission_rate"),
+    commissionRate: real("commission_rate"), // Legacy flat rate (optional now)
+
+    // Advanced Commission Engine
+    commissionType: varchar("commission_type", { length: 50 }).notNull().default("percentage"), // percentage | fixed_per_item | per_project_fee | fixed_monthly
+    commissionValue: real("commission_value").notNull().default(20), // 20% default markup
+
 
     // Extended KYC & Profile
     website: varchar("website", { length: 255 }),

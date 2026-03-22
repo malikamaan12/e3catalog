@@ -42,6 +42,22 @@ export function VendorManagement() {
         }
     };
 
+    const updateCommission = async (vendorId: string, commissionType: string, commissionValue: number) => {
+        try {
+            const res = await fetch(`/api/admin/vendors/${vendorId}/commission`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ commissionType, commissionValue })
+            });
+            if (res.ok) {
+                setVendors(prev => prev.map(v => v.id === vendorId ? { ...v, commissionType, commissionValue } : v));
+                fetchVendors();
+            }
+        } catch (err) {
+            console.error("Failed to update commission", err);
+        }
+    };
+
     return (
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -110,16 +126,36 @@ export function VendorManagement() {
                             {/* Economy & Scores */}
                             <div className="space-y-4 flex-1">
                                 <div>
-                                    <p className="text-xs font-bold text-[var(--color-slate)] uppercase tracking-wider mb-1">Commission Rate Override (%)</p>
-                                    <div className="flex items-center gap-2">
-                                        <input
-                                            type="number"
-                                            placeholder="Global Default"
-                                            defaultValue={v.commissionRate || ''}
-                                            onBlur={(e) => updateVendor(v.id, { commissionRate: e.target.value ? parseFloat(e.target.value) : null })}
-                                            className="w-32 bg-black/30 border border-white/10 rounded-lg px-3 py-1.5 outline-none focus:border-[var(--color-gold)] text-sm"
-                                        />
-                                        <span className="text-xs text-[var(--color-slate)]">Leave blank for global</span>
+                                    <p className="text-xs font-bold text-[var(--color-slate)] uppercase tracking-wider mb-2 flex items-center gap-1">Commission Matrix</p>
+                                    <div className="flex flex-col gap-2">
+                                        <select
+                                            value={v.commissionType || "percentage"}
+                                            onChange={(e) => {
+                                                const newType = e.target.value;
+                                                updateCommission(v.id, newType, v.commissionValue || 0);
+                                            }}
+                                            className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-1.5 outline-none focus:border-[var(--color-gold)] text-sm cursor-pointer"
+                                        >
+                                            <option value="percentage">Percentage Markup (%)</option>
+                                            <option value="fixed_per_item">Fixed Per Item (£)</option>
+                                            <option value="per_project_fee">Platform Service Fee (Flat)</option>
+                                            <option value="fixed_monthly">Fixed Monthly Subscription</option>
+                                        </select>
+                                        
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-xs text-[var(--color-slate)]">Value:</span>
+                                            <input
+                                                type="number"
+                                                defaultValue={v.commissionValue || 0}
+                                                onBlur={(e) => {
+                                                    const val = parseFloat(e.target.value);
+                                                    if (!isNaN(val) && val !== v.commissionValue) {
+                                                        updateCommission(v.id, v.commissionType || "percentage", val);
+                                                    }
+                                                }}
+                                                className="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-1.5 outline-none focus:border-[var(--color-gold)] text-sm"
+                                            />
+                                        </div>
                                     </div>
                                 </div>
 

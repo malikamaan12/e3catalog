@@ -21,6 +21,8 @@ interface Vendor {
     kycStatus: string; // pending, approved, rejected
     storeStatus: string; // active, offline
     paymentTerms: string | null;
+    commissionType: string | null;
+    commissionValue: number | null;
     createdAt: string;
     user: {
         name: string;
@@ -65,6 +67,19 @@ export default function SuperAdminVendors() {
             if (res.ok) fetchVendors(); // Refresh
         } catch (e) {
             console.error("Failed to update vendor", e);
+        }
+    };
+
+    const updateCommission = async (vendorId: string, commissionType: string, commissionValue: number) => {
+        try {
+            const res = await fetch(`/api/admin/vendors/${vendorId}/commission`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ commissionType, commissionValue })
+            });
+            if (res.ok) fetchVendors(); // Refresh
+        } catch (e) {
+            console.error("Failed to update commission", e);
         }
     };
 
@@ -280,6 +295,49 @@ export default function SuperAdminVendors() {
                                         }}
                                         className="w-full bg-black/20 border border-white/10 rounded-lg px-4 py-2 text-sm text-[var(--color-warm-white)] focus:border-[var(--color-gold)] outline-none transition"
                                     />
+                                </div>
+
+                                {/* Commission Matrix */}
+                                <div className="space-y-4 pt-6 border-t border-white/10 mt-6">
+                                    <h4 className="text-[var(--color-gold)] font-bold text-xs uppercase tracking-widest pb-2 border-b border-white/5 flex items-center gap-2">
+                                        <Banknote className="w-4 h-4" /> Custom Commission Matrix
+                                    </h4>
+                                    <p className="text-xs text-[var(--color-slate)] mb-4">Define unique financial terms for this vendor.</p>
+                                    
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <label className="text-xs text-white/60">Commission Type</label>
+                                            <select
+                                                value={selectedVendor.commissionType || "percentage"}
+                                                onChange={(e) => {
+                                                    const newType = e.target.value;
+                                                    updateCommission(selectedVendor.id, newType, selectedVendor.commissionValue || 0);
+                                                    setSelectedVendor({ ...selectedVendor, commissionType: newType });
+                                                }}
+                                                className="w-full bg-[var(--color-navy)] border border-white/10 rounded-lg px-4 py-2 text-sm text-[var(--color-warm-white)] focus:border-[var(--color-gold)] outline-none transition cursor-pointer"
+                                            >
+                                                <option value="percentage">Percentage Markup</option>
+                                                <option value="fixed_per_item">Fixed Per Item</option>
+                                                <option value="per_project_fee">Per-Project Fee (Platform Service Fee)</option>
+                                                <option value="fixed_monthly">Fixed Monthly Subscription</option>
+                                            </select>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-xs text-white/60">Value (%, £, or Flat Rate)</label>
+                                            <input
+                                                type="number"
+                                                defaultValue={selectedVendor.commissionValue || 0}
+                                                onBlur={(e) => {
+                                                    const val = parseFloat(e.target.value);
+                                                    if (!isNaN(val) && val !== selectedVendor.commissionValue) {
+                                                        updateCommission(selectedVendor.id, selectedVendor.commissionType || "percentage", val);
+                                                        setSelectedVendor({ ...selectedVendor, commissionValue: val });
+                                                    }
+                                                }}
+                                                className="w-full bg-black/20 border border-white/10 rounded-lg px-4 py-2 text-sm text-[var(--color-warm-white)] focus:border-[var(--color-gold)] outline-none transition"
+                                            />
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
