@@ -34,8 +34,8 @@ async function getAvailabilityMap(productIds: string[]): Promise<AvailabilityRes
         return { totalMap, availabilityMap: cached };
     }
 
-    // 2. Cold-start: compute everything to warm the cache properly
-    return computeAndCacheAvailability();
+    // 2. Cold-start: compute just what we need for this page to avoid massive query lag
+    return computeAndCacheAvailability(productIds);
 }
 
 /**

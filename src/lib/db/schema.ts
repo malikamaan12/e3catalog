@@ -99,6 +99,12 @@ export const vendors = pgTable("vendors", {
 
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => {
+    return {
+        userIdIdx: index("vendors_user_id_idx").on(table.userId),
+        storeStatusIdx: index("vendors_store_status_idx").on(table.storeStatus),
+        scoreRatingIdx: index("vendors_score_rating_idx").on(table.scoreRating),
+    };
 });
 
 // ─── Categories ───
@@ -170,6 +176,14 @@ export const products = pgTable("products", {
     adminNotes: varchar("admin_notes", { length: 1000 }), // Internal use only
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => {
+    return {
+        vendorIdIdx: index("products_vendor_id_idx").on(table.vendorId),
+        categoryIdIdx: index("products_category_id_idx").on(table.categoryId),
+        featuredIdx: index("products_featured_idx").on(table.featured),
+        createdAtIdx: index("products_created_at_idx").on(table.createdAt),
+        ratingIdx: index("products_rating_idx").on(table.averageRating),
+    };
 });
 
 

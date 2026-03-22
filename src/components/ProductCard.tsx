@@ -1,3 +1,4 @@
+import { memo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Star, ShieldCheck, Zap } from "lucide-react";
@@ -21,7 +22,7 @@ interface ProductCardProps {
     reviewCount?: number | null;
 }
 
-export function ProductCard({
+export const ProductCard = memo(function ProductCard({
     slug,
     name,
     pricePerDay,
@@ -125,4 +126,4 @@ export function ProductCard({
             </div>
         </Link>
     );
-}
+});
