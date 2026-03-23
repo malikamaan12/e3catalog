@@ -8,7 +8,6 @@ import { useSiteSettings } from "@/components/SiteSettingsProvider";
 import { useInView } from "react-intersection-observer";
 import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 import { Box, FileText, Truck, CheckCircle2 } from "lucide-react";
-import Spline from "@splinetool/react-spline";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -54,7 +53,7 @@ export default function HeroSection() {
                 ease: "power4.out"
             });
 
-            // 3D "Dive-In" Depth Zoom
+            // 3D "Dive-In" Depth Zoom on the orb system
             if (containerRef.current) {
                 gsap.to(".spline-container", {
                     scrollTrigger: {
@@ -89,37 +88,42 @@ export default function HeroSection() {
         return () => ctx.revert();
     }, []);
 
-    const [splineLoaded, setSplineLoaded] = useState(false);
-    const [splineError, setSplineError] = useState(false);
-
     return (
         <section
             ref={containerRef}
             onMouseMove={handleMouseMove}
             className="relative h-[120vh] w-full bg-[#0a0f1e] flex items-center justify-center overflow-hidden z-20"
         >
-            {/* ── Interactive 3D Background System ── */}
+            {/* ── Premium Animated Orb Background ── */}
             <motion.div 
                 className="absolute inset-0 z-0 spline-container"
                 style={{
                     rotateY,
                     rotateX,
-                    opacity: splineLoaded ? 1 : 0,
-                    transition: "opacity 1s ease-in-out"
+                    perspective: 1200,
                 }}
             >
-                <div className="absolute inset-0 z-10 bg-gradient-to-br from-[#0a0f1e]/80 via-transparent to-[#0a0f1e]/80 pointer-events-none" />
-                {!splineError && (
-                    <Spline 
-                        scene="https://prod.spline.design/6Wq1Q7YAn9YqO79P/scene.splinecode"
-                        className="w-full h-full"
-                        onLoad={() => setSplineLoaded(true)}
-                        onError={() => {
-                            setSplineError(true);
-                            console.error("Spline failed to load. Falling back to premium gradient system.");
-                        }}
-                    />
-                )}
+                {/* Primary Gold Orb */}
+                <motion.div
+                    className="absolute w-[600px] h-[600px] rounded-full blur-[120px] opacity-[0.12]"
+                    style={{ background: "radial-gradient(circle, #c9a84c 0%, transparent 70%)", top: "10%", left: "15%" }}
+                    animate={{ x: [0, 60, -40, 0], y: [0, -40, 50, 0], scale: [1, 1.2, 0.9, 1] }}
+                    transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
+                />
+                {/* Secondary Blue Orb */}
+                <motion.div
+                    className="absolute w-[500px] h-[500px] rounded-full blur-[100px] opacity-[0.08]"
+                    style={{ background: "radial-gradient(circle, #3b82f6 0%, transparent 70%)", bottom: "5%", right: "10%" }}
+                    animate={{ x: [0, -50, 30, 0], y: [0, 30, -60, 0], scale: [1, 0.85, 1.15, 1] }}
+                    transition={{ duration: 25, repeat: Infinity, ease: "easeInOut" }}
+                />
+                {/* Tertiary Violet Orb */}
+                <motion.div
+                    className="absolute w-[400px] h-[400px] rounded-full blur-[80px] opacity-[0.06]"
+                    style={{ background: "radial-gradient(circle, #8b5cf6 0%, transparent 70%)", top: "50%", left: "60%" }}
+                    animate={{ x: [0, 40, -20, 0], y: [0, -50, 30, 0] }}
+                    transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
+                />
             </motion.div>
 
             <div className="absolute inset-0 z-[1] pointer-events-none">
