@@ -32,6 +32,7 @@ export default function VendorProductsPage() {
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
     const [showAddModal, setShowAddModal] = useState(false);
+    const [editingProduct, setEditingProduct] = useState<VendorProduct | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Form State
@@ -65,32 +66,57 @@ export default function VendorProductsPage() {
         loadData();
     }, []);
 
-    const handleImageUpload = (url: string) => {
-        setFormData(prev => ({ ...prev, thumbnailUrl: url }));
+    const handleEditClick = (product: VendorProduct) => {
+        setEditingProduct(product);
+        setFormData({
+            name: product.name,
+            categoryId: categories.find(c => c.name === product.categoryName)?.id || "",
+            pricePerDay: product.pricePerDay.toString(),
+            unit: product.unit || "day",
+            description: "", // Note: We might need to fetch full description if not in list
+            shortDescription: "", // Note: We might need to fetch if not in list
+            thumbnailUrl: product.thumbnailUrl || "",
+        });
+        setShowAddModal(true);
     };
 
-    const handleAddProduct = async (e: React.FormEvent) => {
+    const handleCloseModal = () => {
+        setShowAddModal(false);
+        setEditingProduct(null);
+        setFormData({
+            name: "", categoryId: "", pricePerDay: "",
+            unit: "day", description: "", shortDescription: "", thumbnailUrl: ""
+        });
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSubmitting(true);
         try {
+            const method = editingProduct ? "PATCH" : "POST";
+            const body = editingProduct ? { ...formData, id: editingProduct.id } : formData;
+
             const res = await fetch("/api/vendor/products", {
-                method: "POST",
+                method,
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(formData),
+                body: JSON.stringify(body),
             });
+
             if (res.ok) {
-                const newProd = await res.json();
-                // We add the category name for local UI refresh
-                const cat = categories.find(c => c.id === formData.categoryId);
-                setProducts([{ ...newProd, categoryName: cat?.name || "Uncategorized", status: "pending" }, ...products]);
-                setShowAddModal(false);
-                setFormData({
-                    name: "", categoryId: "", pricePerDay: "",
-                    unit: "day", description: "", shortDescription: "", thumbnailUrl: ""
-                });
+                const result = await res.json();
+                if (editingProduct) {
+                    setProducts(products.map(p => p.id === result.id ? { 
+                        ...result, 
+                        categoryName: categories.find(c => c.id === formData.categoryId)?.name || p.categoryName 
+                    } : p));
+                } else {
+                    const cat = categories.find(c => c.id === formData.categoryId);
+                    setProducts([{ ...result, categoryName: cat?.name || "Uncategorized", status: "pending" }, ...products]);
+                }
+                handleCloseModal();
             }
         } catch (err) {
-            console.error("Creation error:", err);
+            console.error("Submission error:", err);
         } finally {
             setIsSubmitting(false);
         }
@@ -204,7 +230,10 @@ export default function VendorProductsPage() {
                                 </div>
 
                                 <div className="flex gap-2">
-                                    <button className="flex-1 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-[var(--color-warm-white)] text-xs font-bold transition-all flex items-center justify-center gap-2">
+                                    <button 
+                                        onClick={() => handleEditClick(p)}
+                                        className="flex-1 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-[var(--color-warm-white)] text-xs font-bold transition-all flex items-center justify-center gap-2"
+                                    >
                                         <Edit2 className="w-3.5 h-3.5" /> Edit
                                     </button>
                                     <button className="px-4 py-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/10 transition-all">
@@ -217,21 +246,25 @@ export default function VendorProductsPage() {
                 </div>
             )}
 
-            {/* Add Product Modal */}
+            {/* Add/Edit Product Modal */}
             {showAddModal && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
                     <div className="w-full max-w-2xl bg-[var(--color-surface)] border border-white/10 rounded-[32px] shadow-2xl overflow-hidden animate-slide-up">
                         <div className="p-8 border-b border-white/5 flex items-center justify-between">
                             <div>
-                                <h2 className="text-2xl font-black text-[var(--color-warm-white)]">List New Asset</h2>
-                                <p className="text-sm text-[var(--color-slate)]">Submit your equipment for marketplace review.</p>
+                                <h2 className="text-2xl font-black text-[var(--color-warm-white)]">
+                                    {editingProduct ? "Modify Asset" : "List New Asset"}
+                                </h2>
+                                <p className="text-sm text-[var(--color-slate)]">
+                                    {editingProduct ? `Updating ${editingProduct.name}` : "Submit your equipment for marketplace review."}
+                                </p>
                             </div>
-                            <button onClick={() => setShowAddModal(false)} className="p-2 rounded-full hover:bg-white/5 transition-colors">
+                            <button onClick={handleCloseModal} className="p-2 rounded-full hover:bg-white/5 transition-colors">
                                 <X className="w-6 h-6 text-[var(--color-slate)]" />
                             </button>
                         </div>
                         
-                        <form onSubmit={handleAddProduct} className="p-8 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
+                        <form onSubmit={handleSubmit} className="p-8 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="space-y-2">
                                     <label className="text-xs font-black uppercase tracking-widest text-[var(--color-gold)]">Product Name</label>
@@ -310,13 +343,29 @@ export default function VendorProductsPage() {
 
                             <div className="space-y-2">
                                 <label className="text-xs font-black uppercase tracking-widest text-[var(--color-gold)]">Product Hero Image</label>
-                                <CloudImageUpload 
-                                    onUploadComplete={(url) => setFormData({...formData, thumbnailUrl: url})}
-                                    folder="marketplace-products"
-                                />
+                                {formData.thumbnailUrl && (
+                                    <div className="mb-4 aspect-video rounded-2xl overflow-hidden border border-white/10 bg-black/20 relative group">
+                                        <img src={formData.thumbnailUrl} alt="Preview" className="w-full h-full object-contain" />
+                                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                            <button 
+                                                type="button"
+                                                onClick={() => setFormData({...formData, thumbnailUrl: ""})}
+                                                className="bg-red-500 p-2 rounded-full text-white"
+                                            >
+                                                <X className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                                {!formData.thumbnailUrl && (
+                                    <CloudImageUpload 
+                                        onUploadComplete={(url) => setFormData({...formData, thumbnailUrl: url})}
+                                        folder="marketplace-products"
+                                    />
+                                )}
                                 {formData.thumbnailUrl && (
                                     <div className="mt-2 text-[10px] text-emerald-400 font-bold flex items-center gap-1">
-                                        <CheckCircle2 className="w-3 h-3" /> Image Uploaded Successfully
+                                        <CheckCircle2 className="w-3 h-3" /> Image Loaded/Uploaded Successfully
                                     </div>
                                 )}
                             </div>
@@ -324,17 +373,17 @@ export default function VendorProductsPage() {
                         
                         <div className="p-8 bg-white/[0.02] border-t border-white/5 flex gap-4">
                             <button 
-                                onClick={() => setShowAddModal(false)}
+                                onClick={handleCloseModal}
                                 className="flex-1 py-4 px-6 rounded-2xl bg-white/5 text-[var(--color-warm-white)] font-bold text-sm hover:bg-white/10 transition-all"
                             >
                                 Discard
                             </button>
                             <button 
-                                onClick={handleAddProduct}
+                                onClick={handleSubmit}
                                 disabled={isSubmitting}
                                 className="flex-[2] btn-primary py-4 px-6 rounded-2xl disabled:opacity-50"
                             >
-                                {isSubmitting ? "Creating..." : "Submit for Approval"}
+                                {isSubmitting ? "Processing..." : (editingProduct ? "Save Changes" : "Submit for Approval")}
                             </button>
                         </div>
                     </div>
