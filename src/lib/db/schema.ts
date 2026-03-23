@@ -199,13 +199,16 @@ export const productTags = pgTable("product_tags", {
     tagId: varchar("tag_id", { length: 255 }).notNull().references(() => tags.id),
 });
 
-// ─── Inventory Units (Quantity Handling) ───
+// ─── Inventory Units (Digital Product Passport) ───
 export const inventoryUnits = pgTable("inventory_units", {
     id: varchar("id", { length: 255 }).primaryKey(),
     productId: varchar("product_id", { length: 255 }).notNull().references(() => products.id),
-    serialNumber: varchar("serial_number", { length: 255 }), // Can be nullable if generic items
-    condition: varchar("condition", { length: 50 }).notNull().default("excellent"), // excellent | good | maintenance_required
-    status: varchar("status", { length: 50 }).notNull().default("available"), // available | maintenance | offline | booked
+    vendorId: varchar("vendor_id", { length: 255 }).notNull().references(() => vendors.id),
+    assetTagCode: varchar("asset_tag_code", { length: 255 }).notNull().unique(), // e.g. E3-TRUSS-001
+    serialNumber: varchar("serial_number", { length: 255 }),
+    conditionStatus: varchar("condition_status", { length: 50 }).notNull().default("excellent"), // Excellent | Good | Fair | Maintenance_Required | Retired
+    availabilityStatus: varchar("availability_status", { length: 50 }).notNull().default("in_warehouse"), // in_warehouse | on_rent | in_maintenance
+    lastInspectionDate: timestamp("last_inspection_date"),
     warehouseLocation: varchar("warehouse_location", { length: 255 }),
     purchaseDate: timestamp("purchase_date"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -213,7 +216,9 @@ export const inventoryUnits = pgTable("inventory_units", {
 }, (table) => {
     return {
         productIdIdx: index("inventory_units_product_id_idx").on(table.productId),
-        statusIdx: index("inventory_units_status_idx").on(table.status),
+        vendorIdIdx: index("inventory_units_vendor_id_idx").on(table.vendorId),
+        assetTagIdx: index("inventory_units_tag_idx").on(table.assetTagCode),
+        statusIdx: index("inventory_units_status_idx").on(table.availabilityStatus),
     };
 });
 

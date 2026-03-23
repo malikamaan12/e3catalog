@@ -16,6 +16,8 @@ import {
     MessageSquareMore,
     Lock,
     Building,
+    Truck,
+    QrCode,
     Users,
     CreditCard,
     CalendarDays,
@@ -33,8 +35,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const navItems = [
         { href: "/admin", label: "Dashboard", icon: LayoutDashboard, roles: [USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN, USER_ROLES.SALES_REP, USER_ROLES.WAREHOUSE_MANAGER, USER_ROLES.VENDOR] },
         { href: "/admin/products", label: user?.role === USER_ROLES.VENDOR || user?.role === USER_ROLES.SALES_REP ? "My Catalog" : "Products", icon: Package, roles: [USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN, USER_ROLES.SALES_REP, USER_ROLES.VENDOR] },
-        { href: "/admin/products/global", label: "Global Catalog", icon: Package, roles: [USER_ROLES.VENDOR, USER_ROLES.SALES_REP, USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN] },
         { href: "/admin/inventory", label: "Inventory", icon: Warehouse, roles: ["admin", "super_admin", "warehouse_manager", "vendor"] },
+        { href: "/admin/fleet", label: "Fleet & Logistics", icon: QrCode, roles: ["admin", "super_admin", "warehouse_manager", "vendor"] },
         { href: "/admin/categories", label: "Categories", icon: Tags, roles: [USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN, USER_ROLES.SALES_REP] },
         { href: "/admin/analytics", label: "Analytics & Finance", icon: LineChart, roles: [USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN, USER_ROLES.VENDOR] },
         { href: "/admin/bookings", label: "Bookings", icon: CalendarCheck, roles: [USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN, USER_ROLES.SALES_REP, USER_ROLES.WAREHOUSE_MANAGER, USER_ROLES.VENDOR] },
