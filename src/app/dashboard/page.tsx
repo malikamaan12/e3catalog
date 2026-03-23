@@ -130,9 +130,9 @@ export default async function DashboardPage() {
 
         stats = {
             total: projects.length,
-            awaitingQuote: projects.filter((p: any) => p.status === BOOKING_STATUS.REQUEST).length,
+            awaitingQuote: projects.filter((p: any) => [BOOKING_STATUS.REQUEST, BOOKING_STATUS.PENDING_QUOTE].includes(p.status)).length,
             reviewQuote: projects.filter((p: any) => p.status === BOOKING_STATUS.QUOTE_SENT).length,
-            confirmed: projects.filter((p: any) => [BOOKING_STATUS.APPROVED, BOOKING_STATUS.BOOKED].includes(p.status)).length,
+            confirmed: projects.filter((p: any) => [BOOKING_STATUS.APPROVED, BOOKING_STATUS.BOOKED, BOOKING_STATUS.QUOTE_ACCEPTED, BOOKING_STATUS.BOOKING_REQUESTED].includes(p.status)).length,
             active: projects.filter((p: any) => ![BOOKING_STATUS.CANCELLED, BOOKING_STATUS.COMPLETED].includes(p.status)).length,
         };
     }

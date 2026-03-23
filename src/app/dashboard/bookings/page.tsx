@@ -44,10 +44,10 @@ export default async function MyBookingsPage() {
         return acc;
     }, {} as Record<string, any>);
 
-    const confirmedStatuses = [BOOKING_STATUS.APPROVED, BOOKING_STATUS.BOOKED, BOOKING_STATUS.QUOTE_ACCEPTED];
+    const confirmedStatuses = [BOOKING_STATUS.APPROVED, BOOKING_STATUS.BOOKED, BOOKING_STATUS.QUOTE_ACCEPTED, BOOKING_STATUS.BOOKING_REQUESTED];
     const allProjectsList = Object.values(allProjects) as any[];
     const activeBookings = allProjectsList.filter(p => confirmedStatuses.includes(p.status));
-    const pendingQuotes = allProjectsList.filter(p => [BOOKING_STATUS.REQUEST, BOOKING_STATUS.QUOTE_SENT, BOOKING_STATUS.CHANGES_REQUESTED].includes(p.status));
+    const pendingQuotes = allProjectsList.filter(p => [BOOKING_STATUS.REQUEST, BOOKING_STATUS.PENDING_QUOTE, BOOKING_STATUS.QUOTE_SENT, BOOKING_STATUS.CHANGES_REQUESTED].includes(p.status));
     const pastBookings = allProjectsList.filter(p => [BOOKING_STATUS.CANCELLED, BOOKING_STATUS.COMPLETED].includes(p.status));
 
     const fmt = (d: string) => d ? new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "—";
