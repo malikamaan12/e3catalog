@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { vendors, commissionSettlements } from "@/lib/db/schema";
+import { vendors, users, commissionSettlements } from "@/lib/db/schema";
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { desc, sql, eq, and, or } from "drizzle-orm";
@@ -18,15 +18,19 @@ export async function GET() {
         }).from(vendors)
         .leftJoin(commissionSettlements, eq(vendors.id, commissionSettlements.vendorId));
 
-        // 2. Fetch Vendors with their specific "Amount Owed"
-        // We use a subquery/join to get the sum of pending/overdue settlements
+        // 2. Fetch Vendors with their specific "Amount Owed" and Account Credentials
         const vendorsWithDebt = await db.select({
             vendor: vendors,
-            amountOwed: sql<number>`coalesce(sum(case when ${commissionSettlements.status} in ('pending', 'overdue') then ${commissionSettlements.amountOwed} else 0 end), 0)`
+            amountOwed: sql<number>`coalesce(sum(case when ${commissionSettlements.status} in ('pending', 'overdue') then ${commissionSettlements.amountOwed} else 0 end), 0)`,
+            user: {
+                name: users.name,
+                email: users.email
+            }
         })
         .from(vendors)
         .leftJoin(commissionSettlements, eq(vendors.id, commissionSettlements.vendorId))
-        .groupBy(vendors.id)
+        .innerJoin(users, eq(vendors.userId, users.id))
+        .groupBy(vendors.id, users.id)
         .orderBy(desc(vendors.createdAt));
 
         return NextResponse.json({ 
