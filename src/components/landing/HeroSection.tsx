@@ -149,46 +149,53 @@ export default function HeroSection() {
 
             {/* Typography Overlay */}
             <div ref={contentRef} className="relative z-10 flex flex-col items-center justify-center text-center px-6">
-                <div className="max-w-5xl space-y-8">
-                    <div className="space-y-4 overflow-hidden">
-                        <span className="hero-title text-gold text-xs font-black tracking-[0.6em] uppercase mb-4 block">
-                            Qatar&apos;s Premier Event Platform
-                        </span>
-                        <h1 className="hero-title text-4xl md:text-[6rem] lg:text-[7rem] font-black text-white italic tracking-tighter leading-[0.85] drop-shadow-[0_20px_50px_rgba(0,0,0,0.8)] uppercase">
-                            {getSetting('homepage_hero_title', 'The Digital Operating System for Premium Event Rentals.')}
+                <div className="max-w-5xl space-y-6">
+                    {/* Eyebrow */}
+                    <span className="hero-title text-gold text-[10px] md:text-xs font-black tracking-[0.5em] uppercase block">
+                        Qatar&apos;s Premier Event Platform
+                    </span>
+
+                    {/* Two-line headline — short and punchy */}
+                    <div className="space-y-0 overflow-hidden">
+                        <h1 className="hero-title text-6xl md:text-[9rem] lg:text-[11rem] font-black text-white italic tracking-tighter leading-[0.85] drop-shadow-[0_20px_50px_rgba(0,0,0,0.8)] uppercase">
+                            PREMIUM
+                        </h1>
+                        <h1 className="hero-title text-5xl md:text-[7rem] lg:text-[8.5rem] font-black italic tracking-tighter leading-[0.85] drop-shadow-[0_20px_50px_rgba(0,0,0,0.8)] uppercase gradient-text-gold">
+                            EVENT RENTALS
                         </h1>
                     </div>
-                    <div className="relative mt-8 hero-title overflow-hidden">
-                        <p className="text-warm-gray/80 text-base md:text-xl font-medium tracking-tight max-w-2xl mx-auto glass-light p-6 md:p-8 rounded-[2rem] border border-white/10 backdrop-blur-md">
-                            {getSetting('homepage_hero_subtitle', 'Experience the future of event logistics in Qatar. Explore high-end equipment through interactive 3D models, check real-time availability, and generate instant, MOCI-compliant proposals.')}
-                        </p>
-                    </div>
 
-                    <div className="hero-cta flex flex-col sm:flex-row items-center justify-center gap-6 mt-12 pointer-events-auto">
-                        <Link href="/catalog" className="w-full sm:w-auto px-12 py-5 rounded-full bg-gold text-navy font-black text-sm uppercase tracking-[0.3em] transition-all hover:scale-105 hover:shadow-[0_20px_50px_rgba(201,168,76,0.3)] active:scale-95 flex items-center justify-center gap-3">
+                    {/* Subtitle — clean, no glass box */}
+                    <p className="hero-title text-white/50 text-sm md:text-lg font-medium tracking-tight max-w-xl mx-auto leading-relaxed">
+                        {getSetting('homepage_hero_subtitle', 'Explore high-end equipment in interactive 3D. Check real-time availability. Generate instant, MOCI-compliant proposals.')}
+                    </p>
+
+                    {/* CTAs */}
+                    <div className="hero-cta flex flex-col sm:flex-row items-center justify-center gap-5 mt-10 pointer-events-auto">
+                        <Link href="/catalog" className="w-full sm:w-auto px-10 py-4 rounded-full bg-gold text-navy font-black text-xs uppercase tracking-[0.25em] transition-all hover:scale-105 hover:shadow-[0_20px_50px_rgba(201,168,76,0.3)] active:scale-95 flex items-center justify-center gap-3">
                             Start Building Your Quote
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
                                 <line x1="5" y1="12" x2="19" y2="12"></line>
                                 <polyline points="12 5 19 12 12 19"></polyline>
                             </svg>
                         </Link>
-                        <Link href="/how-it-works" className="w-full sm:w-auto px-12 py-5 rounded-full glass-light border border-white/10 text-white font-black text-sm uppercase tracking-[0.3em] transition-all hover:bg-white/10 active:scale-95 flex items-center justify-center">
+                        <Link href="/how-it-works" className="w-full sm:w-auto px-10 py-4 rounded-full border border-white/15 text-white/80 font-black text-xs uppercase tracking-[0.25em] transition-all hover:bg-white/5 active:scale-95 flex items-center justify-center">
                             How It Works
                         </Link>
                     </div>
 
                     {/* Trust Badges */}
-                    <div className="hero-cta flex flex-wrap items-center justify-center gap-4 md:gap-6 mt-8 pointer-events-none">
-                        <span className="flex items-center gap-2 text-[10px] md:text-xs font-black text-white/50 uppercase tracking-[0.2em]">
-                            <span className="text-base">🛡️</span> Civil Defence Compliant
+                    <div className="hero-cta flex flex-wrap items-center justify-center gap-4 md:gap-6 mt-6 pointer-events-none">
+                        <span className="flex items-center gap-2 text-[9px] md:text-[10px] font-bold text-white/30 uppercase tracking-[0.15em]">
+                            🛡️ Civil Defence Compliant
                         </span>
-                        <span className="w-px h-4 bg-white/10 hidden sm:block" />
-                        <span className="flex items-center gap-2 text-[10px] md:text-xs font-black text-white/50 uppercase tracking-[0.2em]">
-                            <span className="text-base">⚡</span> KAHRAMAA Standard
+                        <span className="w-px h-3 bg-white/10 hidden sm:block" />
+                        <span className="flex items-center gap-2 text-[9px] md:text-[10px] font-bold text-white/30 uppercase tracking-[0.15em]">
+                            ⚡ KAHRAMAA Standard
                         </span>
-                        <span className="w-px h-4 bg-white/10 hidden sm:block" />
-                        <span className="flex items-center gap-2 text-[10px] md:text-xs font-black text-white/50 uppercase tracking-[0.2em]">
-                            <span className="text-base">📜</span> MOCI Approved Contracts
+                        <span className="w-px h-3 bg-white/10 hidden sm:block" />
+                        <span className="flex items-center gap-2 text-[9px] md:text-[10px] font-bold text-white/30 uppercase tracking-[0.15em]">
+                            📜 MOCI Approved
                         </span>
                     </div>
                 </div>
