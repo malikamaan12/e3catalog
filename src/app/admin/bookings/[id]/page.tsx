@@ -361,7 +361,7 @@ export default function BookingDetailsPage({ params }: { params: Promise<{ id: s
     };
 
     return (
-        <div className="max-w-6xl w-full mx-auto max-h-[90vh] pb-12">
+        <div className="max-w-6xl w-full mx-auto pb-12">
             <button onClick={() => router.push('/admin/bookings')} className="text-sm text-[var(--color-slate)] hover:text-white mb-6 flex items-center gap-2 group">
                 <span className="transition-transform group-hover:-translate-x-1">←</span> Back to Pipeline
             </button>
@@ -639,7 +639,7 @@ export default function BookingDetailsPage({ params }: { params: Promise<{ id: s
                                         <label className="block text-xs font-semibold text-[var(--color-slate)] mb-3 uppercase tracking-wider">
                                             Standard Terms & Conditions (Included in PDF)
                                         </label>
-                                        <div className="space-y-1 bg-[var(--color-navy-dark)] border border-white/10 rounded-xl p-4 shadow-inner max-h-[300px] overflow-y-auto custom-scrollbar">
+                                        <div className="space-y-1 bg-[var(--color-navy-dark)] border border-white/10 rounded-xl p-4 shadow-inner max-h-[500px] overflow-y-auto custom-scrollbar">
                                             {globalSettings.filter(s => s.type === 'term_condition').map((setting) => (
                                                 <label key={setting.id} className="flex items-start gap-3 cursor-pointer group py-1.5 flex-1 border-b border-white/5 last:border-0">
                                                     <input
@@ -689,8 +689,8 @@ export default function BookingDetailsPage({ params }: { params: Promise<{ id: s
                                     value={pricing.paymentTerms}
                                     onChange={(e) => setPricing({ ...pricing, paymentTerms: e.target.value })}
                                     placeholder="Enter specific payment schedule for this quote..."
-                                    rows={3}
-                                    className="w-full bg-[var(--color-navy-dark)] border border-white/10 rounded-xl px-4 py-3 text-sm text-[var(--color-warm-white)] focus:border-[var(--color-gold)] outline-none resize-none shadow-inner"
+                                    rows={5}
+                                    className="w-full bg-[var(--color-navy-dark)] border border-white/10 rounded-xl px-4 py-3 text-sm text-[var(--color-warm-white)] focus:border-[var(--color-gold)] outline-none resize-none shadow-inner min-h-[120px] custom-scrollbar"
                                 />
                             </div>
                             <div>
@@ -716,8 +716,8 @@ export default function BookingDetailsPage({ params }: { params: Promise<{ id: s
                                     value={pricing.paymentMethod}
                                     onChange={(e) => setPricing({ ...pricing, paymentMethod: e.target.value })}
                                     placeholder="Enter bank details or payment link instructions..."
-                                    rows={3}
-                                    className="w-full bg-[var(--color-navy-dark)] border border-white/10 rounded-xl px-4 py-3 text-sm text-[var(--color-warm-white)] focus:border-[var(--color-gold)] outline-none resize-none shadow-inner"
+                                    rows={5}
+                                    className="w-full bg-[var(--color-navy-dark)] border border-white/10 rounded-xl px-4 py-3 text-sm text-[var(--color-warm-white)] focus:border-[var(--color-gold)] outline-none resize-none shadow-inner min-h-[120px] custom-scrollbar"
                                 />
                             </div>
                         </div>
@@ -792,7 +792,7 @@ export default function BookingDetailsPage({ params }: { params: Promise<{ id: s
                 </div>
 
                 {/* Right Column: Financial Sidebar (1/3 width, sticky) */}
-                <div className="lg:col-span-1 space-y-6 lg:sticky lg:top-6 order-2 lg:order-2">
+                <div className="lg:col-span-1 space-y-6 lg:sticky lg:top-6 order-2 lg:order-2 max-h-[calc(100vh-2rem)] overflow-y-auto custom-scrollbar pb-6 pr-1">
                     <div className="glass rounded-2xl p-6 border border-[var(--color-gold)] border-opacity-30 shadow-2xl shadow-black/40">
                         <div className="flex justify-between items-center mb-6 pb-4 border-b border-white/10">
                             <h3 className="font-semibold text-lg text-[var(--color-warm-white)] flex items-center gap-2">
