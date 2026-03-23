@@ -397,7 +397,7 @@ function FleetPageContent() {
 
 // ─── Inspection Log Modal ───
 function InspectionModal({ unitId, currentUnit, onClose, onSuccess }: { unitId: string; currentUnit: InventoryUnit; onClose: () => void; onSuccess: () => void }) {
-    const [form, setForm] = useState({ inspectionType: "routine", conditionAfter: currentUnit?.conditionStatus || "excellent", notes: "" });
+    const [form, setForm] = useState({ inspectionType: "routine", conditionAfter: (currentUnit?.conditionStatus || "excellent") as string, notes: "" });
     const [saving, setSaving] = useState(false);
 
     const submit = async () => {
