@@ -97,12 +97,18 @@ export async function POST(req: NextRequest) {
         // Auto-create inventory unit records from totalUnits
         const totalUnits = Number(body.totalUnits) || 1;
         const unitCondition = body.condition || "excellent";
+        const vendorForUnits = targetVendorId || body.vendorId || "E3-ENT";
         for (let u = 0; u < totalUnits; u++) {
+            const tagCode = `E3-${(product.itemCode || product.id.slice(0, 6)).toUpperCase()}-${String(u + 1).padStart(3, '0')}`;
             await db.insert(inventoryUnits).values({
                 id: uuid(),
                 productId: product.id,
-                condition: unitCondition,
-                status: "available",
+                vendorId: vendorForUnits,
+                assetTagCode: tagCode,
+                conditionStatus: unitCondition,
+                availabilityStatus: "in_warehouse",
+                createdAt: now,
+                updatedAt: now,
             });
         }
 
