@@ -8,6 +8,13 @@
       "when": 1773003815807,
       "tag": "0000_modern_tarot",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1774298548295,
+      "tag": "0001_many_baron_strucker",
+      "breakpoints": true
     }
   ]
 }
