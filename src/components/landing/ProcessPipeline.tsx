@@ -11,28 +11,28 @@ gsap.registerPlugin(ScrollTrigger);
 
 const STAGES = [
     {
-        id: "pick",
-        title: "Pick Your Fleet",
-        desc: "Browse our catalog and select industrial-grade assets for your next event.",
+        id: "select",
+        title: "Select",
+        desc: "Browse our ultra-fast catalog and explore technical specs in 3D. Every item includes safety certifications and KAHRAMAA compliance data.",
         Icon: Box,
     },
     {
         id: "quote",
-        title: "Quote in Seconds",
-        desc: "Get an instant, professional PDF proposal with transparent logistics and setup fees.",
+        title: "Quote",
+        desc: "Build your cart and download a professional PDF proposal instantly. Complete with transparent logistics costs and MOCI-compliant terms.",
         Icon: FileText,
     },
     {
-        id: "deliver",
-        title: "Precision Delivery",
-        desc: "Our certified crew handles logistics and on-site assembly to your exact specs.",
-        Icon: Truck,
+        id: "approve",
+        title: "Approve",
+        desc: "Sign off digitally via your secure Client Portal. All contracts follow MOCI-mandated uniform agreement standards.",
+        Icon: CheckCircle2,
     },
     {
-        id: "return",
-        title: "Seamless Return",
-        desc: "Post-event teardown and collection. We handle the heavy lifting while you wrap up.",
-        Icon: CheckCircle2,
+        id: "deliver",
+        title: "Deliver",
+        desc: "Our fleet delivers, installs, and dismantles precisely on schedule. All operators carry valid competency licenses and third-party certifications.",
+        Icon: Truck,
     }
 ];
 
@@ -120,9 +120,9 @@ export default function ProcessPipeline() {
 
             <div className="max-w-6xl mx-auto px-6 relative">
                 <div className="text-center mb-24 md:mb-32">
-                    <span className="text-gold text-xs font-black tracking-[0.4em] uppercase mb-4 block">The Process</span>
+                    <span className="text-gold text-xs font-black tracking-[0.4em] uppercase mb-4 block">How It Works</span>
                     <h2 className="text-4xl md:text-7xl font-black text-white italic tracking-tighter uppercase leading-none">
-                        STREAMLINED <br /> <span className="gradient-text-gold">EXECUTION</span>
+                        FROM CONCEPT TO <br /> <span className="gradient-text-gold">EXECUTION IN 4 STEPS</span>
                     </h2>
                 </div>
 

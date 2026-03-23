@@ -7,32 +7,32 @@ import { ArrowRight } from "lucide-react";
 
 const CATEGORIES = [
     {
-        name: "Audio Visual",
-        slug: "audio-visual",
-        desc: "LED Screens, Line Arrays, and High-Definition Video Processing.",
-        image: "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?q=80&w=800&auto=format&fit=crop",
-        color: "from-blue-500/20",
-    },
-    {
-        name: "Staging",
-        slug: "staging",
-        desc: "Modular Staging, Roof Systems, and Heavy-Duty Box Trussing.",
+        name: "Staging & Architecture",
+        slug: "staging-trusses",
+        desc: "Third-party certified complex structures, bleachers, and VIP podiums engineered for ultimate stability.",
         image: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?q=80&w=800&auto=format&fit=crop",
         color: "from-amber-500/20",
     },
     {
-        name: "Entertainment",
-        slug: "entertainment",
-        desc: "Special Effects, Pyrotechnics, and Atmospheric Lighting Packages.",
+        name: "Lighting & Special Effects",
+        slug: "lighting",
+        desc: "High-performance rigs and KAHRAMAA-compliant electrical distribution for exhibitions and concerts.",
         image: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?q=80&w=800&auto=format&fit=crop",
         color: "from-purple-500/20",
     },
     {
-        name: "Furniture",
-        slug: "furniture",
-        desc: "VIP Banquet Seating, Designer Lounge Sets, and Bar Systems.",
+        name: "Premium Marquees & Tents",
+        slug: "furniture-decor",
+        desc: "Ministry of Municipality-approved outdoor enclosures featuring certified fire-retardant materials.",
         image: "https://images.unsplash.com/photo-1517705008128-361805f42e86?q=80&w=800&auto=format&fit=crop",
         color: "from-emerald-500/20",
+    },
+    {
+        name: "Audiovisual & Broadcast",
+        slug: "sound-audio",
+        desc: "Crystal-clear LED screens and PA systems perfect for corporate conferences and government summits.",
+        image: "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?q=80&w=800&auto=format&fit=crop",
+        color: "from-blue-500/20",
     },
 ];
 
@@ -75,7 +75,7 @@ function CategoryCard({ category, index }: { category: typeof CATEGORIES[0], ind
                     href={`/catalog?category=${category.slug}`}
                     className="inline-flex items-center gap-2 text-gold font-black text-[10px] md:text-xs tracking-[0.2em] md:tracking-widest uppercase group-hover:gap-4 transition-all duration-300"
                 >
-                    Explore Flow <ArrowRight className="w-4 h-4" />
+                    Explore Fleet <ArrowRight className="w-4 h-4" />
                 </Link>
             </div>
 
@@ -93,11 +93,11 @@ export default function CategoryGrid() {
                     <div className="space-y-3">
                         <span className="text-gold text-xs font-black tracking-[0.4em] uppercase">Premium Inventory</span>
                         <h2 className="text-5xl md:text-8xl font-black text-white italic tracking-tighter leading-[0.8]">
-                            CORE <br /> <span className="gradient-text-gold">CATEGORIES</span>
+                            EXPLORE <br /> <span className="gradient-text-gold">OUR FLEET</span>
                         </h2>
                     </div>
                     <p className="text-navy-300 max-w-sm text-lg font-medium leading-tight">
-                        Optimized for speed. Designed for global production standards.
+                        Optimized for speed. Designed for Qatar&apos;s most demanding production standards.
                     </p>
                 </div>
 
@@ -105,6 +105,17 @@ export default function CategoryGrid() {
                     {CATEGORIES.map((cat, i) => (
                         <CategoryCard key={cat.slug} category={cat} index={i} />
                     ))}
+                </div>
+
+                {/* View Full Catalog CTA */}
+                <div className="text-center mt-16">
+                    <Link
+                        href="/catalog"
+                        className="inline-flex items-center gap-3 px-12 py-5 rounded-full bg-gold text-navy font-black text-sm uppercase tracking-[0.3em] transition-all hover:scale-105 hover:shadow-[0_20px_50px_rgba(201,168,76,0.3)] active:scale-95"
+                    >
+                        View Full Catalog
+                        <ArrowRight className="w-5 h-5" />
+                    </Link>
                 </div>
             </div>
         </section>
