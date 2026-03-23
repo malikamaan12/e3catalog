@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { inventoryUnits, products, vendors, inspectionLogs, bookingUnitAssignments, bookings } from "@/lib/db/schema";
+import { inventoryUnits, products, vendors, inspectionLogs, bookingUnitAssignments, bookings, vendorWarehouses } from "@/lib/db/schema";
 import { eq, desc, and, ne } from "drizzle-orm";
 import { getSession } from "@/lib/auth";
 import { USER_ROLES, ASSIGNMENT_STATUS } from "@/lib/constants";
@@ -22,15 +22,19 @@ export async function GET(
             availabilityStatus: inventoryUnits.availabilityStatus,
             lastInspectionDate: inventoryUnits.lastInspectionDate,
             warehouseLocation: inventoryUnits.warehouseLocation,
+            shelfLocation: inventoryUnits.shelfLocation,
             serialNumber: inventoryUnits.serialNumber,
             productName: products.name,
             productThumbnail: products.thumbnailUrl,
-            vendorName: vendors.companyName
+            vendorName: vendors.companyName,
+            warehouseName: vendorWarehouses.name,
+            warehouseAddress: vendorWarehouses.address,
         })
         .from(inventoryUnits)
         .where(eq(inventoryUnits.assetTagCode, assetTag))
         .leftJoin(products, eq(inventoryUnits.productId, products.id))
         .leftJoin(vendors, eq(inventoryUnits.vendorId, vendors.id))
+        .leftJoin(vendorWarehouses, eq(inventoryUnits.warehouseId, vendorWarehouses.id))
         .limit(1)
         .execute();
 

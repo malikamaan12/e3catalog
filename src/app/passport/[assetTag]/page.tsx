@@ -16,7 +16,9 @@ import {
     History,
     Unlock,
     X,
-    ChevronRight
+    ChevronRight,
+    LogOut,
+    Warehouse
 } from "lucide-react";
 import Link from "next/link";
 
@@ -30,6 +32,9 @@ interface AssetPassportData {
     availabilityStatus: string;
     lastInspectionDate: string | null;
     warehouseLocation: string;
+    warehouseName: string | null;
+    warehouseAddress: string | null;
+    shelfLocation: string | null;
     serialNumber: string;
     isAuthorized: boolean; 
     currentAssignment: {
@@ -45,12 +50,10 @@ interface AssetPassportData {
         id: string;
         date: string;
         historyType: 'condition' | 'assignment';
-        // Condition fields
         type?: string;
         conditionBefore?: string;
         conditionAfter?: string;
         notes?: string | null;
-        // Assignment fields
         projectName?: string;
         customerName?: string;
         status?: string;
@@ -65,6 +68,7 @@ export default function PassportPage() {
     const [tab, setTab] = useState<"status" | "compliance" | "history">("status");
     const [showInspectModal, setShowInspectModal] = useState<{ type: string; label: string } | null>(null);
     const [showAssignModal, setShowAssignModal] = useState(false);
+    const [showBumpOutModal, setShowBumpOutModal] = useState(false);
 
     const fetchPassport = useCallback(async () => {
         try {
@@ -230,10 +234,18 @@ export default function PassportPage() {
                                 </h3>
                                 <div className="space-y-4">
                                     <div className="flex items-center gap-3">
-                                        <div className="p-2 rounded-lg bg-white/5"><MapPin className="w-4 h-4 text-orange-400" /></div>
+                                        <div className="p-2 rounded-lg bg-white/5"><Warehouse className="w-4 h-4 text-orange-400" /></div>
                                         <div>
-                                            <p className="text-[10px] text-[var(--color-slate)] uppercase font-black tracking-widest">Inventory Location</p>
-                                            <p className="text-sm font-bold">{data.warehouseLocation || 'Building A / Zone 4'}</p>
+                                            <p className="text-[10px] text-[var(--color-slate)] uppercase font-black tracking-widest">Warehouse</p>
+                                            <p className="text-sm font-bold">{data.warehouseName || data.warehouseLocation || 'Not assigned'}</p>
+                                            {data.warehouseAddress && <p className="text-[10px] text-white/30">{data.warehouseAddress}</p>}
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 rounded-lg bg-white/5"><MapPin className="w-4 h-4 text-cyan-400" /></div>
+                                        <div>
+                                            <p className="text-[10px] text-[var(--color-slate)] uppercase font-black tracking-widest">Shelf Location</p>
+                                            <p className="text-sm font-bold">{data.shelfLocation || 'Not specified'}</p>
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-3">
@@ -349,7 +361,7 @@ export default function PassportPage() {
                         <Unlock className="w-4 h-4 animate-pulse" />
                         <span className="text-[10px] font-black uppercase tracking-[0.3em]">Authorized Operator Panel</span>
                     </div>
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                         <button 
                             onClick={() => setShowAssignModal(true)}
                             disabled={!!data.currentAssignment}
@@ -360,14 +372,35 @@ export default function PassportPage() {
                             </div>
                             <span className="text-[8px] font-black uppercase tracking-widest text-center">Assign Project</span>
                         </button>
+                        {data.currentAssignment ? (
+                            <button 
+                                onClick={() => setShowBumpOutModal(true)}
+                                className="group flex flex-col items-center justify-center p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 hover:bg-emerald-500/20 active:scale-95 transition-all outline-none focus:ring-2 ring-emerald-500"
+                            >
+                                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                                    <LogOut className="w-5 h-5 text-emerald-400" />
+                                </div>
+                                <span className="text-[8px] font-black uppercase tracking-widest text-center text-emerald-400">Bump-Out</span>
+                            </button>
+                        ) : (
+                            <button 
+                                onClick={() => setShowInspectModal({ type: 'pre_rental', label: 'Bump-In' })}
+                                className="group flex flex-col items-center justify-center p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 active:scale-95 transition-all outline-none focus:ring-2 ring-[var(--color-gold)]"
+                            >
+                                <div className="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                                    <ArrowRightLeft className="w-5 h-5 text-orange-400" />
+                                </div>
+                                <span className="text-[8px] font-black uppercase tracking-widest text-center">Bump-In</span>
+                            </button>
+                        )}
                         <button 
-                            onClick={() => setShowInspectModal({ type: 'pre_rental', label: 'Bump-In' })}
+                            onClick={() => setShowInspectModal({ type: 'routine', label: 'Inspect' })}
                             className="group flex flex-col items-center justify-center p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 active:scale-95 transition-all outline-none focus:ring-2 ring-[var(--color-gold)]"
                         >
-                            <div className="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
-                                <ArrowRightLeft className="w-5 h-5 text-orange-400" />
+                            <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                                <ShieldCheck className="w-5 h-5 text-purple-400" />
                             </div>
-                            <span className="text-[8px] font-black uppercase tracking-widest text-center">Bump-In</span>
+                            <span className="text-[8px] font-black uppercase tracking-widest text-center">Inspect</span>
                         </button>
                         <button 
                             onClick={() => setShowInspectModal({ type: 'damage', label: 'Log Damage' })}
@@ -401,6 +434,17 @@ export default function PassportPage() {
                     assetTag={data.assetTagCode}
                     onClose={() => setShowAssignModal(false)}
                     onSuccess={() => { setShowAssignModal(false); fetchPassport(); setTab('status'); }}
+                />
+            )}
+
+            {/* Bump-Out Modal */}
+            {showBumpOutModal && (
+                <BumpOutModal 
+                    assetTag={data.assetTagCode}
+                    currentCondition={data.conditionStatus}
+                    projectName={data.currentAssignment?.projectName || 'Unknown'}
+                    onClose={() => setShowBumpOutModal(false)}
+                    onSuccess={() => { setShowBumpOutModal(false); fetchPassport(); setTab('status'); }}
                 />
             )}
 
@@ -589,6 +633,87 @@ function AssignmentModal({ assetTag, onClose, onSuccess }: { assetTag: string, o
                 {!loading && bookings.length > 0 && (
                     <p className="text-[10px] text-center text-[var(--color-slate)] font-black uppercase tracking-widest opacity-50">Select a project to mark this unit as Dispatched</p>
                 )}
+            </motion.div>
+        </div>
+    );
+}
+
+// ─── Bump-Out (Return) Modal ───
+function BumpOutModal({ assetTag, currentCondition, projectName, onClose, onSuccess }: { assetTag: string, currentCondition: string, projectName: string, onClose: () => void, onSuccess: () => void }) {
+    const [conditionAfter, setConditionAfter] = useState(currentCondition);
+    const [notes, setNotes] = useState("");
+    const [saving, setSaving] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const submit = async () => {
+        setSaving(true);
+        setError(null);
+        try {
+            const res = await fetch(`/api/passport/${assetTag}/bump-out`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ conditionAfter, notes }),
+            });
+            const result = await res.json();
+            if (res.ok) {
+                onSuccess();
+            } else {
+                setError(result.error || "Failed to process bump-out.");
+            }
+        } catch (e) {
+            setError("Network error occurred.");
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[110] flex items-end md:items-center justify-center p-0 md:p-4" onClick={onClose}>
+            <motion.div 
+                initial={{ y: "100%" }} animate={{ y: 0 }}
+                className="w-full max-w-lg bg-[#0a0f1e] border-t md:border border-white/10 rounded-t-[2.5rem] md:rounded-[2.5rem] p-8 pb-12 space-y-6 shadow-2xl relative"
+                onClick={e => e.stopPropagation()}
+            >
+                <div className="flex justify-between items-center mb-2">
+                    <h3 className="font-black text-xl text-white tracking-tight">Bump-Out — Return</h3>
+                    <button onClick={onClose} className="p-2 bg-white/5 rounded-full"><X className="w-5 h-5 text-[var(--color-slate)]" /></button>
+                </div>
+
+                <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl">
+                    <p className="text-[10px] text-emerald-400/60 uppercase font-black tracking-widest mb-1">Returning From</p>
+                    <p className="text-sm font-black text-emerald-400">{projectName}</p>
+                    <p className="text-[10px] text-[var(--color-slate)] uppercase font-bold mt-1">Asset: <span className="text-[var(--color-gold)]">{assetTag}</span></p>
+                </div>
+
+                {error && (
+                    <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center gap-3 text-red-400 text-xs font-bold">
+                        <AlertTriangle className="w-4 h-4" /> {error}
+                    </div>
+                )}
+
+                <div className="space-y-4">
+                    <div>
+                        <label className="block text-[10px] font-black text-[var(--color-slate)] uppercase tracking-[0.2em] mb-2">Post-Return Condition</label>
+                        <div className="grid grid-cols-2 gap-2">
+                            {['excellent', 'good', 'fair', 'maintenance_required'].map(c => (
+                                <button key={c} onClick={() => setConditionAfter(c)}
+                                    className={`py-3 px-4 rounded-2xl text-[10px] font-black uppercase tracking-widest border transition-all ${conditionAfter === c ? 'bg-[var(--color-gold)] text-black border-transparent' : 'bg-white/5 text-[var(--color-slate)] border-white/5'}`}>
+                                    {c.replace('_', ' ')}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-[10px] font-black text-[var(--color-slate)] uppercase tracking-[0.2em] mb-2">Return Notes</label>
+                        <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3}
+                            className="w-full bg-black/40 border border-white/10 rounded-2xl p-4 text-sm text-white outline-none focus:border-[var(--color-gold)] resize-none" placeholder="Describe condition upon return..." />
+                    </div>
+                </div>
+
+                <button onClick={submit} disabled={saving}
+                    className="w-full py-4 rounded-2xl bg-emerald-500 text-white font-black text-sm hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 shadow-[0_10px_30px_rgba(56,189,115,0.3)]">
+                    {saving ? "Processing Return..." : "Complete Bump-Out"}
+                </button>
             </motion.div>
         </div>
     );

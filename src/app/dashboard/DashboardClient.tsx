@@ -6,7 +6,7 @@ import {
     Package, Calendar, ChevronRight, Clock, CheckCircle2,
     FileText, AlertCircle, PlusCircle, ArrowRight, LayoutDashboard,
     User, Layers, MailOpen, ShoppingBag, Phone, Search, X, MessageCircle,
-    Banknote
+    Banknote, Warehouse
 } from "lucide-react";
 import ClientChatWindow from "@/components/chat/ClientChatWindow";
 import ClientKPIs from "@/components/dashboard/ClientKPIs";
@@ -80,6 +80,7 @@ export default function DashboardClient({ user, projects: initialProjects, stats
         { icon: Package, title: "My Catalog", desc: "CRUD management for your marketplace items.", href: "/dashboard/products", cta: "Manage Products" },
         { icon: Banknote, title: "Commission Gateway", desc: "Settle platform fees and upload payment proofs.", href: "/dashboard/settlements", cta: "View Ledger" },
         { icon: Calendar, title: "Fleet Matrix", desc: "Live availability & maintenance tracking.", href: "/dashboard/inventory", cta: "View Timeline" },
+        { icon: Warehouse, title: "Warehouses", desc: "Manage storage locations, zones & shelving.", href: "/dashboard/warehouses", cta: "Manage Locations" },
         { icon: User, title: "Company Profile", desc: "KYC, Bank details & Business info.", href: "/dashboard/profile", cta: "Edit Profile" },
     ] : [
         { icon: ShoppingBag, title: "Browse Catalog", desc: "Explore our full fleet of event equipment.", href: "/catalog", cta: "Open Catalog" },

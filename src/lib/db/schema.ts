@@ -200,6 +200,18 @@ export const productTags = pgTable("product_tags", {
     tagId: varchar("tag_id", { length: 255 }).notNull().references(() => tags.id),
 });
 
+// ─── Vendor Warehouses ───
+export const vendorWarehouses = pgTable("vendor_warehouses", {
+    id: varchar("id", { length: 255 }).primaryKey(),
+    vendorId: varchar("vendor_id", { length: 255 }).notNull().references(() => vendors.id),
+    name: varchar("name", { length: 255 }).notNull(), // e.g. "Main Warehouse", "Industrial City Store"
+    address: varchar("address", { length: 500 }),
+    city: varchar("city", { length: 255 }),
+    isDefault: boolean("is_default").default(false),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
 // ─── Inventory Units (Digital Product Passport) ───
 export const inventoryUnits = pgTable("inventory_units", {
     id: varchar("id", { length: 255 }).primaryKey(),
@@ -207,10 +219,12 @@ export const inventoryUnits = pgTable("inventory_units", {
     vendorId: varchar("vendor_id", { length: 255 }).notNull().references(() => vendors.id),
     assetTagCode: varchar("asset_tag_code", { length: 255 }).notNull().unique(), // e.g. E3-TRUSS-001
     serialNumber: varchar("serial_number", { length: 255 }),
-    conditionStatus: varchar("condition_status", { length: 50 }).notNull().default("excellent"), // Excellent | Good | Fair | Maintenance_Required | Retired
-    availabilityStatus: varchar("availability_status", { length: 50 }).notNull().default("in_warehouse"), // in_warehouse | on_rent | in_maintenance
+    conditionStatus: varchar("condition_status", { length: 50 }).notNull().default("excellent"),
+    availabilityStatus: varchar("availability_status", { length: 50 }).notNull().default("in_warehouse"),
     lastInspectionDate: timestamp("last_inspection_date"),
-    warehouseLocation: varchar("warehouse_location", { length: 255 }),
+    warehouseLocation: varchar("warehouse_location", { length: 255 }), // Legacy free-text
+    warehouseId: varchar("warehouse_id", { length: 255 }).references(() => vendorWarehouses.id), // Structured FK
+    shelfLocation: varchar("shelf_location", { length: 255 }), // e.g. "Rack A3 / Shelf 2"
     purchaseDate: timestamp("purchase_date"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
@@ -479,6 +493,14 @@ export const productTagsRelations = relations(productTags, ({ one }) => ({
     }),
 }));
 
+export const vendorWarehousesRelations = relations(vendorWarehouses, ({ one, many }) => ({
+    vendor: one(vendors, {
+        fields: [vendorWarehouses.vendorId],
+        references: [vendors.id],
+    }),
+    inventoryUnits: many(inventoryUnits),
+}));
+
 export const inventoryUnitsRelations = relations(inventoryUnits, ({ one, many }) => ({
     product: one(products, {
         fields: [inventoryUnits.productId],
@@ -487,6 +509,10 @@ export const inventoryUnitsRelations = relations(inventoryUnits, ({ one, many })
     vendor: one(vendors, {
         fields: [inventoryUnits.vendorId],
         references: [vendors.id],
+    }),
+    warehouse: one(vendorWarehouses, {
+        fields: [inventoryUnits.warehouseId],
+        references: [vendorWarehouses.id],
     }),
     inspectionLogs: many(inspectionLogs),
 }));
@@ -606,6 +632,7 @@ export const vendorsRelations = relations(vendors, ({ one, many }) => ({
     ledgers: many(vendorLedgers),
     settlements: many(commissionSettlements),
     reviews: many(reviews),
+    warehouses: many(vendorWarehouses),
 }));
 
 export const systemLogsRelations = relations(systemLogs, ({ one }) => ({
