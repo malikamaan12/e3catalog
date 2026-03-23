@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { 
     QrCode, 
     Plus, 
@@ -14,8 +14,10 @@ import {
     AlertCircle,
     Package,
     ArrowRightLeft,
-    FileText
+    FileText,
+    RefreshCcw
 } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 import { PDFDownloadLink } from "@react-pdf/renderer";
 import { AssetTagPDF } from "@/components/admin/AssetTagPDF";
 import { AssetTagSticker } from "@/components/admin/AssetTagSticker";
@@ -34,11 +36,14 @@ interface InventoryUnit {
     warehouseLocation: string;
 }
 
-export default function FleetPage() {
+function FleetPageContent() {
+    const searchParams = useSearchParams();
+    const initialSearch = searchParams.get("search") || "";
+    
     const [units, setUnits] = useState<InventoryUnit[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
-    const [searchQuery, setSearchQuery] = useState("");
+    const [searchQuery, setSearchQuery] = useState(initialSearch);
     
     // Status color mapping
     const conditionColors = {
@@ -82,7 +87,7 @@ export default function FleetPage() {
     const filteredUnits = units.filter(u => 
         u.assetTagCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
         u.productName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        u.vendorName.toLowerCase().includes(searchQuery.toLowerCase())
+        (u.vendorName && u.vendorName.toLowerCase().includes(searchQuery.toLowerCase()))
     );
 
     return (
@@ -101,7 +106,7 @@ export default function FleetPage() {
                         <PDFDownloadLink
                             document={<AssetTagPDF items={units.filter(u => selectedIds.includes(u.id))} />}
                             fileName={`E3-BatchTags-${new Date().getTime()}.pdf`}
-                            className="flex items-center gap-2 bg-[var(--color-gold)] text-[var(--color-navy)] px-4 py-2 rounded-xl font-bold text-sm shadow-lg shadow-gold/20 hover:scale-105 active:scale-95 transition-all"
+                            className="flex items-center gap-2 bg-[var(--color-gold)] text-[var(--color-navy)] px-4 py-2 rounded-xl font-bold text-sm shadow-lg shadow-gold/20 hover:scale-105 active:scale-95 transition-all outline-none"
                         >
                             {({ loading }) => (
                                 <>
@@ -125,7 +130,7 @@ export default function FleetPage() {
                     <input 
                         type="text" 
                         placeholder="Search by Asset Tag, Product, or Vendor..."
-                        className="w-full bg-black/40 border border-white/10 rounded-xl pl-10 pr-4 py-2.5 outline-none focus:border-[var(--color-gold)] transition-all text-sm"
+                        className="w-full bg-black/40 border border-white/10 rounded-xl pl-10 pr-4 py-2.5 outline-none focus:border-[var(--color-gold)] transition-all text-sm text-[var(--color-warm-white)]"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                     />
@@ -152,8 +157,8 @@ export default function FleetPage() {
                                 <input 
                                     type="checkbox" 
                                     className="accent-[var(--color-gold)]" 
-                                    checked={selectedIds.length === units.length && units.length > 0}
-                                    onChange={(e) => setSelectedIds(e.target.checked ? units.map(u => u.id) : [])}
+                                    checked={selectedIds.length === filteredUnits.length && filteredUnits.length > 0}
+                                    onChange={(e) => setSelectedIds(e.target.checked ? filteredUnits.map(u => u.id) : [])}
                                 />
                             </th>
                             <th className="p-4 text-[10px] font-black uppercase text-[var(--color-gold)] tracking-widest">Asset Tag</th>
@@ -168,7 +173,7 @@ export default function FleetPage() {
                         {loading && units.length === 0 ? (
                             Array.from({ length: 5 }).map((_, i) => (
                                 <tr key={i} className="animate-pulse">
-                                    <td colSpan={7} className="p-6 bg-white/5 mb-2" />
+                                    <td colSpan={7} className="p-6 bg-white/5" />
                                 </tr>
                             ))
                         ) : filteredUnits.map((unit) => (
@@ -192,10 +197,10 @@ export default function FleetPage() {
                                 </td>
                                 <td className="p-4">
                                     <div className="flex items-center gap-2">
-                                        <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-[10px] font-black">
-                                            {unit.vendorName[0]}
+                                        <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-[10px] font-black text-[var(--color-gold)]">
+                                            {unit.vendorName ? unit.vendorName[0] : 'E'}
                                         </div>
-                                        <span className="text-xs font-bold text-[var(--color-slate)]">{unit.vendorName}</span>
+                                        <span className="text-xs font-bold text-[var(--color-slate)]">{unit.vendorName || "E3 Rentals"}</span>
                                     </div>
                                 </td>
                                 <td className="p-4">
@@ -210,7 +215,11 @@ export default function FleetPage() {
                                 </td>
                                 <td className="p-4">
                                     <div className="flex items-center justify-center gap-2 opacity-30 group-hover:opacity-100 transition-opacity">
-                                        <button className="p-2 rounded-lg hover:bg-[var(--color-gold)] hover:text-black transition-all" title="View Digital Passport">
+                                        <button 
+                                            onClick={() => window.open(`/passport/${unit.assetTagCode}`, '_blank')}
+                                            className="p-2 rounded-lg hover:bg-[var(--color-gold)] hover:text-black transition-all" 
+                                            title="View Digital Passport"
+                                        >
                                             <QrCode className="w-4 h-4" />
                                         </button>
                                         <button className="p-2 rounded-lg hover:bg-blue-500 hover:text-white transition-all" title="Log Inspection">
@@ -227,10 +236,10 @@ export default function FleetPage() {
                 </table>
                 
                 {!loading && filteredUnits.length === 0 && (
-                    <div className="p-12 text-center">
-                        <Package className="w-12 h-12 text-[var(--color-slate)] mx-auto mb-4 opacity-20" />
+                    <div className="p-12 text-center text-[var(--color-slate)]">
+                        <Package className="w-12 h-12 mx-auto mb-4 opacity-20" />
                         <h3 className="font-bold text-[var(--color-warm-white)]">No assets found</h3>
-                        <p className="text-sm text-[var(--color-slate)]">Add inventory units to start tracking your physical fleet.</p>
+                        <p className="text-sm">Try a different search or add inventory units.</p>
                     </div>
                 )}
             </div>
@@ -238,24 +247,10 @@ export default function FleetPage() {
     );
 }
 
-function RefreshCcw(props: any) {
+export default function FleetPage() {
     return (
-        <svg
-            {...props}
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-        >
-            <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-            <path d="M3 3v5h5" />
-            <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
-            <path d="M16 16h5v5" />
-        </svg>
-    )
+        <Suspense fallback={<div className="p-12 text-center text-[var(--color-slate)]">Loading Asset Fleet...</div>}>
+            <FleetPageContent />
+        </Suspense>
+    );
 }

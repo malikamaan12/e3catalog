@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { format, parseISO } from "date-fns";
 import * as Tooltip from "@radix-ui/react-tooltip";
 
@@ -315,8 +316,17 @@ export default function InventoryAdminPage() {
                                         {filteredMatrix.map((row) => (
                                             <tr key={row.product.id} className="hover:bg-white/5 transition-colors group">
                                                 <td className="sticky left-0 z-10 bg-[var(--color-inventory-bg,var(--color-navy))] group-hover:bg-[var(--color-inventory-hover,var(--color-navy-lighter))] p-4 border-r border-white/5 shadow-[4px_0_12px_rgba(0,0,0,0.1)] transition-colors">
-                                                    <div className="font-medium text-sm text-[var(--color-warm-white)] truncate w-[240px]" title={row.product.name}>
-                                                        {row.product.name}
+                                                    <div className="flex items-start justify-between gap-2">
+                                                        <div className="font-medium text-sm text-[var(--color-warm-white)] truncate w-[180px]" title={row.product.name}>
+                                                            {row.product.name}
+                                                        </div>
+                                                        <Link 
+                                                            href={`/admin/fleet?search=${encodeURIComponent(row.product.name)}`}
+                                                            className="text-[10px] font-bold text-[var(--color-gold)] hover:underline flex items-center gap-1 shrink-0"
+                                                        >
+                                                            <span>PASSPORTS</span>
+                                                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M7 17L17 7M17 7H7M17 7V17"/></svg>
+                                                        </Link>
                                                     </div>
                                                     <div className="text-[10px] text-[var(--color-slate)] mt-0.5">
                                                         Total fleet: {row.product.totalUnits} {row.product.unit}
