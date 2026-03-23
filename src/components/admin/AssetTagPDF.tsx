@@ -7,103 +7,167 @@ import {
     Text, 
     View, 
     StyleSheet, 
-    Image,
-    Font
+    Image
 } from "@react-pdf/renderer";
 
-// Styles for the PDF
-const styles = StyleSheet.create({
-    page: {
-        padding: 20,
-        backgroundColor: "#ffffff",
+// Label size configurations (in points: 1mm ≈ 2.835pt)
+const LABEL_CONFIGS = {
+    small: {
+        label: "Small (50×25mm)",
+        pageWidth: 142, // 50mm
+        pageHeight: 71, // 25mm
+        cols: 1,
+        rows: 1,
+        stickerW: 132,
+        stickerH: 61,
+        qrSize: 35,
+        fontSize: { vendor: 5, product: 5, tag: 7 },
+        padding: 5,
+        perPage: 1,
     },
-    grid: {
-        flexDirection: "row",
-        flexWrap: "wrap",
-        justifyContent: "flex-start",
-        gap: 10,
+    medium: {
+        label: "Medium (62×29mm)",
+        pageWidth: 176,
+        pageHeight: 82,
+        cols: 1,
+        rows: 1,
+        stickerW: 166,
+        stickerH: 72,
+        qrSize: 44,
+        fontSize: { vendor: 5, product: 6, tag: 8 },
+        padding: 5,
+        perPage: 1,
     },
-    sticker: {
-        width: "30%", // 3 stickers per row
-        height: 120,
-        border: "1pt solid #000",
+    large: {
+        label: "Large (100×50mm)",
+        pageWidth: 284,
+        pageHeight: 142,
+        cols: 1,
+        rows: 1,
+        stickerW: 264,
+        stickerH: 122,
+        qrSize: 70,
+        fontSize: { vendor: 7, product: 7, tag: 10 },
         padding: 10,
-        marginBottom: 10,
-        flexDirection: "column",
-        justifyContent: "space-between",
-        alignItems: "center",
+        perPage: 1,
     },
-    header: {
-        width: "100%",
-        flexDirection: "row",
-        justifyContent: "space-between",
-        borderBottom: "0.5pt solid #000",
-        paddingBottom: 2,
-        marginBottom: 5,
+    a4_sheet: {
+        label: "A4 Sheet (Grid)",
+        pageWidth: 595, // A4 width
+        pageHeight: 842, // A4 height
+        cols: 3,
+        rows: 6,
+        stickerW: 170,
+        stickerH: 120,
+        qrSize: 55,
+        fontSize: { vendor: 6, product: 7, tag: 10 },
+        padding: 10,
+        perPage: 18,
     },
-    vendorName: {
-        fontSize: 6,
-        fontWeight: "bold",
-    },
-    brandMarker: {
-        fontSize: 5,
-        color: "#666",
-    },
-    qrPlaceholder: {
-        width: 60,
-        height: 60,
-        backgroundColor: "#eee", // In a real app, we'd pass a data URI for the QR
-    },
-    footer: {
-        width: "100%",
-        textAlign: "center",
-        marginTop: 5,
-    },
-    productName: {
-        fontSize: 7,
-        fontWeight: "bold",
-        marginBottom: 2,
-    },
-    assetTag: {
-        fontSize: 10,
-        fontFamily: "Courier-Bold",
-        letterSpacing: 2,
-    }
-});
+};
+
+export type LabelSize = keyof typeof LABEL_CONFIGS;
+export const LABEL_SIZE_OPTIONS = Object.entries(LABEL_CONFIGS).map(([k, v]) => ({
+    value: k as LabelSize,
+    label: v.label,
+}));
 
 interface AssetTagPDFProps {
     items: Array<{
         assetTagCode: string;
         productName: string;
         vendorName: string;
-        qrDataUri?: string; // We'll pre-generate QR as Data URI for PDF
+        qrDataUri?: string;
     }>;
+    labelSize?: LabelSize;
 }
 
-export const AssetTagPDF = ({ items }: AssetTagPDFProps) => (
-    <Document>
-        <Page size="A4" style={styles.page}>
-            <View style={styles.grid}>
-                {items.map((item, index) => (
-                    <View key={index} style={styles.sticker}>
-                        <View style={styles.header}>
-                            <Text style={styles.vendorName}>{item.vendorName.toUpperCase()}</Text>
-                            <Text style={styles.brandMarker}>E3 RENTALS</Text>
-                        </View>
-                        
-                        {item.qrDataUri ? (
-                            <Image src={item.qrDataUri} style={{ width: 60, height: 60 }} />
-                        ) : (
-                            <View style={styles.qrPlaceholder} />
-                        )}
+export const AssetTagPDF = ({ items, labelSize = "a4_sheet" }: AssetTagPDFProps) => {
+    const config = LABEL_CONFIGS[labelSize];
+    const isSheet = labelSize === "a4_sheet";
 
-                        <View style={styles.footer}>
-                            <Text style={styles.productName}>{item.productName.substring(0, 20)}</Text>
-                            <Text style={styles.assetTag}>{item.assetTagCode}</Text>
-                        </View>
+    // For sheet mode, chunk items into pages
+    const pages: typeof items[] = [];
+    if (isSheet) {
+        for (let i = 0; i < items.length; i += config.perPage) {
+            pages.push(items.slice(i, i + config.perPage));
+        }
+    } else {
+        // Individual labels: 1 per page
+        items.forEach(item => pages.push([item]));
+    }
+
+    const stickerStyle = StyleSheet.create({
+        sticker: {
+            width: config.stickerW,
+            height: config.stickerH,
+            border: "1pt solid #000",
+            padding: config.padding,
+            flexDirection: "column",
+            justifyContent: "space-between",
+            alignItems: "center",
+        },
+        header: {
+            width: "100%",
+            flexDirection: "row",
+            justifyContent: "space-between",
+            borderBottom: "0.5pt solid #000",
+            paddingBottom: 2,
+            marginBottom: 3,
+        },
+        vendorName: { fontSize: config.fontSize.vendor, fontWeight: "bold" },
+        brandMarker: { fontSize: config.fontSize.vendor - 1, color: "#666" },
+        qrPlaceholder: {
+            width: config.qrSize,
+            height: config.qrSize,
+            backgroundColor: "#eee",
+        },
+        footer: { width: "100%", textAlign: "center", marginTop: 3 },
+        productName: { fontSize: config.fontSize.product, fontWeight: "bold", marginBottom: 1 },
+        assetTag: { fontSize: config.fontSize.tag, fontFamily: "Courier-Bold", letterSpacing: 1.5 },
+    });
+
+    return (
+        <Document>
+            {pages.map((pageItems, pageIndex) => (
+                <Page
+                    key={pageIndex}
+                    size={isSheet ? "A4" : { width: config.pageWidth, height: config.pageHeight }}
+                    style={{
+                        padding: isSheet ? 20 : 5,
+                        backgroundColor: "#ffffff",
+                    }}
+                >
+                    <View style={{
+                        flexDirection: "row",
+                        flexWrap: "wrap",
+                        justifyContent: isSheet ? "flex-start" : "center",
+                        alignItems: isSheet ? "flex-start" : "center",
+                        gap: isSheet ? 8 : 0,
+                        flex: 1,
+                    }}>
+                        {pageItems.map((item, index) => (
+                            <View key={index} style={stickerStyle.sticker}>
+                                <View style={stickerStyle.header}>
+                                    <Text style={stickerStyle.vendorName}>{(item.vendorName || "E3 RENTALS").toUpperCase()}</Text>
+                                    <Text style={stickerStyle.brandMarker}>E3</Text>
+                                </View>
+                                
+                                {item.qrDataUri ? (
+                                    <Image src={item.qrDataUri} style={{ width: config.qrSize, height: config.qrSize }} />
+                                ) : (
+                                    <View style={stickerStyle.qrPlaceholder} />
+                                )}
+
+                                <View style={stickerStyle.footer}>
+                                    <Text style={stickerStyle.productName}>{(item.productName || "").substring(0, isSheet ? 20 : 30)}</Text>
+                                    <Text style={stickerStyle.assetTag}>{item.assetTagCode}</Text>
+                                </View>
+                            </View>
+                        ))}
                     </View>
-                ))}
-            </View>
-        </Page>
-    </Document>
-);
+                </Page>
+            ))}
+        </Document>
+    );
+};

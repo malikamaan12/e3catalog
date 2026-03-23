@@ -222,6 +222,23 @@ export const inventoryUnits = pgTable("inventory_units", {
     };
 });
 
+// ─── Inspection Logs (Fleet Tracking) ───
+export const inspectionLogs = pgTable("inspection_logs", {
+    id: varchar("id", { length: 255 }).primaryKey(),
+    unitId: varchar("unit_id", { length: 255 }).notNull().references(() => inventoryUnits.id),
+    inspectorId: varchar("inspector_id", { length: 255 }).notNull().references(() => users.id),
+    inspectionType: varchar("inspection_type", { length: 50 }).notNull().default("routine"), // routine | damage | return | pre_rental
+    conditionBefore: varchar("condition_before", { length: 50 }).notNull(),
+    conditionAfter: varchar("condition_after", { length: 50 }).notNull(),
+    notes: varchar("notes", { length: 2000 }),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => {
+    return {
+        unitIdIdx: index("inspection_logs_unit_id_idx").on(table.unitId),
+        inspectorIdIdx: index("inspection_logs_inspector_id_idx").on(table.inspectorId),
+    };
+});
+
 // ─── Pricing Rules & Global Charges ───
 export const globalCharges = pgTable("global_charges", {
     id: varchar("id", { length: 255 }).primaryKey(),
@@ -445,11 +462,27 @@ export const productTagsRelations = relations(productTags, ({ one }) => ({
     }),
 }));
 
-export const inventoryUnitsRelations = relations(inventoryUnits, ({ one }) => ({
+export const inventoryUnitsRelations = relations(inventoryUnits, ({ one, many }) => ({
     product: one(products, {
         fields: [inventoryUnits.productId],
         references: [products.id],
-    })
+    }),
+    vendor: one(vendors, {
+        fields: [inventoryUnits.vendorId],
+        references: [vendors.id],
+    }),
+    inspectionLogs: many(inspectionLogs),
+}));
+
+export const inspectionLogsRelations = relations(inspectionLogs, ({ one }) => ({
+    unit: one(inventoryUnits, {
+        fields: [inspectionLogs.unitId],
+        references: [inventoryUnits.id],
+    }),
+    inspector: one(users, {
+        fields: [inspectionLogs.inspectorId],
+        references: [users.id],
+    }),
 }));
 
 export const productDocumentsRelations = relations(productDocuments, ({ one }) => ({

@@ -1,23 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { inventoryUnits, products, vendors, users } from "@/lib/db/schema";
-import { eq, and, or, sql } from "drizzle-orm";
+import { inventoryUnits, products, vendors, users, categories } from "@/lib/db/schema";
+import { eq, and, sql } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { getSession } from "@/lib/auth";
 
 export async function GET(req: NextRequest) {
-    // 1. Auth & RBAC
     const session = await getSession();
-    if (!session || !["admin", "super_admin", "vendor"].includes(session.role)) {
+    if (!session || !["admin", "super_admin", "vendor", "warehouse_manager"].includes(session.role)) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     try {
         const { searchParams } = new URL(req.url);
-        const productId = searchParams.get("productId");
-        
-        // 2. Query Builder
-        let query = db.select({
+        const productIdFilter = searchParams.get("productId");
+        const vendorIdFilter = searchParams.get("vendorId");
+        const categoryFilter = searchParams.get("categoryId");
+
+        // Build base query with category info for hierarchical grouping
+        let results = await db.select({
             id: inventoryUnits.id,
             productId: inventoryUnits.productId,
             vendorId: inventoryUnits.vendorId,
@@ -28,25 +29,37 @@ export async function GET(req: NextRequest) {
             lastInspectionDate: inventoryUnits.lastInspectionDate,
             warehouseLocation: inventoryUnits.warehouseLocation,
             productName: products.name,
-            vendorName: vendors.companyName
+            vendorName: vendors.companyName,
+            categoryId: products.categoryId,
+            categoryName: categories.name,
+            categorySlug: categories.slug,
         })
         .from(inventoryUnits)
         .leftJoin(products, eq(inventoryUnits.productId, products.id))
-        .leftJoin(vendors, eq(inventoryUnits.vendorId, vendors.id));
+        .leftJoin(vendors, eq(inventoryUnits.vendorId, vendors.id))
+        .leftJoin(categories, eq(products.categoryId, categories.id))
+        .execute();
 
-        // 3. Multi-Tenant Isolation
+        // Multi-Tenant Isolation
         if (session.role === "vendor") {
-            // Find the vendor ID associated with this user
             const vendorRecord = await db.query.vendors.findFirst({
                 where: eq(vendors.userId, session.id)
             });
             if (!vendorRecord) return NextResponse.json([], { status: 200 });
-            
-            // Filter by vendorId
-            query = query.where(eq(inventoryUnits.vendorId, vendorRecord.id)) as any;
+            results = results.filter(r => r.vendorId === vendorRecord.id);
         }
 
-        const results = await query.execute();
+        // Apply filters
+        if (productIdFilter) {
+            results = results.filter(r => r.productId === productIdFilter);
+        }
+        if (vendorIdFilter && session.role !== "vendor") {
+            results = results.filter(r => r.vendorId === vendorIdFilter);
+        }
+        if (categoryFilter) {
+            results = results.filter(r => r.categoryId === categoryFilter);
+        }
+
         return NextResponse.json(results);
     } catch (error) {
         console.error("Fleet API Error:", error);
@@ -62,7 +75,7 @@ export async function POST(req: NextRequest) {
 
     try {
         const body = await req.json();
-        const { productId, serialNumber, assetTagCode, warehouseLocation } = body;
+        const { productId, serialNumber, assetTagCode, warehouseLocation, conditionStatus } = body;
 
         // Determine Vendor ID
         let vendorIdToUse = body.vendorId;
@@ -74,22 +87,29 @@ export async function POST(req: NextRequest) {
             vendorIdToUse = vendorRecord.id;
         }
 
+        if (!productId || !vendorIdToUse) {
+            return NextResponse.json({ error: "productId and vendorId are required" }, { status: 400 });
+        }
+
         const newUnit = await db.insert(inventoryUnits).values({
             id: uuidv4(),
             productId,
             vendorId: vendorIdToUse,
-            assetTagCode: assetTagCode || `E3-${Math.random().toString(36).substring(2, 7).toUpperCase()}`,
-            serialNumber,
-            warehouseLocation,
-            conditionStatus: "excellent",
+            assetTagCode: assetTagCode || `E3-${Math.random().toString(36).substring(2, 7).toUpperCase()}-${String(Date.now()).slice(-3)}`,
+            serialNumber: serialNumber || null,
+            warehouseLocation: warehouseLocation || null,
+            conditionStatus: conditionStatus || "excellent",
             availabilityStatus: "in_warehouse",
             createdAt: new Date(),
             updatedAt: new Date(),
         }).returning();
 
-        return NextResponse.json(newUnit[0]);
-    } catch (error) {
+        return NextResponse.json(newUnit[0], { status: 201 });
+    } catch (error: any) {
         console.error("Fleet Creation Error:", error);
+        if (error.code === "23505") {
+            return NextResponse.json({ error: "Asset tag code already exists. Please use a unique code." }, { status: 409 });
+        }
         return NextResponse.json({ error: "Failed to create unit" }, { status: 500 });
     }
 }
@@ -104,9 +124,21 @@ export async function PATCH(req: NextRequest) {
         const body = await req.json();
         const { id, ...updates } = body;
 
+        if (!id) {
+            return NextResponse.json({ error: "Unit ID required" }, { status: 400 });
+        }
+
+        // Only allow specific fields to be updated
+        const allowedFields: Record<string, any> = {};
+        if (updates.conditionStatus) allowedFields.conditionStatus = updates.conditionStatus;
+        if (updates.availabilityStatus) allowedFields.availabilityStatus = updates.availabilityStatus;
+        if (updates.warehouseLocation !== undefined) allowedFields.warehouseLocation = updates.warehouseLocation;
+        if (updates.lastInspectionDate) allowedFields.lastInspectionDate = new Date(updates.lastInspectionDate);
+        if (updates.serialNumber !== undefined) allowedFields.serialNumber = updates.serialNumber;
+
         const updated = await db.update(inventoryUnits)
             .set({ 
-                ...updates, 
+                ...allowedFields, 
                 updatedAt: new Date() 
             })
             .where(eq(inventoryUnits.id, id))
