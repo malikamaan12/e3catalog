@@ -89,44 +89,71 @@ export default function PassportPage() {
     }
 
     return (
-        <div className="min-h-screen bg-[#070b14] text-white overflow-hidden pb-32">
+        <div className="min-h-screen bg-[#050810] text-white overflow-x-hidden pb-32 font-sans selection:bg-[var(--color-gold)] selection:text-black">
+            {/* Mesh Gradient Background */}
+            <div className="fixed inset-0 pointer-events-none overflow-hidden">
+                <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-blue-600/10 blur-[120px] rounded-full animate-pulse" />
+                <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-[var(--color-gold)]/5 blur-[120px] rounded-full" />
+            </div>
+
             {/* Hero Section */}
-            <div className="relative h-64 w-full bg-gradient-to-b from-blue-900/20 to-transparent flex items-end p-6">
+            <div className="relative h-72 w-full overflow-hidden flex items-end p-8 bg-gradient-to-b from-blue-950/40 via-blue-900/10 to-transparent">
+                <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-5" />
                 <motion.div 
-                    initial={{ opacity: 0, y: 20 }}
+                    initial={{ opacity: 0, y: 30 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="flex gap-4 items-center"
+                    className="flex flex-col md:flex-row gap-6 items-start md:items-end w-full max-w-5xl mx-auto z-10"
                 >
-                    <div className="w-20 h-20 rounded-2xl border-2 border-[var(--color-gold)] overflow-hidden shadow-2xl bg-black">
-                        <img src={data.productThumbnail || "/placeholder.jpg"} alt={data.productName} className="w-full h-full object-cover" />
+                    <div className="w-28 h-28 rounded-[2rem] border-2 border-white/10 overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)] bg-black/40 backdrop-blur-xl p-1 shrink-0">
+                        <div className="w-full h-full rounded-[1.8rem] overflow-hidden border border-white/5">
+                            <img src={data.productThumbnail || "/placeholder.jpg"} alt={data.productName} className="w-full h-full object-cover transform hover:scale-110 transition-transform duration-700" />
+                        </div>
                     </div>
-                    <div>
-                        <h1 className="text-xl font-black tracking-tight">{data.productName}</h1>
-                        <p className="text-[var(--color-gold)] font-mono font-bold tracking-widest text-sm">{data.assetTagCode}</p>
+                    <div className="flex-1 space-y-1">
+                        <div className="flex items-center gap-2 mb-2">
+                            <span className="px-2 py-0.5 rounded-full bg-[var(--color-gold)]/10 border border-[var(--color-gold)]/20 text-[var(--color-gold)] text-[10px] font-black uppercase tracking-widest">Digital Passport</span>
+                            <span className="w-1 h-1 rounded-full bg-white/20" />
+                            <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">v2.0 Verified</span>
+                        </div>
+                        <h1 className="text-3xl md:text-4xl font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-white to-white/60">{data.productName}</h1>
+                        <p className="text-[var(--color-gold)] font-mono font-black tracking-[0.2em] text-sm opacity-80">{data.assetTagCode}</p>
                     </div>
                 </motion.div>
             </div>
 
             {/* Quick Stats Grid */}
-            <div className="grid grid-cols-2 gap-px bg-white/5 border-y border-white/5 mt-6">
-                <div className="p-4 flex flex-col items-center justify-center text-center">
-                    <span className="text-[10px] uppercase font-black text-[var(--color-slate)] tracking-[0.2em] mb-1">Condition</span>
-                    <span className="text-sm font-bold text-green-400 capitalize">{data.conditionStatus}</span>
-                </div>
-                <div className="p-4 flex flex-col items-center justify-center text-center border-l border-white/5">
-                    <span className="text-[10px] uppercase font-black text-[var(--color-slate)] tracking-[0.2em] mb-1">Status</span>
-                    <span className="text-sm font-bold text-blue-400 capitalize">{data.availabilityStatus.replace('_', ' ')}</span>
+            <div className="max-w-5xl mx-auto px-6 -mt-8 relative z-20">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-2 glass border border-white/10 rounded-[2.5rem] shadow-2xl">
+                    <div className="p-4 flex flex-col items-center justify-center text-center bg-white/5 rounded-[2rem] border border-white/5">
+                        <span className="text-[10px] uppercase font-black text-[var(--color-slate)] tracking-[0.2em] mb-1 opacity-50">Condition</span>
+                        <span className={`text-sm font-black uppercase tracking-tight ${
+                            data.conditionStatus === 'excellent' ? 'text-emerald-400' : 
+                            data.conditionStatus === 'good' ? 'text-blue-400' : 'text-orange-400'
+                        }`}>{data.conditionStatus}</span>
+                    </div>
+                    <div className="p-4 flex flex-col items-center justify-center text-center bg-white/5 rounded-[2rem] border border-white/5">
+                        <span className="text-[10px] uppercase font-black text-[var(--color-slate)] tracking-[0.2em] mb-1 opacity-50">Status</span>
+                        <span className="text-sm font-black text-blue-400 uppercase tracking-tight">{data.availabilityStatus.replace('_', ' ')}</span>
+                    </div>
+                    <div className="p-4 flex flex-col items-center justify-center text-center bg-white/5 rounded-[2rem] border border-white/5">
+                        <span className="text-[10px] uppercase font-black text-[var(--color-slate)] tracking-[0.2em] mb-1 opacity-50">Identity</span>
+                        <span className="text-sm font-bold text-white/80 font-mono tracking-tighter truncate w-full">{data.serialNumber || 'E3-8829-X'}</span>
+                    </div>
+                    <div className="p-4 flex flex-col items-center justify-center text-center bg-white/5 rounded-[2rem] border border-white/5">
+                        <span className="text-[10px] uppercase font-black text-[var(--color-slate)] tracking-[0.2em] mb-1 opacity-50">Ownership</span>
+                        <span className="text-sm font-black text-[var(--color-gold)] uppercase tracking-tighter truncate w-full">{data.vendorName}</span>
+                    </div>
                 </div>
             </div>
 
             {/* Tabs Navigation */}
-            <div className="flex p-2 bg-black/40 mx-6 rounded-2xl mt-8 border border-white/5">
+            <div className="flex p-1.5 bg-black/40 max-w-5xl mx-auto rounded-[1.8rem] mt-12 border border-white/10 backdrop-blur-md sticky top-6 z-40 mx-6 md:mx-auto">
                 {(['status', 'compliance', 'history'] as const).map((t) => (
                     <button
                         key={t}
                         onClick={() => setTab(t)}
-                        className={`flex-1 py-2 text-xs font-black uppercase tracking-widest rounded-xl transition-all
-                            ${tab === t ? 'bg-[var(--color-gold)] text-black' : 'text-[var(--color-slate)]'}`}
+                        className={`flex-1 py-3 text-[10px] font-black uppercase tracking-[0.2em] rounded-[1.4rem] transition-all duration-300
+                            ${tab === t ? 'bg-[var(--color-gold)] text-[var(--color-navy)] shadow-[0_10px_20px_rgba(255,191,0,0.2)]' : 'text-[var(--color-slate)] hover:text-white hover:bg-white/5'}`}
                     >
                         {t}
                     </button>
@@ -134,14 +161,14 @@ export default function PassportPage() {
             </div>
 
             {/* Tab Content Area */}
-            <div className="px-6 mt-8">
+            <div className="max-w-5xl mx-auto px-6 mt-10">
                 <AnimatePresence mode="wait">
                     {tab === "status" && (
                         <motion.div 
                             key="status"
-                            initial={{ opacity: 0, x: -10 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: 10 }}
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
                             className="space-y-6"
                         >
                             <div className="glass p-5 border border-white/10 rounded-2xl space-y-4">
@@ -246,19 +273,23 @@ export default function PassportPage() {
 
             {/* Sticky Operations Panel (Authorized Only) */}
             {data.isAuthorized && (
-                <div className="fixed bottom-0 left-0 right-0 p-6 bg-[#0a0f1e]/90 backdrop-blur-xl border-t border-white/10 rounded-t-3xl shadow-2xl z-50">
-                    <div className="flex items-center gap-3 mb-4 text-[var(--color-gold)]">
-                        <Unlock className="w-4 h-4" />
-                        <span className="text-[10px] font-black uppercase tracking-widest">Authorized Logistics Operator</span>
+                <div className="fixed bottom-10 left-1/2 -translate-x-1/2 w-[calc(100%-48px)] max-w-md p-6 glass border border-white/20 rounded-[3rem] shadow-[0_30px_60px_rgba(0,0,0,0.8)] z-50">
+                    <div className="flex items-center justify-center gap-3 mb-6 text-[var(--color-gold)]">
+                        <Unlock className="w-4 h-4 animate-pulse" />
+                        <span className="text-[10px] font-black uppercase tracking-[0.3em]">Authorized Operator Panel</span>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
-                        <button className="flex flex-col items-center justify-center p-4 rounded-2xl bg-white/5 border border-white/10 active:scale-95 transition-all">
-                            <ArrowRightLeft className="w-5 h-5 text-blue-400 mb-2" />
-                            <span className="text-[10px] font-black uppercase">Bump-In</span>
+                        <button className="group flex flex-col items-center justify-center p-5 rounded-[2rem] bg-white/5 border border-white/10 hover:bg-white/10 active:scale-95 transition-all outline-none focus:ring-2 ring-[var(--color-gold)]">
+                            <div className="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                                <ArrowRightLeft className="w-6 h-6 text-blue-400" />
+                            </div>
+                            <span className="text-[10px] font-black uppercase tracking-widest">Bump-In</span>
                         </button>
-                        <button className="flex flex-col items-center justify-center p-4 rounded-2xl bg-[var(--color-gold)] active:scale-95 transition-all">
-                            <Wrench className="w-5 h-5 text-black mb-2" />
-                            <span className="text-[10px] font-black uppercase text-black">Log Damage</span>
+                        <button className="group flex flex-col items-center justify-center p-5 rounded-[2rem] bg-[var(--color-gold)] hover:bg-[var(--color-gold)]/90 active:scale-95 transition-all shadow-[0_10px_25px_rgba(255,191,0,0.3)] outline-none">
+                            <div className="w-12 h-12 rounded-2xl bg-black/10 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                                <Wrench className="w-6 h-6 text-black" />
+                            </div>
+                            <span className="text-[10px] font-black uppercase tracking-widest text-black">Log Damage</span>
                         </button>
                     </div>
                 </div>

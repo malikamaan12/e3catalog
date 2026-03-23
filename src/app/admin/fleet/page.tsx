@@ -9,6 +9,7 @@ import {
 import { useSearchParams } from "next/navigation";
 import { PDFDownloadLink } from "@react-pdf/renderer";
 import { AssetTagPDF, LABEL_SIZE_OPTIONS, type LabelSize } from "@/components/admin/AssetTagPDF";
+import { QRCodeCanvas } from "qrcode.react";
 
 interface InventoryUnit {
     id: string;
@@ -138,6 +139,7 @@ function FleetPageContent() {
     const [showAddAssetModal, setShowAddAssetModal] = useState(false);
     const [showScannerModal, setShowScannerModal] = useState(false);
     const [viewLogsUnit, setViewLogsUnit] = useState<InventoryUnit | null>(null);
+    const [qrDataUris, setQrDataUris] = useState<Record<string, string>>({});
 
     // Products & categories for add-asset form
     const [productsForAdd, setProductsForAdd] = useState<Array<{ id: string; name: string; categoryName: string; vendorId: string }>>([]);
@@ -209,6 +211,26 @@ function FleetPageContent() {
 
     const toggleSelect = (id: string) => setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
 
+    // Handle QR Generation whenever selection changes
+    useEffect(() => {
+        if (selectedIds.length === 0) return;
+        const timer = setTimeout(() => {
+            const newUris: Record<string, string> = { ...qrDataUris };
+            let changed = false;
+            selectedIds.forEach(id => {
+                if (!newUris[id]) {
+                    const canvas = document.getElementById(`qr-${id}`) as HTMLCanvasElement;
+                    if (canvas) {
+                        newUris[id] = canvas.toDataURL("image/png");
+                        changed = true;
+                    }
+                }
+            });
+            if (changed) setQrDataUris(newUris);
+        }, 500); // Wait for canvas to render
+        return () => clearTimeout(timer);
+    }, [selectedIds, units]);
+
     // ─── Maintenance Toggle ───
     const handleMaintenanceToggle = async (unit: InventoryUnit) => {
         const newStatus = unit.availabilityStatus === 'in_maintenance' ? 'in_warehouse' : 'in_maintenance';
@@ -279,6 +301,16 @@ function FleetPageContent() {
                     )}
 
                     <div className="flex items-center gap-2 flex-wrap">
+                        {/* Bulk Inspect */}
+                        {selectedIds.length > 0 && (
+                            <button 
+                                onClick={() => setShowInspectionModal(selectedIds.join(','))} 
+                                className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-3 py-2 rounded-xl font-bold text-xs hover:bg-emerald-500/20 transition-all shadow-[0_4px_12px_rgba(16,185,129,0.1)]"
+                            >
+                                <CheckCircle2 className="w-4 h-4" /> Bulk Inspect ({selectedIds.length})
+                            </button>
+                        )}
+
                         {/* QR Scanner */}
                         <button onClick={() => setShowScannerModal(true)} className="flex items-center gap-2 bg-blue-500/10 border border-blue-500/20 text-blue-400 px-3 py-2 rounded-xl font-bold text-xs hover:bg-blue-500/20 transition-all">
                             <ScanLine className="w-4 h-4" /> Scan QR
@@ -291,7 +323,7 @@ function FleetPageContent() {
                                     {LABEL_SIZE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                                 </select>
                                 <PDFDownloadLink
-                                    document={<AssetTagPDF items={units.filter(u => selectedIds.includes(u.id))} labelSize={labelSize} />}
+                                    document={<AssetTagPDF items={units.filter(u => selectedIds.includes(u.id)).map(u => ({ ...u, qrDataUri: qrDataUris[u.id] }))} labelSize={labelSize} />}
                                     fileName={`E3-Tags-${labelSize}-${Date.now()}.pdf`}
                                     className="flex items-center gap-2 bg-[var(--color-gold)] text-[var(--color-navy)] px-3 py-2 rounded-xl font-bold text-xs hover:scale-105 active:scale-95 transition-all"
                                 >
@@ -402,8 +434,12 @@ function FleetPageContent() {
 
             {/* ─── Inspection Log Modal ─── */}
             {showInspectionModal && (
-                <InspectionModal unitId={showInspectionModal} currentUnit={units.find(u => u.id === showInspectionModal)!}
-                    onClose={() => setShowInspectionModal(null)} onSuccess={fetchFleet} />
+                <InspectionModal 
+                    unitIds={showInspectionModal.split(',')} 
+                    units={units.filter(u => showInspectionModal.split(',').includes(u.id))}
+                    onClose={() => setShowInspectionModal(null)} 
+                    onSuccess={() => { fetchFleet(); setSelectedIds([]); }} 
+                />
             )}
 
             {/* ─── Add Asset Modal ─── */}
@@ -416,10 +452,24 @@ function FleetPageContent() {
                 <LogViewer unit={viewLogsUnit} onClose={() => setViewLogsUnit(null)} />
             )}
 
-            {/* ─── QR Scanner Modal ─── */}
-            {showScannerModal && (
-                <ScannerModal onClose={() => setShowScannerModal(false)} />
-            )}
+            {/* Off-screen QR Generator (Reliable for canvas.toDataURL) */}
+            <div className="fixed top-[-9999px] left-[-9999px] opacity-0 pointer-events-none">
+                {selectedIds.map(id => {
+                    const unit = units.find(u => u.id === id);
+                    if (!unit) return null;
+                    const passportUrl = `${window.location.protocol}//${window.location.host}/passport/${unit.assetTagCode}`;
+                    return (
+                        <QRCodeCanvas 
+                            key={id}
+                            id={`qr-${id}`}
+                            value={passportUrl}
+                            size={200}
+                            level="H"
+                            includeMargin={false}
+                        />
+                    );
+                })}
+            </div>
         </div>
     );
 }
@@ -481,18 +531,27 @@ function LogViewer({ unit, onClose }: { unit: InventoryUnit; onClose: () => void
 }
 
 // ─── Inspection Log Modal ───
-function InspectionModal({ unitId, currentUnit, onClose, onSuccess }: { unitId: string; currentUnit: InventoryUnit; onClose: () => void; onSuccess: () => void }) {
-    const [form, setForm] = useState({ inspectionType: "routine", conditionAfter: (currentUnit?.conditionStatus || "excellent") as string, notes: "" });
+function InspectionModal({ unitIds, units, onClose, onSuccess }: { unitIds: string[]; units: InventoryUnit[]; onClose: () => void; onSuccess: () => void }) {
+    const [form, setForm] = useState({ inspectionType: "routine", conditionAfter: (units[0]?.conditionStatus || "excellent") as string, notes: "" });
     const [saving, setSaving] = useState(false);
 
     const submit = async () => {
         setSaving(true);
         try {
-            await fetch("/api/admin/fleet/inspection", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ unitId, inspectionType: form.inspectionType, conditionBefore: currentUnit.conditionStatus, conditionAfter: form.conditionAfter, notes: form.notes }),
-            });
+            // Bulk post to unique endpoint or loop (endpoint is preferred if exists, but we'll loop for now if not sure)
+            await Promise.all(units.map(unit => 
+                fetch("/api/admin/fleet/inspection", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ 
+                        unitId: unit.id, 
+                        inspectionType: form.inspectionType, 
+                        conditionBefore: unit.conditionStatus, 
+                        conditionAfter: form.conditionAfter, 
+                        notes: form.notes + (units.length > 1 ? ` (Bulk inspection of ${units.length} items)` : "")
+                    }),
+                })
+            ));
             onSuccess();
             onClose();
         } catch (e) { console.error(e); }
@@ -503,10 +562,20 @@ function InspectionModal({ unitId, currentUnit, onClose, onSuccess }: { unitId: 
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
             <div className="glass border border-white/10 rounded-3xl p-6 w-full max-w-md space-y-5" onClick={e => e.stopPropagation()}>
                 <div className="flex justify-between items-center">
-                    <h3 className="font-black text-lg text-white flex items-center gap-2"><CheckCircle2 className="w-5 h-5 text-[var(--color-gold)]" /> Log Inspection</h3>
+                    <h3 className="font-black text-lg text-white flex items-center gap-2"><CheckCircle2 className="w-5 h-5 text-emerald-400" /> {units.length > 1 ? `Bulk Inspection (${units.length})` : "Log Inspection"}</h3>
                     <button onClick={onClose}><X className="w-5 h-5 text-[var(--color-slate)]" /></button>
                 </div>
-                <p className="text-xs text-[var(--color-slate)]">Asset: <span className="text-[var(--color-gold)] font-mono font-bold">{currentUnit?.assetTagCode}</span></p>
+                
+                <div className="p-3 rounded-xl bg-white/5 border border-white/5">
+                    <p className="text-[10px] text-[var(--color-slate)] uppercase font-black tracking-widest mb-1">Target Assets</p>
+                    <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto">
+                        {units.map(u => (
+                            <span key={u.id} className="text-[10px] font-mono font-bold bg-white/10 px-2 py-0.5 rounded text-[var(--color-gold)]">
+                                {u.assetTagCode}
+                            </span>
+                        ))}
+                    </div>
+                </div>
 
                 <div className="space-y-3">
                     <label className="block text-xs font-bold text-[var(--color-slate)] uppercase tracking-widest">Inspection Type</label>
