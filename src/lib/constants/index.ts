@@ -54,3 +54,14 @@ export const COMMISSION_TYPE = {
 } as const;
 
 export type CommissionType = typeof COMMISSION_TYPE[keyof typeof COMMISSION_TYPE];
+
+/**
+ * Booking Unit Assignment Statuses
+ */
+export const ASSIGNMENT_STATUS = {
+    RESERVED: "reserved",
+    DISPATCHED: "dispatched",
+    RETURNED: "returned",
+} as const;
+
+export type AssignmentStatus = typeof ASSIGNMENT_STATUS[keyof typeof ASSIGNMENT_STATUS];

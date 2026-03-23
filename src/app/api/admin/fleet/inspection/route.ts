@@ -33,12 +33,26 @@ export async function POST(req: NextRequest) {
         }).returning();
 
         // 2. Update the unit's condition and last inspection date
+        // If condition After is maintenance_required, we should also set availability to in_maintenance
+        const updates: any = {
+            conditionStatus: conditionAfter,
+            lastInspectionDate: new Date(),
+            updatedAt: new Date(),
+        };
+
+        if (conditionAfter === "maintenance_required") {
+            updates.availabilityStatus = "in_maintenance";
+        } else if (["excellent", "good"].includes(conditionAfter)) {
+            // Only move back to in_warehouse if it was previously in maintenance
+            // Don't override 'on_rent' status if they are just doing a routine check in the field
+            const currentUnit = await db.query.inventoryUnits.findFirst({ where: eq(inventoryUnits.id, unitId) });
+            if (currentUnit?.availabilityStatus === "in_maintenance") {
+                updates.availabilityStatus = "in_warehouse";
+            }
+        }
+
         await db.update(inventoryUnits)
-            .set({
-                conditionStatus: conditionAfter,
-                lastInspectionDate: new Date(),
-                updatedAt: new Date(),
-            })
+            .set(updates)
             .where(eq(inventoryUnits.id, unitId));
 
         return NextResponse.json(log[0], { status: 201 });

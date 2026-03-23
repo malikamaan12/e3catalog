@@ -1,6 +1,6 @@
 import { db } from "./db";
 import { products, bookings, inventoryOverrides, inventoryUnits } from "./db/schema";
-import { eq, and, or, lte, gte, inArray } from "drizzle-orm";
+import { eq, and, or, lte, gte, inArray, ne } from "drizzle-orm";
 import { addHours, subHours, parseISO, format } from "date-fns";
 import { BOOKING_STATUS } from "./constants";
 
@@ -171,7 +171,8 @@ export async function checkAvailability(req: AvailabilityRequest): Promise<Avail
     const physicalUnits = await db.query.inventoryUnits.findMany({
         where: and(
             eq(inventoryUnits.productId, req.productId),
-            inArray(inventoryUnits.conditionStatus, ["excellent", "good"])
+            inArray(inventoryUnits.conditionStatus, ["excellent", "good"]),
+            ne(inventoryUnits.availabilityStatus, "in_maintenance")
         ),
     });
 

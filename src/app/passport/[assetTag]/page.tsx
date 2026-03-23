@@ -31,15 +31,29 @@ interface AssetPassportData {
     lastInspectionDate: string | null;
     warehouseLocation: string;
     serialNumber: string;
-    // Mock user status for demo
     isAuthorized: boolean; 
+    currentAssignment: {
+        id: string;
+        bookingId: string;
+        projectName: string;
+        customerName: string;
+        startDate: string;
+        endDate: string;
+        assignmentStatus: string;
+    } | null;
     history: Array<{
         id: string;
         date: string;
-        inspectionType: string;
-        conditionBefore: string;
-        conditionAfter: string;
-        notes: string | null;
+        historyType: 'condition' | 'assignment';
+        // Condition fields
+        type?: string;
+        conditionBefore?: string;
+        conditionAfter?: string;
+        notes?: string | null;
+        // Assignment fields
+        projectName?: string;
+        customerName?: string;
+        status?: string;
     }>;
 }
 
@@ -50,6 +64,7 @@ export default function PassportPage() {
     const [loading, setLoading] = useState(true);
     const [tab, setTab] = useState<"status" | "compliance" | "history">("status");
     const [showInspectModal, setShowInspectModal] = useState<{ type: string; label: string } | null>(null);
+    const [showAssignModal, setShowAssignModal] = useState(false);
 
     const fetchPassport = useCallback(async () => {
         try {
@@ -174,6 +189,41 @@ export default function PassportPage() {
                             exit={{ opacity: 0, scale: 0.95 }}
                             className="space-y-6"
                         >
+                            {/* Current Assignment Card */}
+                            <div className={`p-6 rounded-3xl border transition-all duration-500 ${data.currentAssignment ? 'bg-blue-500/10 border-blue-500/20' : 'bg-white/5 border-white/10 opacity-60'}`}>
+                                <div className="flex justify-between items-start mb-4">
+                                    <h3 className="text-xs font-black text-blue-400 uppercase tracking-widest flex items-center gap-2">
+                                        <Calendar className="w-4 h-4" /> Current Deployment
+                                    </h3>
+                                    {data.currentAssignment && (
+                                        <span className="px-2 py-1 rounded-full bg-blue-500/20 text-[8px] font-black text-blue-300 uppercase tracking-widest animate-pulse">Live on Project</span>
+                                    )}
+                                </div>
+                                {data.currentAssignment ? (
+                                    <div className="space-y-4">
+                                        <div>
+                                            <p className="text-[10px] text-blue-300/60 uppercase font-black tracking-widest mb-1">Active Project</p>
+                                            <p className="text-lg font-black text-white leading-tight">{data.currentAssignment.projectName}</p>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <p className="text-[10px] text-blue-300/60 uppercase font-black tracking-widest">Client</p>
+                                                <p className="text-xs font-bold text-white/80">{data.currentAssignment.customerName}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] text-blue-300/60 uppercase font-black tracking-widest">Returns By</p>
+                                                <p className="text-xs font-bold text-white/80">{new Date(data.currentAssignment.endDate).toLocaleDateString()}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="py-2">
+                                        <p className="text-sm font-bold text-white/40 italic">Available in Warehouse</p>
+                                        <p className="text-[10px] text-white/20 uppercase font-black tracking-widest mt-1">No active project assignments</p>
+                                    </div>
+                                )}
+                            </div>
+
                             <div className="glass p-5 border border-white/10 rounded-2xl space-y-4">
                                 <h3 className="text-xs font-black text-[var(--color-gold)] uppercase tracking-widest flex items-center gap-2">
                                     <Info className="w-4 h-4" /> Operational Details
@@ -243,28 +293,46 @@ export default function PassportPage() {
                             exit={{ opacity: 0, x: 10 }}
                             className="space-y-4"
                         >
-                            <div className="relative pl-8 space-y-8 before:absolute before:left-3 before:top-2 before:bottom-0 before:w-px before:bg-white/10">
+                             <div className="relative pl-8 space-y-8 before:absolute before:left-3 before:top-2 before:bottom-0 before:w-px before:bg-white/10">
                                 {data.history.length > 0 ? data.history.map((h, i) => {
-                                    const iconMap: any = {
-                                        routine: CheckCircle2,
-                                        pre_rental: ShieldCheck,
-                                        return: ArrowRightLeft,
-                                        damage: AlertTriangle,
-                                    };
-                                    const Icon = iconMap[h.inspectionType] || History;
-                                    return (
-                                        <div key={h.id} className="relative">
-                                            <div className="absolute -left-8 top-1 w-6 h-6 rounded-full bg-[#070b14] border border-white/10 flex items-center justify-center">
-                                                <Icon className={`w-3 h-3 ${h.inspectionType === 'damage' ? 'text-red-400' : 'text-[var(--color-gold)]'}`} />
+                                    if (h.historyType === 'condition') {
+                                        const iconMap: any = {
+                                            routine: CheckCircle2,
+                                            pre_rental: ShieldCheck,
+                                            return: ArrowRightLeft,
+                                            damage: AlertTriangle,
+                                        };
+                                        const Icon = iconMap[h.type || ''] || History;
+                                        return (
+                                            <div key={h.id} className="relative">
+                                                <div className="absolute -left-8 top-1 w-6 h-6 rounded-full bg-[#070b14] border border-white/10 flex items-center justify-center">
+                                                    <Icon className={`w-3 h-3 ${h.type === 'damage' ? 'text-red-400' : 'text-[var(--color-gold)]'}`} />
+                                                </div>
+                                                <p className="text-[10px] font-black text-[var(--color-slate)] uppercase tracking-widest">{new Date(h.date).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</p>
+                                                <p className="text-sm font-bold text-white uppercase tracking-tight">Condition Update: {h.type?.replace('_', ' ')}</p>
+                                                <p className="text-[10px] text-[var(--color-slate)] uppercase font-bold">
+                                                    {h.conditionBefore} → <span className="text-white">{h.conditionAfter}</span>
+                                                </p>
+                                                {h.notes && <p className="text-xs text-[var(--color-slate)] mt-1 italic">"{h.notes}"</p>}
                                             </div>
-                                            <p className="text-[10px] font-black text-[var(--color-slate)] uppercase tracking-widest">{new Date(h.date).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</p>
-                                            <p className="text-sm font-bold text-white uppercase tracking-tight">{h.inspectionType.replace('_', ' ')}</p>
-                                            <p className="text-[10px] text-[var(--color-slate)] uppercase font-bold">
-                                                {h.conditionBefore} → <span className="text-white">{h.conditionAfter}</span>
-                                            </p>
-                                            {h.notes && <p className="text-xs text-[var(--color-slate)] mt-1 italic italic">"{h.notes}"</p>}
-                                        </div>
-                                    );
+                                        );
+                                    } else {
+                                        return (
+                                            <div key={h.id} className="relative">
+                                                <div className="absolute -left-8 top-1 w-6 h-6 rounded-full bg-[#070b14] border border-white/10 flex items-center justify-center">
+                                                    <MapPin className="w-3 h-3 text-blue-400" />
+                                                </div>
+                                                <p className="text-[10px] font-black text-[var(--color-slate)] uppercase tracking-widest">{new Date(h.date).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</p>
+                                                <p className="text-sm font-bold text-white uppercase tracking-tight">Deployed: {h.projectName}</p>
+                                                <p className="text-[10px] text-[var(--color-slate)] uppercase font-bold">
+                                                    Client: <span className="text-white">{h.customerName}</span>
+                                                </p>
+                                                <span className={`inline-block mt-2 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest ${h.status === 'dispatched' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'}`}>
+                                                    {h.status}
+                                                </span>
+                                            </div>
+                                        );
+                                    }
                                 }) : (
                                     <div className="text-center py-10 opacity-30 italic text-sm">No recorded history for this asset.</div>
                                 )}
@@ -281,24 +349,34 @@ export default function PassportPage() {
                         <Unlock className="w-4 h-4 animate-pulse" />
                         <span className="text-[10px] font-black uppercase tracking-[0.3em]">Authorized Operator Panel</span>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-3 gap-3">
+                        <button 
+                            onClick={() => setShowAssignModal(true)}
+                            disabled={!!data.currentAssignment}
+                            className="group flex flex-col items-center justify-center p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 active:scale-95 transition-all outline-none focus:ring-2 ring-blue-500 disabled:opacity-30 disabled:grayscale"
+                        >
+                            <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                                <MapPin className="w-5 h-5 text-blue-400" />
+                            </div>
+                            <span className="text-[8px] font-black uppercase tracking-widest text-center">Assign Project</span>
+                        </button>
                         <button 
                             onClick={() => setShowInspectModal({ type: 'pre_rental', label: 'Bump-In' })}
-                            className="group flex flex-col items-center justify-center p-5 rounded-[2rem] bg-white/5 border border-white/10 hover:bg-white/10 active:scale-95 transition-all outline-none focus:ring-2 ring-[var(--color-gold)]"
+                            className="group flex flex-col items-center justify-center p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 active:scale-95 transition-all outline-none focus:ring-2 ring-[var(--color-gold)]"
                         >
-                            <div className="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                                <ArrowRightLeft className="w-6 h-6 text-blue-400" />
+                            <div className="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                                <ArrowRightLeft className="w-5 h-5 text-orange-400" />
                             </div>
-                            <span className="text-[10px] font-black uppercase tracking-widest">Bump-In</span>
+                            <span className="text-[8px] font-black uppercase tracking-widest text-center">Bump-In</span>
                         </button>
                         <button 
                             onClick={() => setShowInspectModal({ type: 'damage', label: 'Log Damage' })}
-                            className="group flex flex-col items-center justify-center p-5 rounded-[2rem] bg-[var(--color-gold)] hover:bg-[var(--color-gold)]/90 active:scale-95 transition-all shadow-[0_10px_25px_rgba(255,191,0,0.3)] outline-none"
+                            className="group flex flex-col items-center justify-center p-4 rounded-2xl bg-[var(--color-gold)] hover:bg-[var(--color-gold)]/90 active:scale-95 transition-all shadow-[0_10px_25px_rgba(255,191,0,0.3)] outline-none"
                         >
-                            <div className="w-12 h-12 rounded-2xl bg-black/10 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                                <Wrench className="w-6 h-6 text-black" />
+                            <div className="w-10 h-10 rounded-xl bg-black/10 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                                <Wrench className="w-5 h-5 text-black" />
                             </div>
-                            <span className="text-[10px] font-black uppercase tracking-widest text-black">Log Damage</span>
+                            <span className="text-[8px] font-black uppercase tracking-widest text-black text-center">Log Damage</span>
                         </button>
                     </div>
                 </div>
@@ -316,6 +394,32 @@ export default function PassportPage() {
                     onSuccess={() => { setShowInspectModal(null); fetchPassport(); setTab('history'); }}
                 />
             )}
+
+            {/* Assignment Modal */}
+            {showAssignModal && (
+                <AssignmentModal 
+                    assetTag={data.assetTagCode}
+                    onClose={() => setShowAssignModal(false)}
+                    onSuccess={() => { setShowAssignModal(false); fetchPassport(); setTab('status'); }}
+                />
+            )}
+
+            {/* Share Passport */}
+            <div className="max-w-5xl mx-auto px-6 py-20 text-center opacity-40">
+                <div className="w-24 h-24 bg-white mx-auto mb-4 rounded-xl p-2">
+                    <img src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(window.location.href)}`} alt="Share QR" className="w-full h-full" />
+                </div>
+                <p className="text-[10px] font-black uppercase tracking-widest">Share Digital Passport</p>
+                <button 
+                    onClick={() => {
+                        navigator.clipboard.writeText(window.location.href);
+                        alert("Passport Link Copied!");
+                    }}
+                    className="mt-2 text-xs text-[var(--color-gold)] font-bold decoration-[var(--color-gold)] underline underline-offset-4"
+                >
+                    Copy Secure Link
+                </button>
+            </div>
         </div>
     );
 }
@@ -375,6 +479,116 @@ function MobileInspectModal({ assetId, assetTag, currentCondition, type, label, 
                     className="w-full py-4 rounded-2xl bg-[var(--color-gold)] text-[var(--color-navy)] font-black text-sm hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 shadow-[0_10px_30px_rgba(255,191,0,0.3)]">
                     {saving ? "Transmitting..." : `Submit ${label}`}
                 </button>
+            </motion.div>
+        </div>
+    );
+}
+
+// ─── Project Assignment Modal ───
+function AssignmentModal({ assetTag, onClose, onSuccess }: { assetTag: string, onClose: () => void, onSuccess: () => void }) {
+    const [bookings, setBookings] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [selecting, setSelecting] = useState<string | null>(null);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        const fetchBookings = async () => {
+            try {
+                const res = await fetch(`/api/passport/${assetTag}/bookings`);
+                if (res.ok) setBookings(await res.json());
+            } catch (e) { console.error(e); }
+            finally { setLoading(false); }
+        };
+        fetchBookings();
+    }, [assetTag]);
+
+    const assign = async (bookingId: string) => {
+        setSelecting(bookingId);
+        setError(null);
+        try {
+            const res = await fetch(`/api/passport/${assetTag}/assign`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ bookingId }),
+            });
+            const result = await res.json();
+            if (res.ok) {
+                onSuccess();
+            } else {
+                setError(result.error || "Failed to assign asset.");
+            }
+        } catch (e) { 
+            setError("Network error occurred.");
+        } finally {
+            setSelecting(null);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[110] flex items-end md:items-center justify-center p-0 md:p-4" onClick={onClose}>
+            <motion.div 
+                initial={{ y: "100%" }} animate={{ y: 0 }}
+                className="w-full max-w-lg bg-[#0a0f1e] border-t md:border border-white/10 rounded-t-[2.5rem] md:rounded-[2.5rem] p-8 pb-12 space-y-6 shadow-2xl relative"
+                onClick={e => e.stopPropagation()}
+            >
+                <div className="flex justify-between items-center mb-2">
+                    <h3 className="font-black text-xl text-white tracking-tight">Assign to Project</h3>
+                    <button onClick={onClose} className="p-2 bg-white/5 rounded-full"><X className="w-5 h-5 text-[var(--color-slate)]" /></button>
+                </div>
+                
+                <p className="text-xs text-[var(--color-slate)] font-bold tracking-widest uppercase mb-4">
+                    Product Passport: <span className="text-[var(--color-gold)]">{assetTag}</span>
+                </p>
+
+                {error && (
+                    <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center gap-3 text-red-400 text-xs font-bold animate-shake">
+                        <AlertTriangle className="w-4 h-4" /> {error}
+                    </div>
+                )}
+
+                <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
+                    {loading ? (
+                        <div className="py-20 text-center space-y-4">
+                            <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity }} className="w-8 h-8 border-2 border-[var(--color-gold)] border-t-transparent rounded-full mx-auto" />
+                            <p className="text-[10px] uppercase font-black tracking-widest text-white/20">Finding Active Orders...</p>
+                        </div>
+                    ) : bookings.length > 0 ? (
+                        bookings.map(b => (
+                            <button 
+                                key={b.id}
+                                onClick={() => assign(b.id)}
+                                disabled={!!selecting}
+                                className="w-full group relative overflow-hidden p-5 rounded-2xl bg-white/5 border border-white/10 hover:border-[var(--color-gold)]/30 hover:bg-white/10 transition-all text-left outline-none"
+                            >
+                                <div className="flex justify-between items-start mb-2">
+                                    <div className="flex flex-col">
+                                        <p className="text-[10px] text-blue-400 uppercase font-black tracking-widest">{b.customerName}</p>
+                                        <h4 className="text-sm font-black text-white group-hover:text-[var(--color-gold)] transition-colors">{b.projectName}</h4>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-[10px] text-white/20 uppercase font-black tracking-widest">Fulfillment</p>
+                                        <p className="text-xs font-black text-white/80">{b.unitsAssigned} / {b.unitsRequired}</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2 text-[10px] font-bold text-[var(--color-slate)]">
+                                    <Calendar className="w-3 h-3" />
+                                    {new Date(b.startDate).toLocaleDateString()} — {new Date(b.endDate).toLocaleDateString()}
+                                </div>
+                                {selecting === b.id && (
+                                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center">
+                                        <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity }} className="w-6 h-6 border-2 border-[var(--color-gold)] border-t-transparent rounded-full" />
+                                    </div>
+                                )}
+                            </button>
+                        ))
+                    ) : (
+                        <div className="py-20 text-center opacity-30 italic text-sm">No bookings found for this product that require units.</div>
+                    )}
+                </div>
+
+                {!loading && bookings.length > 0 && (
+                    <p className="text-[10px] text-center text-[var(--color-slate)] font-black uppercase tracking-widest opacity-50">Select a project to mark this unit as Dispatched</p>
+                )}
             </motion.div>
         </div>
     );
