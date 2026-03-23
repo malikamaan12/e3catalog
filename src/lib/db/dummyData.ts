@@ -10,6 +10,7 @@ export const dummyProducts = [
         dimensions: "4ft x 8ft x 0.6m–1.0m (adj.)", weight: "48 kg per unit", powerRequirements: "None",
         materials: "Galvanized steel frame, plywood deck with non-slip surface",
         pricePerDay: 120, units: 20, condition: "excellent", warehouseLocation: "Warehouse A – Staging Bay 1",
+        thumbnailUrl: "https://images.unsplash.com/photo-1506354666786-959d6d497f1a?q=80&w=1000&auto=format&fit=crop",
     },
     {
         itemCode: "STG-002", categorySlug: "staging",
@@ -18,6 +19,7 @@ export const dummyProducts = [
         dimensions: "6m x 4m performance area", weight: "2,200 kg total", powerRequirements: "None",
         materials: "Aluminum frame, weatherproof polycarbonate roof panels",
         pricePerDay: 1800, units: 2, condition: "excellent", warehouseLocation: "Outdoor Lot B",
+        thumbnailUrl: "https://images.unsplash.com/photo-1470229722913-d7d94cf9652e?q=80&w=1000&auto=format&fit=crop",
     },
 
     // ─── EXHIBITIONS ──────────────────────────────────────────────────────
@@ -28,6 +30,7 @@ export const dummyProducts = [
         dimensions: "3m x 3m x 2.5m", weight: "85 kg", powerRequirements: "220V / 500W",
         materials: "Aluminum extrusion, tension fabric graphics panels",
         pricePerDay: 650, units: 8, condition: "excellent", warehouseLocation: "Warehouse B – Exhibitions Hall",
+        thumbnailUrl: "https://images.unsplash.com/photo-1497366216548-37526070297c?q=80&w=1000&auto=format&fit=crop",
     },
     {
         itemCode: "EXH-002", categorySlug: "exhibitions",
@@ -36,6 +39,7 @@ export const dummyProducts = [
         dimensions: "2m x 3m x 2.5m", weight: "40 kg", powerRequirements: "220V / 300W",
         materials: "Octanorm aluminum system, melamine panels",
         pricePerDay: 280, units: 15, condition: "good", warehouseLocation: "Warehouse B – Bay 4",
+        thumbnailUrl: "https://images.unsplash.com/photo-1531058020387-3be344556be6?q=80&w=1000&auto=format&fit=crop",
     },
 
     // ─── STRUCTURES ───────────────────────────────────────────────────────
@@ -46,6 +50,7 @@ export const dummyProducts = [
         dimensions: "10m x 20m x 4.5m", weight: "860 kg", powerRequirements: "None",
         materials: "Hot-dip galvanized steel, 650gsm PVC fabric",
         pricePerDay: 2200, units: 3, condition: "excellent", warehouseLocation: "Outdoor Lot A – Tent Storage",
+        thumbnailUrl: "https://images.unsplash.com/photo-1523301551780-cd17359a95d0?q=80&w=1000&auto=format&fit=crop",
     },
     {
         itemCode: "STR-002", categorySlug: "structures",
@@ -54,6 +59,7 @@ export const dummyProducts = [
         dimensions: "5m x 5m", weight: "120 kg", powerRequirements: "None",
         materials: "320gsm HDPE UV-resistant shade fabric, SS316 cabling",
         pricePerDay: 380, units: 10, condition: "excellent", warehouseLocation: "Warehouse A – Shade Bay",
+        thumbnailUrl: "https://images.unsplash.com/photo-1533420225145-174fc990172c?q=80&w=1000&auto=format&fit=crop",
     },
 
     // ─── RIGGING & TRUSS ──────────────────────────────────────────────────
@@ -64,6 +70,7 @@ export const dummyProducts = [
         dimensions: "2000mm L x 400mm W x 400mm H", weight: "12 kg", powerRequirements: "None",
         materials: "6082-T6 aerospace aluminum, welded construction",
         pricePerDay: 35, units: 80, condition: "excellent", warehouseLocation: "Warehouse C – Truss Rack",
+        thumbnailUrl: "https://images.unsplash.com/photo-1544027993-37dbfe43562a?q=80&w=1000&auto=format&fit=crop",
     },
     {
         itemCode: "RIG-002", categorySlug: "rigging-truss",
@@ -72,6 +79,7 @@ export const dummyProducts = [
         dimensions: "320mm x 200mm x 280mm", weight: "22 kg", powerRequirements: "380V 3-phase / 1.1kW",
         materials: "Die-cast aluminum housing, grade 100 alloy steel chain",
         pricePerDay: 180, units: 12, condition: "excellent", warehouseLocation: "Warehouse C – Motor Room",
+        thumbnailUrl: "https://images.unsplash.com/photo-1581092160562-40aa08e78837?q=80&w=1000&auto=format&fit=crop",
     },
 
     // ─── LIGHTING ─────────────────────────────────────────────────────────
@@ -82,6 +90,7 @@ export const dummyProducts = [
         dimensions: "395mm L x 195mm W x 540mm H", weight: "16.5 kg", powerRequirements: "220V / 480W",
         materials: "Die-cast aluminum, borosilicate optics",
         pricePerDay: 250, units: 24, condition: "excellent", warehouseLocation: "Warehouse D – Lighting Rack A",
+        thumbnailUrl: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?q=80&w=1000&auto=format&fit=crop",
     },
     {
         itemCode: "LGT-002", categorySlug: "lighting",
@@ -90,6 +99,7 @@ export const dummyProducts = [
         dimensions: "250mm dia x 280mm H", weight: "3.8 kg", powerRequirements: "220V / 130W",
         materials: "Powder-coated die-cast aluminum",
         pricePerDay: 45, units: 60, condition: "excellent", warehouseLocation: "Warehouse D – Lighting Rack B",
+        thumbnailUrl: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?q=80&w=1000&auto=format&fit=crop",
     },
 
     // ─── AUDIO ────────────────────────────────────────────────────────────
@@ -100,6 +110,7 @@ export const dummyProducts = [
         dimensions: "700mm W x 360mm D x 370mm H", weight: "40 kg", powerRequirements: "230V / 2000W",
         materials: "Birch plywood, Nextel coated",
         pricePerDay: 320, units: 16, condition: "excellent", warehouseLocation: "Warehouse D – Audio Bay",
+        thumbnailUrl: "https://images.unsplash.com/photo-1558403194-611308249627?q=80&w=1000&auto=format&fit=crop",
     },
     {
         itemCode: "AUD-002", categorySlug: "audio",
@@ -108,6 +119,7 @@ export const dummyProducts = [
         dimensions: "482mm W x 44mm H x 140mm D (receiver rack)", weight: "6.2 kg", powerRequirements: "220V / 50W",
         materials: "Steel rack chassis, carbon fiber handheld capsule",
         pricePerDay: 210, units: 8, condition: "excellent", warehouseLocation: "Warehouse D – Audio Bay",
+        thumbnailUrl: "https://images.unsplash.com/photo-1520523839897-bd0b52f945a0?q=80&w=1000&auto=format&fit=crop",
     },
 
     // ─── LED & DISPLAYS ───────────────────────────────────────────────────
@@ -118,6 +130,7 @@ export const dummyProducts = [
         dimensions: "500mm W x 500mm H x 75mm D", weight: "7.5 kg per panel", powerRequirements: "220V / 150W per panel",
         materials: "Die-cast aluminum cabinet, pitch 3.9mm SMD LED",
         pricePerDay: 95, units: 100, condition: "excellent", warehouseLocation: "Warehouse E – LED Storage",
+        thumbnailUrl: "https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?q=80&w=1000&auto=format&fit=crop",
     },
     {
         itemCode: "LED-002", categorySlug: "led-displays",
@@ -126,6 +139,7 @@ export const dummyProducts = [
         dimensions: "1684mm W x 970mm H x 69mm D", weight: "58 kg", powerRequirements: "220V / 350W",
         materials: "Tempered glass, aluminum bezel",
         pricePerDay: 280, units: 10, condition: "excellent", warehouseLocation: "Warehouse E – AV Bay",
+        thumbnailUrl: "https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=1000&auto=format&fit=crop",
     },
 
     // ─── POWER & ELECTRICAL ───────────────────────────────────────────────
@@ -136,6 +150,7 @@ export const dummyProducts = [
         dimensions: "3200mm L x 1100mm W x 1500mm H", weight: "1,850 kg", powerRequirements: "Diesel. Produces 380/220V 3-phase",
         materials: "Steel soundproof enclosure, Stamford alternator",
         pricePerDay: 1200, units: 4, condition: "excellent", warehouseLocation: "Outdoor Lot C – Generator Yard",
+        thumbnailUrl: "https://images.unsplash.com/photo-1463901691925-50e505500e3e?q=80&w=1000&auto=format&fit=crop",
     },
     {
         itemCode: "PWR-002", categorySlug: "power-electrical",
@@ -144,6 +159,7 @@ export const dummyProducts = [
         dimensions: "600mm W x 400mm H x 200mm D", weight: "18 kg", powerRequirements: "32A 3-phase input",
         materials: "Powder-coated steel enclosure",
         pricePerDay: 85, units: 20, condition: "excellent", warehouseLocation: "Warehouse C – Electrical Bay",
+        thumbnailUrl: "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?q=80&w=1000&auto=format&fit=crop",
     },
 
     // ─── CLIMATE & UTILITIES ──────────────────────────────────────────────
@@ -154,6 +170,7 @@ export const dummyProducts = [
         dimensions: "1000mm L x 560mm W x 1450mm H", weight: "210 kg", powerRequirements: "380V 3-phase / 8.5kW",
         materials: "Galvanized steel chassis, R-410A refrigerant",
         pricePerDay: 450, units: 6, condition: "excellent", warehouseLocation: "Outdoor Lot C – HVAC Yard",
+        thumbnailUrl: "https://images.unsplash.com/photo-1473341304170-971dcb15a9d9?q=80&w=1000&auto=format&fit=crop",
     },
 
     // ─── FURNITURE ────────────────────────────────────────────────────────
@@ -164,6 +181,7 @@ export const dummyProducts = [
         dimensions: "450mm W x 430mm D x 950mm H", weight: "4.2 kg", powerRequirements: "None",
         materials: "Solid beech wood, polyester cushion",
         pricePerDay: 12, units: 200, condition: "excellent", warehouseLocation: "Warehouse F – Furniture Bay",
+        thumbnailUrl: "https://images.unsplash.com/photo-1519741497674-611481863552?q=80&w=1000&auto=format&fit=crop",
     },
     {
         itemCode: "FRN-002", categorySlug: "furniture",
@@ -172,6 +190,7 @@ export const dummyProducts = [
         dimensions: "600mm dia x 1060mm H", weight: "9 kg", powerRequirements: "None",
         materials: "Steel pedestal, MDF top, polyester linen",
         pricePerDay: 28, units: 80, condition: "excellent", warehouseLocation: "Warehouse F – Furniture Bay",
+        thumbnailUrl: "https://images.unsplash.com/photo-1469334031218-e382a71b716b?q=80&w=1000&auto=format&fit=crop",
     },
 
     // ─── DECOR ────────────────────────────────────────────────────────────
@@ -182,6 +201,7 @@ export const dummyProducts = [
         dimensions: "Covers 10m x 10m area", weight: "22 kg total", powerRequirements: "220V / 200W (fairy lights)",
         materials: "190gsm sheer voile, LED fairy string lights",
         pricePerDay: 380, units: 5, condition: "excellent", warehouseLocation: "Warehouse F – Decor Bay",
+        thumbnailUrl: "https://images.unsplash.com/photo-1513519245088-0e12902e5a38?q=80&w=1000&auto=format&fit=crop",
     },
 
     // ─── BRANDING ─────────────────────────────────────────────────────────
@@ -192,6 +212,7 @@ export const dummyProducts = [
         dimensions: "3000mm W x 2500mm H", weight: "12 kg", powerRequirements: "None",
         materials: "Anodized aluminum telescopic frame",
         pricePerDay: 95, units: 12, condition: "excellent", warehouseLocation: "Warehouse B – Branding Bay",
+        thumbnailUrl: "https://images.unsplash.com/photo-1496150590317-f8d9f1a01f14?q=80&w=1000&auto=format&fit=crop",
     },
 
     // ─── WAYFINDING ───────────────────────────────────────────────────────
@@ -202,6 +223,7 @@ export const dummyProducts = [
         dimensions: "120mm sq x 2000mm H", weight: "8.5 kg", powerRequirements: "None",
         materials: "6063 aluminum extrusion, cast iron base",
         pricePerDay: 35, units: 40, condition: "excellent", warehouseLocation: "Warehouse B – Signage Bay",
+        thumbnailUrl: "https://images.unsplash.com/photo-1511871893393-82e9c17ad2d3?q=80&w=1000&auto=format&fit=crop",
     },
 
     // ─── CROWD CONTROL ────────────────────────────────────────────────────
@@ -212,6 +234,7 @@ export const dummyProducts = [
         dimensions: "2200mm W x 1100mm H x 550mm D", weight: "16.5 kg", powerRequirements: "None",
         materials: "Hot-dip galvanized mild steel",
         pricePerDay: 22, units: 150, condition: "excellent", warehouseLocation: "Warehouse G – Crowd Control",
+        thumbnailUrl: "https://images.unsplash.com/photo-1541818167-17ed48da07b7?q=80&w=1000&auto=format&fit=crop",
     },
     {
         itemCode: "CRD-002", categorySlug: "crowd-control",
@@ -220,6 +243,7 @@ export const dummyProducts = [
         dimensions: "350mm base dia x 1000mm H", weight: "5 kg", powerRequirements: "None",
         materials: "SS304 brushed stainless, ABS belt cassette",
         pricePerDay: 15, units: 80, condition: "good", warehouseLocation: "Warehouse G – Crowd Control",
+        thumbnailUrl: "https://images.unsplash.com/photo-1517457373958-b7bdd4587205?q=80&w=1000&auto=format&fit=crop",
     },
 
     // ─── ENTERTAINMENT ────────────────────────────────────────────────────
@@ -230,6 +254,7 @@ export const dummyProducts = [
         dimensions: "680mm W x 830mm D x 1850mm H", weight: "95 kg", powerRequirements: "220V / 250W",
         materials: "MDF cabinet, tempered glass screen, melamine finish",
         pricePerDay: 280, units: 6, condition: "good", warehouseLocation: "Warehouse H – Entertainment",
+        thumbnailUrl: "https://images.unsplash.com/photo-1511512578047-dfb367046420?q=80&w=1000&auto=format&fit=crop",
     },
 
     // ─── SPORTS EQUIPMENT ─────────────────────────────────────────────────
@@ -240,6 +265,7 @@ export const dummyProducts = [
         dimensions: "7320mm W x 2440mm H x 1500mm D", weight: "62 kg", powerRequirements: "None",
         materials: "80mm round aluminum alloy, HDPE net",
         pricePerDay: 350, units: 4, condition: "excellent", warehouseLocation: "Outdoor Lot B – Sports",
+        thumbnailUrl: "https://images.unsplash.com/photo-1529900948632-586b5860368a?q=80&w=1000&auto=format&fit=crop",
     },
 
     // ─── EVENT TECHNOLOGY ─────────────────────────────────────────────────
@@ -250,6 +276,7 @@ export const dummyProducts = [
         dimensions: "356mm W x 243mm D x 19mm H", weight: "1.85 kg", powerRequirements: "220V / 65W",
         materials: "Magnesium alloy chassis",
         pricePerDay: 120, units: 15, condition: "excellent", warehouseLocation: "Warehouse D – IT Bay",
+        thumbnailUrl: "https://images.unsplash.com/photo-1588702547919-26089e690ecc?q=80&w=1000&auto=format&fit=crop",
     },
     {
         itemCode: "EVT-002", categorySlug: "event-technology",
@@ -258,6 +285,7 @@ export const dummyProducts = [
         dimensions: "450mm W x 1200mm H x 380mm D", weight: "8 kg", powerRequirements: "220V / 20W",
         materials: "Powder-coated steel stand, ABS enclosure",
         pricePerDay: 95, units: 20, condition: "excellent", warehouseLocation: "Warehouse D – IT Bay",
+        thumbnailUrl: "https://images.unsplash.com/photo-1544244015-0cd4b3ffc6b0?q=80&w=1000&auto=format&fit=crop",
     },
 
     // ─── LOGISTICS EQUIPMENT ─────────────────────────────────────────────
@@ -268,6 +296,7 @@ export const dummyProducts = [
         dimensions: "1785mm L x 750mm W x 1230mm H", weight: "330 kg", powerRequirements: "24V DC battery / 220V charger",
         materials: "Steel chassis, polyurethane drive wheel",
         pricePerDay: 280, units: 3, condition: "good", warehouseLocation: "Warehouse A – Loading Bay",
+        thumbnailUrl: "https://images.unsplash.com/photo-1524514587600-3520f1dbf98e?q=80&w=1000&auto=format&fit=crop",
     },
 
     // ─── SAFETY EQUIPMENT ─────────────────────────────────────────────────
@@ -278,6 +307,7 @@ export const dummyProducts = [
         dimensions: "160mm dia x 680mm H per unit", weight: "14 kg charged per unit", powerRequirements: "None",
         materials: "Spun steel cylinder, brass valve",
         pricePerDay: 150, units: 8, condition: "excellent", warehouseLocation: "Warehouse G – Safety Store",
+        thumbnailUrl: "https://images.unsplash.com/photo-1582213782179-e0d53f98f2ca?q=80&w=1000&auto=format&fit=crop",
     },
 
     // ─── MANPOWER ─────────────────────────────────────────────────────────
@@ -288,5 +318,6 @@ export const dummyProducts = [
         dimensions: "N/A", weight: "N/A", powerRequirements: "N/A",
         materials: "N/A",
         pricePerDay: 450, units: 8, condition: "excellent", warehouseLocation: "N/A",
+        thumbnailUrl: "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?q=80&w=1000&auto=format&fit=crop",
     },
 ];

@@ -42,18 +42,14 @@ async function bulkAddProducts() {
             }
             const categoryId = catResult.rows[0].id;
 
-            // 2. Check if product with same itemCode already exists
+            // 2. We now use ON CONFLICT DO UPDATE, so we don't skip existing itemCodes.
             const existing = await client.query(
                 `SELECT id FROM products WHERE item_code = $1 LIMIT 1`,
                 [item.itemCode]
             );
-            if (existing.rowCount && existing.rowCount > 0) {
-                console.log(`  ↩ Skipping (already exists): ${item.itemCode} – ${item.name}`);
-                continue;
-            }
-
-            // 3. Insert the master product
-            const productId = uuidv4();
+            const productId = existing.rowCount && existing.rowCount > 0 
+                ? existing.rows[0].id 
+                : uuidv4();
             const slug = toSlug(item.name);
 
             await client.query(`
@@ -62,42 +58,55 @@ async function bulkAddProducts() {
                     short_description, dimensions, weight, power_requirements, materials,
                     price_per_day, show_price, price_type, unit, min_order_qty,
                     featured, requires_license, requires_approval,
-                    created_at, updated_at
+                    thumbnail_url, created_at, updated_at
                 ) VALUES (
                     $1, 'E3-ENT', $2, $3, $4, $5,
                     $6, $7, $8, $9, $10,
                     $11, true, 'daily', 'unit', 1,
                     false, false, false,
-                    NOW(), NOW()
-                )`,
+                    $12, NOW(), NOW()
+                )
+                ON CONFLICT (item_code) DO UPDATE SET
+                    thumbnail_url = EXCLUDED.thumbnail_url,
+                    updated_at = NOW()
+                `,
                 [
                     productId, categoryId, item.name, slug, item.itemCode,
                     item.shortDescription, item.dimensions, item.weight,
                     item.powerRequirements, item.materials,
-                    item.pricePerDay
+                    item.pricePerDay, (item as any).thumbnailUrl
                 ]
             );
             productCount++;
             console.log(`  ✅ Product: ${item.name} (${item.itemCode})`);
 
-            // 4. Generate inventory_units with serial numbers
-            const unitsToCreate = item.units;
-            for (let i = 1; i <= unitsToCreate; i++) {
-                const serialNumber = `${item.itemCode}-SN-${String(i).padStart(3, '0')}`;
-                await client.query(`
-                    INSERT INTO inventory_units (
-                        id, product_id, serial_number, condition, status,
-                        warehouse_location, created_at, updated_at
-                    ) VALUES ($1, $2, $3, $4, 'available', $5, NOW(), NOW())`,
-                    [
-                        uuidv4(), productId, serialNumber,
-                        item.condition,
-                        item.warehouseLocation !== 'N/A' ? item.warehouseLocation : null,
-                    ]
-                );
-                unitCount++;
+            // 4. Generate inventory_units ONLY if none exist
+            const existingUnits = await client.query(
+                `SELECT id FROM inventory_units WHERE product_id = $1 LIMIT 1`,
+                [productId]
+            );
+
+            if (existingUnits.rowCount === 0) {
+                const unitsToCreate = item.units;
+                for (let i = 1; i <= unitsToCreate; i++) {
+                    const serialNumber = `${item.itemCode}-SN-${String(i).padStart(3, '0')}`;
+                    await client.query(`
+                        INSERT INTO inventory_units (
+                            id, product_id, serial_number, condition, status,
+                            warehouse_location, created_at, updated_at
+                        ) VALUES ($1, $2, $3, $4, 'available', $5, NOW(), NOW())`,
+                        [
+                            uuidv4(), productId, serialNumber,
+                            item.condition,
+                            item.warehouseLocation !== 'N/A' ? item.warehouseLocation : null,
+                        ]
+                    );
+                    unitCount++;
+                }
+                console.log(`     └─ ${unitsToCreate} inventory unit${unitsToCreate > 1 ? 's' : ''} created`);
+            } else {
+                console.log(`     └─ Skipping inventory units (already exist)`);
             }
-            console.log(`     └─ ${unitsToCreate} inventory unit${unitsToCreate > 1 ? 's' : ''} created`);
         }
 
         console.log(`\n🎉 Bulk upload complete!`);
