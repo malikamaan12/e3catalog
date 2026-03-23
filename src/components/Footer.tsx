@@ -57,8 +57,8 @@ export function Footer() {
                         <h4 className="font-[family-name:var(--font-heading)] font-semibold text-sm tracking-wider mb-4 text-[var(--color-gold)] uppercase">PLATFORM</h4>
                         <div className="flex flex-col gap-2">
                             <Link href="/catalog" className="text-sm text-[var(--color-slate)] hover:text-[var(--color-warm-white)] transition-colors">View Catalog</Link>
-                            <Link href="/catalog" className="text-sm text-[var(--color-slate)] hover:text-[var(--color-warm-white)] transition-colors">Inventory Matrix</Link>
-                            <Link href="/login" className="text-sm text-[var(--color-slate)] hover:text-[var(--color-warm-white)] transition-colors">Vendor Portal</Link>
+                            <Link href="/vendors" className="text-sm text-[var(--color-slate)] hover:text-[var(--color-warm-white)] transition-colors">Partner Portal</Link>
+                            <Link href="/vendors/register" className="text-sm text-[var(--color-slate)] hover:text-[var(--color-warm-white)] transition-colors">Become a Vendor</Link>
                             <Link href="/how-it-works" className="text-sm text-[var(--color-slate)] hover:text-[var(--color-warm-white)] transition-colors">How It Works</Link>
                         </div>
                     </div>
@@ -66,12 +66,10 @@ export function Footer() {
                     {/* Legal */}
                     <div>
                         <h4 className="font-[family-name:var(--font-heading)] font-semibold text-sm tracking-wider mb-4 text-[var(--color-gold)] uppercase">LEGAL</h4>
-                        <div className="flex flex-col gap-2">
-                            <span className="text-sm text-[var(--color-slate)]">MOCI Approved Terms</span>
+                            <Link href="/vendors/terms" className="text-sm text-[var(--color-slate)] hover:text-[var(--color-warm-white)] transition-colors">Vendor Terms</Link>
+                            <Link href="/vendors/policy" className="text-sm text-[var(--color-slate)] hover:text-[var(--color-warm-white)] transition-colors">Marketplace Policy</Link>
                             <span className="text-sm text-[var(--color-slate)]">Privacy Policy</span>
                             <span className="text-sm text-[var(--color-slate)]">Compliance Certificates</span>
-                            <span className="text-sm text-[var(--color-slate)]">Safety Standards</span>
-                        </div>
                     </div>
 
                     {/* Contact */}
