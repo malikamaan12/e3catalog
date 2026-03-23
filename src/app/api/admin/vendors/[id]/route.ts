@@ -3,6 +3,7 @@ import { vendors, users } from "@/lib/db/schema";
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { eq } from "drizzle-orm";
+import { logAuditAction } from "@/lib/auditLogger";
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
     try {
@@ -34,7 +35,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
     try {
-        const { error } = await requireAdmin();
+        const { error, user: currentAdmin } = await requireAdmin();
         if (error) return error;
 
         const id = (await params).id;
@@ -65,6 +66,15 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
                 console.log("ADMIN ACTION: Vendor KYC Approved. User role upgraded to 'vendor' for ID:", currentVendor[0].userId);
             }
         }
+
+        // Log the audit action
+        await logAuditAction({
+            adminId: currentAdmin?.id || 'system',
+            action: kycStatus === 'approved' ? 'approve_kyc' : (kycStatus === 'rejected' ? 'reject_kyc' : 'update_vendor'),
+            targetId: id,
+            targetType: 'vendor',
+            details: { kycStatus, storeStatus, commissionRate, paymentTerms }
+        });
 
         return NextResponse.json({ success: true });
     } catch (err: any) {

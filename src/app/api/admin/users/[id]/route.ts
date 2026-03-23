@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { requireSuperAdmin } from "@/lib/requireSuperAdmin";
 import { eq } from "drizzle-orm";
+import { logAuditAction } from "@/lib/auditLogger";
 
 export async function GET(
     req: Request,
@@ -68,20 +69,13 @@ export async function PATCH(
         }
 
         // --- Audit Logging ---
-        try {
-            const { v4: uuidv4 } = await import('uuid');
-            db.insert(require("@/lib/db/schema").systemLogs).values({
-                id: uuidv4(),
-                adminId: currentSuperAdmin?.id || 'system',
-                action: passwordReset ? 'reset_password' : 'update_user',
-                targetId: id,
-                targetType: 'user',
-                details: JSON.stringify(updateData),
-                createdAt: new Date()
-            }).execute();
-        } catch (logErr) {
-            console.error("Failed to log system action:", logErr);
-        }
+        await logAuditAction({
+            adminId: currentSuperAdmin?.id || 'system',
+            action: passwordReset ? 'reset_password' : 'update_user',
+            targetId: id,
+            targetType: 'user',
+            details: updateData
+        });
 
         return NextResponse.json(updated);
     } catch (err) {
@@ -113,6 +107,15 @@ export async function DELETE(
         if (!deleted) {
             return NextResponse.json({ error: "User not found" }, { status: 404 });
         }
+
+        // Log the deletion
+        await logAuditAction({
+            adminId: currentSuperAdmin?.id || 'system',
+            action: 'delete_user',
+            targetId: id,
+            targetType: 'user',
+            details: { name: deleted.name, email: deleted.email }
+        });
 
         return NextResponse.json({ message: "User deleted successfully" });
     } catch (err) {

@@ -4,6 +4,7 @@ import { siteSettings } from "@/lib/db/schema";
 import { requireSuperAdmin } from "@/lib/requireSuperAdmin";
 import { eq } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
+import { logAuditAction } from "@/lib/auditLogger";
 
 export async function GET() {
     const { error } = await requireSuperAdmin();
@@ -22,7 +23,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-    const { error } = await requireSuperAdmin();
+    const { error, user: currentAdmin } = await requireSuperAdmin();
     if (error) return error;
 
     try {
@@ -52,6 +53,16 @@ export async function POST(req: Request) {
                 })
                 .where(eq(siteSettings.key, key))
                 .returning();
+            
+            // Log the update
+            await logAuditAction({
+                adminId: currentAdmin?.id || 'system',
+                action: 'update_setting',
+                targetId: key,
+                targetType: 'setting',
+                details: { value, group: group || existing.group }
+            });
+
             return NextResponse.json(updated);
         }
 
@@ -66,6 +77,15 @@ export async function POST(req: Request) {
 
         const [created] = await db.insert(siteSettings).values(newSetting).returning();
 
+        // Log the creation
+        await logAuditAction({
+            adminId: currentAdmin?.id || 'system',
+            action: 'create_setting',
+            targetId: key,
+            targetType: 'setting',
+            details: { value, group: group || "general" }
+        });
+
         return NextResponse.json(created);
     } catch (err) {
         console.error("Error saving setting:", err);
@@ -74,7 +94,7 @@ export async function POST(req: Request) {
 }
 
 export async function PATCH(req: Request) {
-    const { error } = await requireSuperAdmin();
+    const { error, user: currentAdmin } = await requireSuperAdmin();
     if (error) return error;
 
     try {
@@ -99,6 +119,15 @@ export async function PATCH(req: Request) {
         if (!updated) {
             return NextResponse.json({ error: "Setting not found" }, { status: 404 });
         }
+
+        // Log the update
+        await logAuditAction({
+            adminId: currentAdmin?.id || 'system',
+            action: 'update_setting',
+            targetId: updated.key,
+            targetType: 'setting',
+            details: { value, group, description }
+        });
 
         return NextResponse.json(updated);
     } catch (err) {
