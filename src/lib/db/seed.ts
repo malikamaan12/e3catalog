@@ -67,7 +67,6 @@ async function bulkAddProducts() {
                     $12, NOW(), NOW()
                 )
                 ON CONFLICT (item_code) DO UPDATE SET
-                    thumbnail_url = EXCLUDED.thumbnail_url,
                     updated_at = NOW()
                 `,
                 [

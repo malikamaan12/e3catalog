@@ -50,7 +50,7 @@ export const dummyProducts = [
         dimensions: "10m x 20m x 4.5m", weight: "860 kg", powerRequirements: "None",
         materials: "Hot-dip galvanized steel, 650gsm PVC fabric",
         pricePerDay: 2200, units: 3, condition: "excellent", warehouseLocation: "Outdoor Lot A – Tent Storage",
-        thumbnailUrl: "/images/products/STR-001.png",
+        thumbnailUrl: "",
     },
     {
         itemCode: "STR-002", categorySlug: "structures",
@@ -90,7 +90,7 @@ export const dummyProducts = [
         dimensions: "395mm L x 195mm W x 540mm H", weight: "16.5 kg", powerRequirements: "220V / 480W",
         materials: "Die-cast aluminum, borosilicate optics",
         pricePerDay: 250, units: 24, condition: "excellent", warehouseLocation: "Warehouse D – Lighting Rack A",
-        thumbnailUrl: "/images/products/LGT-001.png",
+        thumbnailUrl: "",
     },
     {
         itemCode: "LGT-002", categorySlug: "lighting",
@@ -110,7 +110,7 @@ export const dummyProducts = [
         dimensions: "700mm W x 360mm D x 370mm H", weight: "40 kg", powerRequirements: "230V / 2000W",
         materials: "Birch plywood, Nextel coated",
         pricePerDay: 320, units: 16, condition: "excellent", warehouseLocation: "Warehouse D – Audio Bay",
-        thumbnailUrl: "/images/products/AUD-001.png",
+        thumbnailUrl: "",
     },
     {
         itemCode: "AUD-002", categorySlug: "audio",
@@ -130,7 +130,7 @@ export const dummyProducts = [
         dimensions: "500mm W x 500mm H x 75mm D", weight: "7.5 kg per panel", powerRequirements: "220V / 150W per panel",
         materials: "Die-cast aluminum cabinet, pitch 3.9mm SMD LED",
         pricePerDay: 95, units: 100, condition: "excellent", warehouseLocation: "Warehouse E – LED Storage",
-        thumbnailUrl: "/images/products/LED-001.png",
+        thumbnailUrl: "",
     },
     {
         itemCode: "LED-002", categorySlug: "led-displays",
@@ -150,7 +150,7 @@ export const dummyProducts = [
         dimensions: "3200mm L x 1100mm W x 1500mm H", weight: "1,850 kg", powerRequirements: "Diesel. Produces 380/220V 3-phase",
         materials: "Steel soundproof enclosure, Stamford alternator",
         pricePerDay: 1200, units: 4, condition: "excellent", warehouseLocation: "Outdoor Lot C – Generator Yard",
-        thumbnailUrl: "/images/products/PWR-001.png",
+        thumbnailUrl: "",
     },
     {
         itemCode: "PWR-002", categorySlug: "power-electrical",
@@ -170,7 +170,7 @@ export const dummyProducts = [
         dimensions: "1000mm L x 560mm W x 1450mm H", weight: "210 kg", powerRequirements: "380V 3-phase / 8.5kW",
         materials: "Galvanized steel chassis, R-410A refrigerant",
         pricePerDay: 450, units: 6, condition: "excellent", warehouseLocation: "Outdoor Lot C – HVAC Yard",
-        thumbnailUrl: "/images/products/CLM-001.png",
+        thumbnailUrl: "",
     },
 
     // ─── FURNITURE ────────────────────────────────────────────────────────
@@ -181,7 +181,7 @@ export const dummyProducts = [
         dimensions: "450mm W x 430mm D x 950mm H", weight: "4.2 kg", powerRequirements: "None",
         materials: "Solid beech wood, polyester cushion",
         pricePerDay: 12, units: 200, condition: "excellent", warehouseLocation: "Warehouse F – Furniture Bay",
-        thumbnailUrl: "/images/products/FRN-001.png",
+        thumbnailUrl: "",
     },
     {
         itemCode: "FRN-002", categorySlug: "furniture",
@@ -212,7 +212,7 @@ export const dummyProducts = [
         dimensions: "3000mm W x 2500mm H", weight: "12 kg", powerRequirements: "None",
         materials: "Anodized aluminum telescopic frame",
         pricePerDay: 95, units: 12, condition: "excellent", warehouseLocation: "Warehouse B – Branding Bay",
-        thumbnailUrl: "/images/products/BRN-001.png",
+        thumbnailUrl: "",
     },
 
     // ─── WAYFINDING ───────────────────────────────────────────────────────
@@ -276,7 +276,7 @@ export const dummyProducts = [
         dimensions: "356mm W x 243mm D x 19mm H", weight: "1.85 kg", powerRequirements: "220V / 65W",
         materials: "Magnesium alloy chassis",
         pricePerDay: 120, units: 15, condition: "excellent", warehouseLocation: "Warehouse D – IT Bay",
-        thumbnailUrl: "/images/products/EVT-001.png",
+        thumbnailUrl: "",
     },
     {
         itemCode: "EVT-002", categorySlug: "event-technology",
@@ -307,7 +307,7 @@ export const dummyProducts = [
         dimensions: "160mm dia x 680mm H per unit", weight: "14 kg charged per unit", powerRequirements: "None",
         materials: "Spun steel cylinder, brass valve",
         pricePerDay: 150, units: 8, condition: "excellent", warehouseLocation: "Warehouse G – Safety Store",
-        thumbnailUrl: "/images/products/SFT-001.png",
+        thumbnailUrl: "",
     },
 
     // ─── MANPOWER ─────────────────────────────────────────────────────────
