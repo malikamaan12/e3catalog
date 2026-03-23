@@ -12,6 +12,7 @@ export default function VendorRegisterPage() {
     const router = useRouter();
     const [step, setStep] = useState(1);
     const [submitting, setSubmitting] = useState(false);
+    const { getSetting } = useSiteSettings();
     const [error, setError] = useState("");
     const [success, setSuccess] = useState(false);
 
@@ -372,11 +373,8 @@ export default function VendorRegisterPage() {
                                 <h4 className="text-[var(--color-warm-white)] font-bold mb-4 flex items-center gap-2 uppercase tracking-widest text-xs">
                                     <FileText className="w-4 h-4 text-[var(--color-gold)]" /> Marketplace Rules
                                 </h4>
-                                <div className="space-y-4">
-                                    <p>1. <strong>Item Standards:</strong> Vendors must ensure all equipment listed is maintained at high operation standards and accurately described.</p>
-                                    <p>2. <strong>Revenue Share:</strong> The platform takes a 20% commission on the gross rental price for providing lead generation, logistics tracking, and secure payment processing.</p>
-                                    <p>3. <strong>Fulfillment:</strong> Vendors must confirm availability within 4 hours of receiving a booking request.</p>
-                                    <p>4. <strong>Logistics:</strong> Delivery and returns are to be managed by the Vendor unless specifically negotiated as a platform logistics task.</p>
+                                <div className="space-y-4 whitespace-pre-wrap">
+                                    {getSetting('vendor_application_rules_summary', '1. Maintain high standards...')}
                                 </div>
                             </div>
 

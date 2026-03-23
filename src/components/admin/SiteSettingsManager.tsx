@@ -13,7 +13,8 @@ import {
     Mail,
     Smartphone,
     LayoutDashboard,
-    Megaphone
+    Megaphone,
+    Store
 } from "lucide-react";
 
 interface Setting {
@@ -79,7 +80,8 @@ export function SiteSettingsManager() {
         api: Globe,
         links: LinkIcon,
         features: LayoutDashboard,
-        marketing: Megaphone
+        marketing: Megaphone,
+        vendor_portal: Store
     };
 
     const groupLabels: Record<string, string> = {
@@ -89,7 +91,8 @@ export function SiteSettingsManager() {
         api: "Third-party APIs",
         links: "Important Links",
         features: "Features & Layout Toggles",
-        marketing: "Marketing & Banners"
+        marketing: "Marketing & Banners",
+        vendor_portal: "Vendor Portal & Policies"
     };
 
     return (
@@ -137,9 +140,10 @@ export function SiteSettingsManager() {
                                                 )}
                                             </div>
                                             <div className="flex gap-3">
-                                                {setting.group === 'content' || setting.group === 'seo' || setting.key.includes('content') ? (
+                                                {setting.group === 'content' || setting.group === 'seo' || setting.group === 'vendor_portal' || setting.key.includes('content') ? (
                                                     <textarea
-                                                        className="flex-1 bg-black/30 border border-white/10 rounded-xl px-4 py-2.5 outline-none focus:border-[var(--color-gold)] transition-all text-sm min-h-[80px]"
+                                                        className={`flex-1 bg-black/30 border border-white/10 rounded-xl px-4 py-2.5 outline-none focus:border-[var(--color-gold)] transition-all text-sm
+                                                            ${setting.key.includes('content') ? 'min-h-[250px]' : 'min-h-[120px]'}`}
                                                         value={setting.value}
                                                         onChange={(e) => {
                                                             const newVal = e.target.value;

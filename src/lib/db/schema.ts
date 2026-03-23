@@ -1,4 +1,4 @@
-import { pgTable, varchar, integer, real, boolean, timestamp, jsonb, index } from "drizzle-orm/pg-core";
+import { pgTable, varchar, integer, real, boolean, timestamp, jsonb, index, text } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
 // ─── Users ───
@@ -581,7 +581,7 @@ export const adminSettings = pgTable("admin_settings", {
 export const siteSettings = pgTable("site_settings", {
     id: varchar("id", { length: 255 }).primaryKey(),
     key: varchar("key", { length: 255 }).notNull().unique(),
-    value: varchar("value", { length: 2000 }).notNull(),
+    value: text("value").notNull(),
     group: varchar("group", { length: 50 }).notNull().default("general"),
     description: varchar("description", { length: 500 }),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),

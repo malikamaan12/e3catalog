@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { ArrowRight, CheckCircle, ShieldCheck, Zap, Globe, BarChart3, Users, Building2, Store, HelpCircle, FileText, Scale } from "lucide-react";
 import { Footer } from "@/components/Footer";
+import { useSiteSettings } from "@/components/SiteSettingsProvider";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 
@@ -13,6 +14,20 @@ export default function VendorLandingPage() {
     const heroRef = useRef<HTMLDivElement>(null);
     const benefitsRef = useRef<HTMLDivElement>(null);
     const stepsRef = useRef<HTMLDivElement>(null);
+    const { getSetting } = useSiteSettings();
+
+    // Helper to map icon names to components
+    const iconMap: Record<string, any> = {
+        Globe, ShieldCheck, BarChart3, Users, Zap, Store, HelpCircle, FileText, Scale, Building2
+    };
+
+    // Parse JSON settings with fallbacks
+    const benefits = JSON.parse(getSetting('vendor_landing_benefits_json', '[]'));
+    const steps = JSON.parse(getSetting('vendor_landing_steps_json', '[]'));
+    const faqs = JSON.parse(getSetting('vendor_landing_faq_json', '[]'));
+    
+    const heroTitle = getSetting('vendor_landing_hero_title', 'Scale Your Rental Empire');
+    const heroSubtitle = getSetting('vendor_landing_hero_subtitle', "Join Qatar's premier enterprise rental marketplace.");
 
     useEffect(() => {
         const ctx = gsap.context(() => {
@@ -67,11 +82,11 @@ export default function VendorLandingPage() {
                             <Scale className="w-3.5 h-3.5" />
                             Official Partner Program
                         </div>
-                        <h1 className="font-[family-name:var(--font-heading)] text-5xl md:text-8xl font-extrabold text-[var(--color-warm-white)] mb-8 tracking-tighter leading-[0.9]">
-                            Scale Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-[var(--color-gold)] to-yellow-200">Rental Empire</span>
-                        </h1>
+                        <h1 className="font-[family-name:var(--font-heading)] text-5xl md:text-8xl font-extrabold text-[var(--color-warm-white)] mb-8 tracking-tighter leading-[0.9]"
+                            dangerouslySetInnerHTML={{ __html: heroTitle.replace('Rental Empire', '<span class="text-transparent bg-clip-text bg-gradient-to-r from-[var(--color-gold)] to-yellow-200">Rental Empire</span>') }}
+                        />
                         <p className="text-lg md:text-xl text-[var(--color-slate)] max-w-2xl mx-auto mb-12 leading-relaxed">
-                            Join Qatar's premier enterprise rental marketplace. List your inventory, reach corporate clients, and manage operations through our advanced vendor operating system.
+                            {heroSubtitle}
                         </p>
                         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                             <Link href="/vendors/register" className="btn-primary px-10 py-5 text-lg group w-full sm:w-auto justify-center">
@@ -128,23 +143,21 @@ export default function VendorLandingPage() {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-12 relative z-10">
-                        {[
-                            { num: "01", step: "Registration", icon: Users, detail: "Fill our digital application with your company credentials and TIN." },
-                            { num: "02", step: "KYC Review", icon: ShieldCheck, detail: "Our compliance team verifies your Tax Card and CR within 48 hours." },
-                            { num: "03", step: "Catalog Sync", icon: Store, detail: "Upload your inventory items through our easy-to-use bulk importer." },
-                            { num: "04", step: "Active Partner", icon: Zap, detail: "Go live on the marketplace and start receiving enterprise bookings." }
-                        ].map((s, i) => (
-                            <div key={i} className="step-item relative">
-                                <div className="w-16 h-16 rounded-full bg-[var(--color-navy-dark)] border-4 border-[var(--color-gold)] flex items-center justify-center text-[var(--color-gold)] font-black text-xl mb-6 shadow-[0_0_30px_rgba(197,160,94,0.15)] mx-auto md:mx-0">
-                                    <s.icon className="w-7 h-7" />
+                        {steps.map((s: any, i: number) => {
+                            const Icon = iconMap[s.icon] || Zap;
+                            return (
+                                <div key={i} className="step-item relative">
+                                    <div className="w-16 h-16 rounded-full bg-[var(--color-navy-dark)] border-4 border-[var(--color-gold)] flex items-center justify-center text-[var(--color-gold)] font-black text-xl mb-6 shadow-[0_0_30px_rgba(197,160,94,0.15)] mx-auto md:mx-0">
+                                        <Icon className="w-7 h-7" />
+                                    </div>
+                                    <div className="text-center md:text-left">
+                                        <span className="text-[var(--color-gold)] font-mono text-sm tracking-widest font-bold mb-2 block">{s.num}</span>
+                                        <h4 className="text-xl font-bold text-[var(--color-warm-white)] mb-4">{s.step}</h4>
+                                        <p className="text-sm text-[var(--color-slate)] leading-relaxed">{s.detail}</p>
+                                    </div>
                                 </div>
-                                <div className="text-center md:text-left">
-                                    <span className="text-[var(--color-gold)] font-mono text-sm tracking-widest font-bold mb-2 block">{s.num}</span>
-                                    <h4 className="text-xl font-bold text-[var(--color-warm-white)] mb-4">{s.step}</h4>
-                                    <p className="text-sm text-[var(--color-slate)] leading-relaxed">{s.detail}</p>
-                                </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 </div>
             </section>
@@ -161,12 +174,7 @@ export default function VendorLandingPage() {
                     </div>
 
                     <div className="space-y-6">
-                        {[
-                            { q: "What is the commission structure?", a: "E3 operates on a performance-based revenue share. Our standard commission is 20% on all successful rentals, which covers platform maintenance, secure credit card processing, and first-line customer support." },
-                            { q: "How do payouts work?", a: "We process vendor settlements monthly. On the 5th of every month, your earnings for the previous 30 days are calculated and transferred directly to your registered bank account via QNB." },
-                            { q: "Who handles delivery and logistics?", a: "Vendors are responsible for the safe delivery and pickup of their equipment. However, E3 provides a standardized logistics ticket system and POD (Proof of Delivery) digital tools within your dashboard." },
-                            { q: "Is there a monthly subscription fee?", a: "No. Joining E3 as a basic partner is free. We only earn when you earn." }
-                        ].map((faq, i) => (
+                        {faqs.map((faq: any, i: number) => (
                             <div key={i} className="glass border border-white/5 p-6 rounded-2xl hover:border-white/10 transition-colors">
                                 <h4 className="font-bold text-[var(--color-warm-white)] mb-3 flex items-center gap-2">
                                     <CheckCircle className="w-4 h-4 text-[var(--color-gold)]" />
