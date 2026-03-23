@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { format, addDays, parseISO, startOfToday, isWithinInterval, subDays } from "date-fns";
 import { Loader2, Calendar as CalendarIcon, Package, Truck, CheckCircle, Clock, AlertCircle } from "lucide-react";
+import { BOOKING_STATUS } from "@/lib/constants";
 
 type CalendarBooking = {
     id: string;
@@ -51,10 +52,10 @@ export default function OperationalCalendarPage() {
 
     const getStatusColor = (status: string) => {
         switch (status) {
-            case "quote_accepted": return "bg-blue-500 text-white";
-            case "approved": return "bg-green-500 text-white";
-            case "booked": return "bg-emerald-600 text-white";
-            case "booking_requested": return "bg-orange-500 text-white";
+            case BOOKING_STATUS.QUOTE_ACCEPTED: return "bg-blue-500 text-white";
+            case BOOKING_STATUS.APPROVED: return "bg-green-500 text-white";
+            case BOOKING_STATUS.BOOKED: return "bg-emerald-600 text-white";
+            case BOOKING_STATUS.BOOKING_REQUESTED: return "bg-orange-500 text-white";
             default: return "bg-gray-500 text-white";
         }
     };

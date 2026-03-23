@@ -4,6 +4,7 @@ import { eq, and } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { sendQuoteStatusEmail } from "@/lib/email";
+import { BOOKING_STATUS } from "@/lib/constants";
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
     try {
@@ -179,7 +180,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         }
 
         // Validate allowed status transitions by the client
-        const allowedTransitions = ["cancelled", "quote_accepted", "changes_requested", "booking_requested"];
+        const allowedTransitions = [BOOKING_STATUS.CANCELLED, BOOKING_STATUS.QUOTE_ACCEPTED, BOOKING_STATUS.CHANGES_REQUESTED, BOOKING_STATUS.BOOKING_REQUESTED];
         if (status && !allowedTransitions.includes(status)) {
             return NextResponse.json({ error: "Invalid status transition" }, { status: 400 });
         }
@@ -196,7 +197,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         }
 
         // ── Email Confirmation to Client ────────────────────────────────────
-        if (status && ["quote_accepted", "changes_requested", "cancelled"].includes(status)) {
+        if (status && [BOOKING_STATUS.QUOTE_ACCEPTED, BOOKING_STATUS.CHANGES_REQUESTED, BOOKING_STATUS.CANCELLED].includes(status)) {
             const firstBooking = projectBookings[0];
             await sendQuoteStatusEmail({
                 to: user.email,

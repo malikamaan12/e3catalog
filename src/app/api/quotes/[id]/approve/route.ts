@@ -4,6 +4,7 @@ import { eq, and } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { sendQuoteStatusEmail } from "@/lib/email";
+import { BOOKING_STATUS } from "@/lib/constants";
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
     try {
@@ -32,7 +33,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
         // Check if it's in a state that can be approved
         const firstBooking = targetBookings[0];
-        if (firstBooking.status !== "quote_sent") {
+        if (firstBooking.status !== BOOKING_STATUS.QUOTE_SENT) {
             return NextResponse.json({ 
                 error: `Quote cannot be approved from its current status: ${firstBooking.status}` 
             }, { status: 400 });
@@ -41,7 +42,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         // Apply to all items in the quote
         for (const booking of targetBookings) {
             await db.update(bookings)
-                .set({ status: "quote_accepted", updatedAt: new Date() })
+                .set({ status: BOOKING_STATUS.QUOTE_ACCEPTED, updatedAt: new Date() })
                 .where(eq(bookings.id, booking.id));
         }
 
@@ -51,7 +52,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
             customerName: user.name,
             projectName: firstBooking.projectName || "Your Rental Request",
             projectId: firstBooking.projectId || firstBooking.id,
-            status: "quote_accepted",
+            status: BOOKING_STATUS.QUOTE_ACCEPTED,
             startDate: firstBooking.startDate instanceof Date 
                 ? firstBooking.startDate.toISOString() 
                 : new Date(firstBooking.startDate).toISOString(),

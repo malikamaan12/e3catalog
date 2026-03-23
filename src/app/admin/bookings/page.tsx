@@ -20,6 +20,7 @@ import {
 import ManualBookingFlow from "@/components/admin/ManualBookingFlow";
 import Link from "next/link";
 import { MessageCircle } from "lucide-react";
+import { BOOKING_STATUS } from "@/lib/constants";
 
 interface Booking {
     id: string;
@@ -41,33 +42,33 @@ interface Booking {
 }
 
 const STATUS_LABELS: Record<string, string> = {
-    request: "Request",
-    quote_sent: "Quote Sent",
-    changes_requested: "Revision",
-    approved: "Approved",
-    booked: "Booked",
-    cancelled: "Cancelled",
-    undelivered: "Undelivered",
+    [BOOKING_STATUS.REQUEST]: "Request",
+    [BOOKING_STATUS.QUOTE_SENT]: "Quote Sent",
+    [BOOKING_STATUS.CHANGES_REQUESTED]: "Revision",
+    [BOOKING_STATUS.APPROVED]: "Approved",
+    [BOOKING_STATUS.BOOKED]: "Booked",
+    [BOOKING_STATUS.CANCELLED]: "Cancelled",
+    [BOOKING_STATUS.UNDELIVERED]: "Undelivered",
 };
 
 const STATUS_ICONS: Record<string, LucideIcon> = {
-    request: Inbox,
-    quote_sent: Send,
-    changes_requested: RefreshCcw,
-    approved: CheckCircle2,
-    booked: Target,
-    cancelled: XCircle,
-    undelivered: TrendingDown,
+    [BOOKING_STATUS.REQUEST]: Inbox,
+    [BOOKING_STATUS.QUOTE_SENT]: Send,
+    [BOOKING_STATUS.CHANGES_REQUESTED]: RefreshCcw,
+    [BOOKING_STATUS.APPROVED]: CheckCircle2,
+    [BOOKING_STATUS.BOOKED]: Target,
+    [BOOKING_STATUS.CANCELLED]: XCircle,
+    [BOOKING_STATUS.UNDELIVERED]: TrendingDown,
 };
 
 const STATUS_COLORS: Record<string, string> = {
-    request: "bg-blue-500/10 text-blue-400 border-blue-500/20",
-    quote_sent: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20",
-    changes_requested: "bg-orange-500/10 text-orange-400 border-orange-500/20",
-    approved: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
-    booked: "bg-purple-500/10 text-purple-400 border-purple-500/20",
-    cancelled: "bg-red-500/10 text-red-400 border-red-500/20 opacity-60",
-    undelivered: "bg-slate-500/10 text-slate-400 border-slate-500/20 opacity-60",
+    [BOOKING_STATUS.REQUEST]: "bg-blue-500/10 text-blue-400 border-blue-500/20",
+    [BOOKING_STATUS.QUOTE_SENT]: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20",
+    [BOOKING_STATUS.CHANGES_REQUESTED]: "bg-orange-500/10 text-orange-400 border-orange-500/20",
+    [BOOKING_STATUS.APPROVED]: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+    [BOOKING_STATUS.BOOKED]: "bg-purple-500/10 text-purple-400 border-purple-500/20",
+    [BOOKING_STATUS.CANCELLED]: "bg-red-500/10 text-red-400 border-red-500/20 opacity-60",
+    [BOOKING_STATUS.UNDELIVERED]: "bg-slate-500/10 text-slate-400 border-slate-500/20 opacity-60",
 };
 
 const PAYMENT_BADGES: Record<string, { label: string, style: string }> = {
@@ -76,7 +77,7 @@ const PAYMENT_BADGES: Record<string, { label: string, style: string }> = {
     paid: { label: "Paid", style: "border-emerald-500/30 text-emerald-400 bg-emerald-500/10" }
 };
 
-const PIPELINE_ORDER = ["request", "quote_sent", "changes_requested", "approved", "booked"];
+const PIPELINE_ORDER = [BOOKING_STATUS.REQUEST, BOOKING_STATUS.QUOTE_SENT, BOOKING_STATUS.CHANGES_REQUESTED, BOOKING_STATUS.APPROVED, BOOKING_STATUS.BOOKED];
 
 export default function AdminBookingsPage() {
     const [activeTab, setActiveTab] = useState<string>(PIPELINE_ORDER[0]);

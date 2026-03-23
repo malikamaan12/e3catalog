@@ -15,6 +15,7 @@ import {
     ArrowRight
 } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
+import { BOOKING_STATUS } from "@/lib/constants";
 import DashboardKPIs from "@/components/admin/DashboardKPIs";
 import PipelineKanban from "@/components/admin/PipelineKanban";
 import ComplianceFeed from "@/components/admin/ComplianceFeed";
@@ -48,7 +49,7 @@ export default async function AdminDashboard() {
             .from(products)
             .where(targetVendorId ? eq(products.vendorId, targetVendorId) : undefined);
 
-        const activeStatuses = ["request", "quote_sent", "changes_requested", "approved", "booked"];
+        const activeStatuses = [BOOKING_STATUS.REQUEST, BOOKING_STATUS.QUOTE_SENT, BOOKING_STATUS.CHANGES_REQUESTED, BOOKING_STATUS.APPROVED, BOOKING_STATUS.BOOKED];
         const [{ activeBookingCount }] = await db
             .select({ activeBookingCount: sql<number>`count(*)` })
             .from(bookings)
@@ -91,7 +92,7 @@ export default async function AdminDashboard() {
             .select({ pendingActionCount: sql<number>`count(*)` })
             .from(bookings)
             .where(and(
-                eq(bookings.status, "booking_requested"),
+                eq(bookings.status, BOOKING_STATUS.BOOKING_REQUESTED),
                 targetVendorId ? eq(bookings.vendorId, targetVendorId) : sql`1=1`
             ));
 

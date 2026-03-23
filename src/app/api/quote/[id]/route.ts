@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { bookings } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
+import { BOOKING_STATUS } from "@/lib/constants";
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
     try {
@@ -22,7 +23,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
         // Security / Privacy: we only return the booking data if the status allows public review
         // (E.g., quote_sent, changes_requested, quote_accepted, approved, booked)
         // Hidden if still 'pending_quote' internal drafting.
-        if (booking.status === "request" || booking.status === "cancelled" || booking.status === "undelivered") {
+        if (booking.status === BOOKING_STATUS.REQUEST || booking.status === BOOKING_STATUS.CANCELLED || booking.status === BOOKING_STATUS.UNDELIVERED) {
             return NextResponse.json({ error: "Quote is currently unavailable." }, { status: 403 });
         }
 
@@ -42,7 +43,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         const { status, clientNotes } = body;
 
         // Ensure status transitions are legal for a client to do
-        if (!["quote_accepted", "changes_requested"].includes(status) && status !== undefined) {
+        if (![BOOKING_STATUS.QUOTE_ACCEPTED, BOOKING_STATUS.CHANGES_REQUESTED].includes(status) && status !== undefined) {
             return NextResponse.json({ error: "Invalid status transition" }, { status: 400 });
         }
 

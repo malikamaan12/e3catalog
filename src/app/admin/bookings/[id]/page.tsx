@@ -12,6 +12,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import EmbeddedChat from "@/components/chat/EmbeddedChat";
+import { BOOKING_STATUS } from "@/lib/constants";
 
 const formatDateTime = (dateStr: string) => {
     if (!dateStr) return "N/A";
@@ -932,26 +933,26 @@ export default function BookingDetailsPage({ params }: { params: Promise<{ id: s
                         <div className="space-y-4">
                             <h4 className="text-xs font-bold text-[var(--color-slate)] uppercase tracking-widest border-b border-white/10 pb-3">Pipeline Workflow</h4>
                             <div className="flex flex-col gap-3 pt-2">
-                                {["request", "quote_sent", "changes_requested"].includes(booking.status) && (
-                                    <button onClick={() => handleSave("quote_sent")} disabled={saving} className="btn-primary text-sm px-5 py-3.5 w-full justify-center shadow-lg shadow-[var(--color-gold)]/20 transition-transform hover:-translate-y-0.5 font-bold tracking-wide rounded-xl">
+                                {[BOOKING_STATUS.REQUEST, BOOKING_STATUS.QUOTE_SENT, BOOKING_STATUS.CHANGES_REQUESTED].includes(booking.status as any) && (
+                                    <button onClick={() => handleSave(BOOKING_STATUS.QUOTE_SENT)} disabled={saving} className="btn-primary text-sm px-5 py-3.5 w-full justify-center shadow-lg shadow-[var(--color-gold)]/20 transition-transform hover:-translate-y-0.5 font-bold tracking-wide rounded-xl">
                                         Send / Update Quote
                                     </button>
                                 )}
 
-                                {["quote_sent"].includes(booking.status) && (
-                                    <button onClick={() => handleSave("approved")} disabled={saving} className="bg-[var(--color-navy-dark)] border-2 border-[var(--color-gold)]/50 text-[var(--color-gold)] hover:bg-[var(--color-gold)] hover:text-[var(--color-navy)] transition-colors text-sm px-4 py-3.5 rounded-xl font-bold w-full shadow-lg tracking-wide">
+                                {[BOOKING_STATUS.QUOTE_SENT].includes(booking.status as any) && (
+                                    <button onClick={() => handleSave(BOOKING_STATUS.APPROVED)} disabled={saving} className="bg-[var(--color-navy-dark)] border-2 border-[var(--color-gold)]/50 text-[var(--color-gold)] hover:bg-[var(--color-gold)] hover:text-[var(--color-navy)] transition-colors text-sm px-4 py-3.5 rounded-xl font-bold w-full shadow-lg tracking-wide">
                                         Approve Booking (Lock Inventory)
                                     </button>
                                 )}
 
-                                {booking.status === "approved" && (
-                                    <button onClick={() => handleSave("booked")} disabled={saving} className="bg-emerald-500/10 border-2 border-emerald-500/50 text-emerald-400 hover:bg-emerald-500 hover:text-white transition-colors text-sm px-5 py-3.5 rounded-xl font-bold w-full shadow-lg shadow-emerald-500/10 tracking-wide">
+                                {booking.status === BOOKING_STATUS.APPROVED && (
+                                    <button onClick={() => handleSave(BOOKING_STATUS.BOOKED)} disabled={saving} className="bg-emerald-500/10 border-2 border-emerald-500/50 text-emerald-400 hover:bg-emerald-500 hover:text-white transition-colors text-sm px-5 py-3.5 rounded-xl font-bold w-full shadow-lg shadow-emerald-500/10 tracking-wide">
                                         Mark as Fulfilled (Booked)
                                     </button>
                                 )}
 
-                                {booking.status !== "cancelled" && (
-                                    <button onClick={() => handleSave("cancelled")} disabled={saving} className="bg-transparent hover:bg-red-500/10 border border-transparent hover:border-red-500/30 text-red-500/70 hover:text-red-400 transition-colors text-xs px-4 py-3 rounded-xl w-full mt-2 font-medium tracking-wide">
+                                {booking.status !== BOOKING_STATUS.CANCELLED && (
+                                    <button onClick={() => handleSave(BOOKING_STATUS.CANCELLED)} disabled={saving} className="bg-transparent hover:bg-red-500/10 border border-transparent hover:border-red-500/30 text-red-500/70 hover:text-red-400 transition-colors text-xs px-4 py-3 rounded-xl w-full mt-2 font-medium tracking-wide">
                                         Cancel This Request
                                     </button>
                                 )}

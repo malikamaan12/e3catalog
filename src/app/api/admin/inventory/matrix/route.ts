@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { eq, and, inArray, lte, gte } from "drizzle-orm";
 import { format, parseISO, addHours, subHours } from "date-fns";
+import { BOOKING_STATUS } from "@/lib/constants";
 
 export async function GET(req: any) {
     try {
@@ -72,7 +73,7 @@ export async function GET(req: any) {
         const allBookings = productIds.length > 0 ? await db.query.bookings.findMany({
             where: and(
                 inArray(bookings.productId, productIds),
-                inArray(bookings.status, ["approved", "booked", "quote_accepted", "booking_requested"]),
+                inArray(bookings.status, [BOOKING_STATUS.APPROVED, BOOKING_STATUS.BOOKED, BOOKING_STATUS.QUOTE_ACCEPTED, BOOKING_STATUS.BOOKING_REQUESTED]),
                 lte(bookings.startDate, endDate),
                 gte(bookings.endDate, today)
             ),

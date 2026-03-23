@@ -7,6 +7,7 @@ import { eq, desc } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Calendar, Package, ChevronRight, CheckCircle2, Clock, ClipboardList, CalendarDays } from "lucide-react";
+import { BOOKING_STATUS } from "@/lib/constants";
 
 export default async function MyBookingsPage() {
     const user = await getCurrentUser();
@@ -43,11 +44,11 @@ export default async function MyBookingsPage() {
         return acc;
     }, {} as Record<string, any>);
 
-    const confirmedStatuses = ["approved", "booked", "quote_accepted"];
+    const confirmedStatuses = [BOOKING_STATUS.APPROVED, BOOKING_STATUS.BOOKED, BOOKING_STATUS.QUOTE_ACCEPTED];
     const allProjectsList = Object.values(allProjects) as any[];
     const activeBookings = allProjectsList.filter(p => confirmedStatuses.includes(p.status));
-    const pendingQuotes = allProjectsList.filter(p => ["request", "quote_sent", "changes_requested"].includes(p.status));
-    const pastBookings = allProjectsList.filter(p => ["cancelled", "completed"].includes(p.status));
+    const pendingQuotes = allProjectsList.filter(p => [BOOKING_STATUS.REQUEST, BOOKING_STATUS.QUOTE_SENT, BOOKING_STATUS.CHANGES_REQUESTED].includes(p.status));
+    const pastBookings = allProjectsList.filter(p => [BOOKING_STATUS.CANCELLED, BOOKING_STATUS.COMPLETED].includes(p.status));
 
     const fmt = (d: string) => d ? new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "—";
 

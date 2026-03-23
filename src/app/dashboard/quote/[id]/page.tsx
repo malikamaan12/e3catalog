@@ -9,6 +9,7 @@ import {
     Clock, FileText, XCircle, MessageCircle
 } from "lucide-react";
 import ClientChatWindow from "@/components/chat/ClientChatWindow";
+import { BOOKING_STATUS } from "@/lib/constants";
 
 interface QuoteItem {
     id: string;
@@ -52,13 +53,13 @@ interface QuoteDetail {
 }
 
 const STATUS_INFO: Record<string, { label: string; color: string; desc: string; icon: any }> = {
-    pending_quote: { label: "Awaiting Quote", color: "text-blue-400 bg-blue-500/10 border-blue-500/20", desc: "We are calculating your shipping and labor costs.", icon: Clock },
-    request: { label: "Awaiting Quote", color: "text-blue-400 bg-blue-500/10 border-blue-500/20", desc: "We are reviewing your request and preparing your quote.", icon: Clock },
-    quote_sent: { label: "Review Quote", color: "text-amber-400 bg-amber-500/10 border-amber-500/20", desc: "Please review the pricing and accept to lock in your rental.", icon: FileText },
-    changes_requested: { label: "Changes Requested", color: "text-orange-400 bg-orange-500/10 border-orange-500/20", desc: "We are reviewing your revision request.", icon: AlertTriangle },
-    quote_accepted: { label: "Accepted", color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20", desc: "Your quote is accepted. Awaiting final confirmation.", icon: CheckCircle2 },
-    approved: { label: "Confirmed Booking", color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20", desc: "Your booking is locked in and confirmed.", icon: CheckCircle2 },
-    cancelled: { label: "Cancelled", color: "text-red-400 bg-red-500/10 border-red-500/20", desc: "This quotation request was cancelled.", icon: XCircle },
+    [BOOKING_STATUS.PENDING_QUOTE]: { label: "Awaiting Quote", color: "text-blue-400 bg-blue-500/10 border-blue-500/20", desc: "We are calculating your shipping and labor costs.", icon: Clock },
+    [BOOKING_STATUS.REQUEST]: { label: "Awaiting Quote", color: "text-blue-400 bg-blue-500/10 border-blue-500/20", desc: "We are reviewing your request and preparing your quote.", icon: Clock },
+    [BOOKING_STATUS.QUOTE_SENT]: { label: "Review Quote", color: "text-amber-400 bg-amber-500/10 border-amber-500/20", desc: "Please review the pricing and accept to lock in your rental.", icon: FileText },
+    [BOOKING_STATUS.CHANGES_REQUESTED]: { label: "Changes Requested", color: "text-orange-400 bg-orange-500/10 border-orange-500/20", desc: "We are reviewing your revision request.", icon: AlertTriangle },
+    [BOOKING_STATUS.QUOTE_ACCEPTED]: { label: "Accepted", color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20", desc: "Your quote is accepted. Awaiting final confirmation.", icon: CheckCircle2 },
+    [BOOKING_STATUS.APPROVED]: { label: "Confirmed Booking", color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20", desc: "Your booking is locked in and confirmed.", icon: CheckCircle2 },
+    [BOOKING_STATUS.CANCELLED]: { label: "Cancelled", color: "text-red-400 bg-red-500/10 border-red-500/20", desc: "This quotation request was cancelled.", icon: XCircle },
 };
 
 export default function DashboardQuotePage({ params }: { params: Promise<{ id: string }> }) {
@@ -200,10 +201,10 @@ export default function DashboardQuotePage({ params }: { params: Promise<{ id: s
 
     const info = STATUS_INFO[quote.status] || { label: quote.status, color: "text-[var(--color-slate)] bg-white/5 border-white/10", desc: "", icon: Package };
     const StatusIcon = info.icon;
-    const canEditItems = ["request", "changes_requested"].includes(quote.status) || showRevisionBox;
-    const canAcceptOrRevise = quote.status === "quote_sent";
-    const canBook = quote.status === "quote_accepted";
-    const canCancel = !["approved", "booked", "cancelled"].includes(quote.status);
+    const canEditItems = [BOOKING_STATUS.REQUEST, BOOKING_STATUS.CHANGES_REQUESTED].includes(quote.status as any) || showRevisionBox;
+    const canAcceptOrRevise = quote.status === BOOKING_STATUS.QUOTE_SENT;
+    const canBook = quote.status === BOOKING_STATUS.QUOTE_ACCEPTED;
+    const canCancel = ![BOOKING_STATUS.APPROVED, BOOKING_STATUS.BOOKED, BOOKING_STATUS.CANCELLED].includes(quote.status as any);
 
     return (
         <div className="pb-16">

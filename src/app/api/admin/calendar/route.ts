@@ -4,6 +4,7 @@ import { eq, inArray, gte, lte, and, or } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { startOfMonth, endOfMonth, parseISO } from "date-fns";
+import { BOOKING_STATUS } from "@/lib/constants";
 
 export async function GET(request: Request) {
     try {
@@ -32,7 +33,7 @@ export async function GET(request: Request) {
 
         // Build conditions
         const conditions = [
-            inArray(bookings.status, ["quote_accepted", "approved", "booked", "booking_requested"]),
+            inArray(bookings.status, [BOOKING_STATUS.QUOTE_ACCEPTED, BOOKING_STATUS.APPROVED, BOOKING_STATUS.BOOKED, BOOKING_STATUS.BOOKING_REQUESTED]),
             // Booking touches the requested window
             lte(bookings.startDate, endQueryDate),
             gte(bookings.endDate, startQueryDate)

@@ -23,6 +23,7 @@ export const BOOKING_STATUS = {
     QUOTE_ACCEPTED: "quote_accepted",
     APPROVED: "approved",
     BOOKED: "booked",
+    BOOKING_REQUESTED: "booking_requested",
     CANCELLED: "cancelled",
     UNDELIVERED: "undelivered",
     COMPLETED: "completed",
