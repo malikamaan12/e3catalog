@@ -103,7 +103,7 @@ export default async function AdminDashboard() {
             .innerJoin(products, eq(inventoryUnits.productId, products.id))
             .where(and(
                 targetVendorId ? eq(products.vendorId, targetVendorId) : sql`1=1`,
-                or(eq(inventoryUnits.status, 'offline'), eq(inventoryUnits.status, 'maintenance'))
+                eq(inventoryUnits.availabilityStatus, 'in_maintenance')
             ));
 
         // 3. Expiring Certificates Scan
