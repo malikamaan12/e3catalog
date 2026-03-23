@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 
+import { USER_ROLES } from "./constants";
+
 /**
  * Call this at the top of every admin API handler.
  * Returns { error: NextResponse } when the caller is not an admin,
@@ -18,9 +20,9 @@ export async function requireAdmin(allowedRoles?: string[]): Promise<
     }
 
     // Default allowed roles if none specified
-    const roles = allowedRoles || ["admin", "super_admin"];
+    const roles = allowedRoles || [USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN, USER_ROLES.SALES_REP];
 
-    if (!roles.includes(user.role) && user.role !== "super_admin") {
+    if (!roles.includes(user.role) && user.role !== USER_ROLES.SUPER_ADMIN) {
         return {
             error: NextResponse.json({ error: "Forbidden: Admin access required" }, { status: 403 }),
         };

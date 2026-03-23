@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import Image from "next/image";
 import { Footer } from "@/components/Footer";
+import { USER_ROLES, BOOKING_STATUS } from "@/lib/constants";
 
 interface CartItem {
     id: string;
@@ -39,7 +40,7 @@ export default function CartPage() {
     const [selectedProjectId, setSelectedProjectId] = useState<string>("new");
     const [editingItemId, setEditingItemId] = useState<string | null>(null);
     const [editData, setEditData] = useState({ quantity: 1, startDate: "", endDate: "" });
-    const [userRole, setUserRole] = useState<"admin" | "client" | null>(null);
+    const [userRole, setUserRole] = useState<string | null>(null);
     const router = useRouter();
 
     // Form State
@@ -64,7 +65,7 @@ export default function CartPage() {
             const userRes = await fetch("/api/auth/me", { credentials: "include" });
             const userData = await userRes.json();
             if (userData.user) {
-                setUserRole(userData.user.role === "admin" ? "admin" : "client");
+                setUserRole(userData.user.role === USER_ROLES.ADMIN || userData.user.role === USER_ROLES.SUPER_ADMIN ? USER_ROLES.ADMIN : USER_ROLES.CLIENT);
                 setFormData(prev => ({
                     ...prev,
                     customerName: userData.user.name || "",
@@ -77,7 +78,7 @@ export default function CartPage() {
                         const quotesData = await quotesRes.json();
                         if (Array.isArray(quotesData)) {
                             const activeQuotes = quotesData
-                                .filter(q => ["request", "changes_requested", "quote_sent"].includes(q.status))
+                                .filter(q => [BOOKING_STATUS.REQUEST, BOOKING_STATUS.CHANGES_REQUESTED, BOOKING_STATUS.QUOTE_SENT].includes(q.status))
                                 .map(q => ({ id: q.id, projectName: q.projectName }));
                             setExistingQuotes(activeQuotes);
                         }
@@ -384,7 +385,7 @@ export default function CartPage() {
 
                                         <button
                                             type="submit"
-                                            disabled={submitting || userRole === "admin"}
+                                            disabled={submitting || userRole === USER_ROLES.ADMIN || userRole === USER_ROLES.SUPER_ADMIN}
                                             className="w-full py-8 rounded-[2rem] bg-gold text-navy font-black text-xs uppercase tracking-[0.4em] shadow-[0_20px_50px_rgba(251,191,36,0.3)] hover:scale-[1.03] active:scale-[0.98] transition-all disabled:opacity-30 flex items-center justify-center gap-4 relative overflow-hidden group"
                                         >
                                             <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-500" />

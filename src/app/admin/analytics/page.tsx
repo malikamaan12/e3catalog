@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Loader2, TrendingUp, HandCoins, BarChart3, PieChart, Info, PercentCircle, Activity, Box, Search } from "lucide-react";
+import { USER_ROLES } from "@/lib/constants";
 import { 
     LineChart, 
     Line, 
@@ -61,7 +62,7 @@ export default function AnalyticsDashboard() {
         );
     }
 
-    const isSuperAdmin = user.role === "super_admin" || user.role === "admin";
+    const isSuperAdmin = user.role === USER_ROLES.SUPER_ADMIN || user.role === USER_ROLES.ADMIN;
     
     // Formatting currency
     const formatCurrency = (val: number) => {

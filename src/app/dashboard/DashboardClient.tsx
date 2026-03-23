@@ -11,6 +11,7 @@ import {
 import ClientChatWindow from "@/components/chat/ClientChatWindow";
 import ClientKPIs from "@/components/dashboard/ClientKPIs";
 import ClientPipeline from "@/components/dashboard/ClientPipeline";
+import { USER_ROLES } from "@/lib/constants";
 
 interface Project {
     id: string;
@@ -61,7 +62,7 @@ export default function DashboardClient({ user, projects: initialProjects, stats
         );
     }, [initialProjects, searchQuery]);
 
-    const isVendor = user.role === "vendor";
+    const isVendor = user.role === USER_ROLES.VENDOR;
 
     const statItems = isVendor ? [
         { label: "Gross Earnings", value: `${(stats.grossEarnings || 0).toLocaleString()} QAR`, icon: ShoppingBag, sub: "Total revenue generated" },

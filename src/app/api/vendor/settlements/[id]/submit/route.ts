@@ -3,6 +3,7 @@ import { commissionSettlements, vendors } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
+import { USER_ROLES } from "@/lib/constants";
 
 export async function POST(
     request: Request,
@@ -11,7 +12,7 @@ export async function POST(
     try {
         const { id: settlementId } = await params;
         const { user, error } = await requireAuth();
-        if (error || !user || user.role !== "vendor") return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+        if (error || !user || user.role !== USER_ROLES.VENDOR) return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
 
         const body = await request.json();
         const { paymentEvidenceUrl } = body;

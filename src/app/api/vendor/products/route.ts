@@ -4,10 +4,11 @@ import { eq, and, desc, sql } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { nanoid } from "nanoid";
+import { USER_ROLES } from "@/lib/constants";
 
 export async function GET(req: NextRequest) {
     const user = await getCurrentUser();
-    if (!user || user.role !== "vendor") {
+    if (!user || user.role !== USER_ROLES.VENDOR) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -44,7 +45,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
     const user = await getCurrentUser();
-    if (!user || user.role !== "vendor") {
+    if (!user || user.role !== USER_ROLES.VENDOR) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

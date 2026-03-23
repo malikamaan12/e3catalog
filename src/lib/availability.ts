@@ -2,6 +2,7 @@ import { db } from "./db";
 import { products, bookings, inventoryOverrides, inventoryUnits } from "./db/schema";
 import { eq, and, or, lte, gte, inArray } from "drizzle-orm";
 import { addHours, subHours, parseISO, format } from "date-fns";
+import { BOOKING_STATUS } from "./constants";
 
 export interface AvailabilityRequest {
     productId: string;
@@ -74,7 +75,11 @@ export async function checkAvailability(req: AvailabilityRequest): Promise<Avail
     const overlappingBookings = await db.query.bookings.findMany({
         where: and(
             eq(bookings.productId, req.productId),
-            inArray(bookings.status, ["approved", "booked", "quote_accepted", "booking_requested"]),
+            inArray(bookings.status, [
+                BOOKING_STATUS.APPROVED, 
+                BOOKING_STATUS.BOOKED, 
+                BOOKING_STATUS.QUOTE_ACCEPTED
+            ]),
             lte(bookings.startDate, effectiveEnd),
             gte(bookings.endDate, effectiveStart),
         ),
@@ -223,7 +228,11 @@ export async function getAvailabilityTimeline(productId: string, lookaheadDays: 
     const allBookings = await db.query.bookings.findMany({
         where: and(
             eq(bookings.productId, productId),
-            inArray(bookings.status, ["approved", "booked", "quote_accepted", "booking_requested"]),
+            inArray(bookings.status, [
+                BOOKING_STATUS.APPROVED, 
+                BOOKING_STATUS.BOOKED, 
+                BOOKING_STATUS.QUOTE_ACCEPTED
+            ]),
             lte(bookings.startDate, endDate),
             gte(bookings.endDate, today),
         ),

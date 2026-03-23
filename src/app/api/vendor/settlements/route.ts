@@ -3,11 +3,12 @@ import { commissionSettlements, bookings, users, vendors } from "@/lib/db/schema
 import { eq, desc } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
+import { USER_ROLES } from "@/lib/constants";
 
 export async function GET(request: Request) {
     try {
         const { user, error } = await requireAuth();
-        if (error || !user || user.role !== "vendor") return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+        if (error || !user || user.role !== USER_ROLES.VENDOR) return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
 
         // Get vendor id
         const vendorRec = await db.query.vendors.findFirst({

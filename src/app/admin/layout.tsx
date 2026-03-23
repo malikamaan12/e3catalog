@@ -3,6 +3,7 @@
 import Link from "next/link";
 import React, { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
+import { USER_ROLES, KYC_STATUS } from "@/lib/constants";
 
 import {
     LayoutDashboard,
@@ -30,26 +31,26 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const [user, setUser] = useState<any>(null);
 
     const navItems = [
-        { href: "/admin", label: "Dashboard", icon: LayoutDashboard, roles: ["admin", "super_admin", "sales_rep", "warehouse_manager", "vendor"] },
-        { href: "/admin/products", label: user?.role === "vendor" || user?.role === "sales_rep" ? "My Catalog" : "Products", icon: Package, roles: ["admin", "super_admin", "sales_rep", "vendor"] },
-        { href: "/admin/products/global", label: "Global Catalog", icon: Package, roles: ["vendor", "sales_rep", "admin", "super_admin"] },
+        { href: "/admin", label: "Dashboard", icon: LayoutDashboard, roles: [USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN, USER_ROLES.SALES_REP, USER_ROLES.WAREHOUSE_MANAGER, USER_ROLES.VENDOR] },
+        { href: "/admin/products", label: user?.role === USER_ROLES.VENDOR || user?.role === USER_ROLES.SALES_REP ? "My Catalog" : "Products", icon: Package, roles: [USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN, USER_ROLES.SALES_REP, USER_ROLES.VENDOR] },
+        { href: "/admin/products/global", label: "Global Catalog", icon: Package, roles: [USER_ROLES.VENDOR, USER_ROLES.SALES_REP, USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN] },
         { href: "/admin/inventory", label: "Inventory", icon: Warehouse, roles: ["admin", "super_admin", "warehouse_manager", "vendor"] },
-        { href: "/admin/categories", label: "Categories", icon: Tags, roles: ["admin", "super_admin", "sales_rep"] },
-        { href: "/admin/analytics", label: "Analytics & Finance", icon: LineChart, roles: ["admin", "super_admin", "vendor"] },
-        { href: "/admin/bookings", label: "Bookings", icon: CalendarCheck, roles: ["admin", "super_admin", "sales_rep", "warehouse_manager", "vendor"] },
-        { href: "/admin/calendar", label: "Calendar", icon: CalendarDays, roles: ["admin", "super_admin", "sales_rep", "warehouse_manager", "vendor"] },
-        { href: "/admin/chat", label: "Messages", icon: MessageSquareMore, hasBadge: true, roles: ["admin", "super_admin", "sales_rep", "vendor"] },
-        { href: "/admin/vendor/profile", label: "Company Profile", icon: Building, roles: ["vendor"] },
-        { href: "/admin/vendor/team", label: "Team Management", icon: Users, roles: ["vendor"] },
-        { href: "/admin/vendor/payouts", label: "Payouts & Ledger", icon: CreditCard, roles: ["vendor"] },
-        { href: "/admin/vendor/settings", label: "Account Settings", icon: Settings, roles: ["vendor"] },
-        { href: "/admin/certificates", label: "Certificates", icon: ShieldCheck, roles: ["admin", "super_admin", "sales_rep"] },
-        { href: "/admin/settings/billing", label: "Billing Logic", icon: Settings, roles: ["admin", "super_admin"] },
+        { href: "/admin/categories", label: "Categories", icon: Tags, roles: [USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN, USER_ROLES.SALES_REP] },
+        { href: "/admin/analytics", label: "Analytics & Finance", icon: LineChart, roles: [USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN, USER_ROLES.VENDOR] },
+        { href: "/admin/bookings", label: "Bookings", icon: CalendarCheck, roles: [USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN, USER_ROLES.SALES_REP, USER_ROLES.WAREHOUSE_MANAGER, USER_ROLES.VENDOR] },
+        { href: "/admin/calendar", label: "Calendar", icon: CalendarDays, roles: [USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN, USER_ROLES.SALES_REP, USER_ROLES.WAREHOUSE_MANAGER, USER_ROLES.VENDOR] },
+        { href: "/admin/chat", label: "Messages", icon: MessageSquareMore, hasBadge: true, roles: [USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN, USER_ROLES.SALES_REP, USER_ROLES.VENDOR] },
+        { href: "/admin/vendor/profile", label: "Company Profile", icon: Building, roles: [USER_ROLES.VENDOR] },
+        { href: "/admin/vendor/team", label: "Team Management", icon: Users, roles: [USER_ROLES.VENDOR] },
+        { href: "/admin/vendor/payouts", label: "Payouts & Ledger", icon: CreditCard, roles: [USER_ROLES.VENDOR] },
+        { href: "/admin/vendor/settings", label: "Account Settings", icon: Settings, roles: [USER_ROLES.VENDOR] },
+        { href: "/admin/certificates", label: "Certificates", icon: ShieldCheck, roles: [USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN, USER_ROLES.SALES_REP] },
+        { href: "/admin/settings/billing", label: "Billing Logic", icon: Settings, roles: [USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN] },
     ];
 
     const superAdminItems = [
-        { href: "/admin/super", label: "Super Admin", icon: Lock, roles: ["super_admin"] },
-        { href: "/admin/super/vendors", label: "Vendors", icon: ShieldCheck, roles: ["super_admin"] },
+        { href: "/admin/super", label: "Super Admin", icon: Lock, roles: [USER_ROLES.SUPER_ADMIN] },
+        { href: "/admin/super/vendors", label: "Vendors", icon: ShieldCheck, roles: [USER_ROLES.SUPER_ADMIN] },
     ];
 
     const [isCollapsed, setIsCollapsed] = useState(false);
@@ -99,7 +100,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         return () => clearInterval(interval);
     }, []);
 
-    if (user?.role === 'vendor' && user?.kycStatus === 'pending') {
+    if (user?.role === USER_ROLES.VENDOR && user?.kycStatus === KYC_STATUS.PENDING) {
         return (
             <div className="min-h-screen pt-20 flex flex-col items-center justify-center p-6 text-center bg-[var(--color-navy)] animate-fade-in">
                 <div className="w-20 h-20 bg-yellow-500/10 rounded-full flex items-center justify-center mb-6">
@@ -116,7 +117,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         );
     }
 
-    if (user?.role === 'vendor' && user?.kycStatus === 'rejected') {
+    if (user?.role === USER_ROLES.VENDOR && user?.kycStatus === KYC_STATUS.REJECTED) {
         return (
             <div className="min-h-screen pt-20 flex flex-col items-center justify-center p-6 text-center bg-[var(--color-navy)] animate-fade-in">
                 <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mb-6">

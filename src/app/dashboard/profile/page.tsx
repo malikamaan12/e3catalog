@@ -13,6 +13,7 @@ import {
 import { CloudImageUpload } from "@/components/CloudImageUpload";
 import { cn } from "@/lib/utils";
 import toast from "react-hot-toast";
+import { USER_ROLES } from "@/lib/constants";
 
 interface POC {
     projectId: string;
@@ -105,7 +106,7 @@ export default function ProfilePage() {
         try {
             const body: any = { ...profile };
             if (password && password.length >= 6) body.password = password;
-            if (profile.role === "vendor" && profile.vendorProfile) {
+            if (profile.role === USER_ROLES.VENDOR && profile.vendorProfile) {
                 body.vendorUpdate = { ...profile.vendorProfile };
             }
 
@@ -132,7 +133,7 @@ export default function ProfilePage() {
         </div>
     );
 
-    const isVendor = profile.role === "vendor";
+    const isVendor = profile.role === USER_ROLES.VENDOR;
     const v = profile.vendorProfile;
 
     return (

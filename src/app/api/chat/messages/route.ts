@@ -4,6 +4,7 @@ import { eq, or, and, desc, inArray, isNull } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { v4 as uuid } from "uuid";
+import { USER_ROLES } from "@/lib/constants";
 
 export async function GET(req: NextRequest) {
     try {
@@ -22,7 +23,7 @@ export async function GET(req: NextRequest) {
 
         if (projectId) {
             // Project/Quote Chat Logic
-            if (user.role === "vendor") {
+            if (user.role === USER_ROLES.VENDOR) {
                 // Determine if Vendor owns this project
                 const { bookings } = await import("@/lib/db/schema");
                 if (!user.vendorId) {
@@ -32,7 +33,7 @@ export async function GET(req: NextRequest) {
                 if (vendorBookings.length === 0) {
                      return NextResponse.json({ error: "Unauthorized access to project chat" }, { status: 403 });
                 }
-            } else if (user.role === "client") {
+            } else if (user.role === USER_ROLES.CLIENT) {
                 // Client must own the project
                 const { bookings } = await import("@/lib/db/schema");
                 const clientBookings = await db.select().from(bookings).where(and(or(eq(bookings.id, projectId), eq(bookings.projectId, projectId)), eq(bookings.userId, user.id))).limit(1);
@@ -55,9 +56,9 @@ export async function GET(req: NextRequest) {
             }
         } else {
             // Generic Direct User-to-Staff Chat Logic
-            if (["admin", "super_admin", "vendor", "sales_rep"].includes(user.role)) {
+            if ([USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN, USER_ROLES.VENDOR, USER_ROLES.SALES_REP].includes(user.role as any)) {
                 if (otherUserId) {
-                    const STAFF_ROLES = ["admin", "super_admin", "vendor", "sales_rep"];
+                    const STAFF_ROLES = [USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN, USER_ROLES.VENDOR, USER_ROLES.SALES_REP];
                     const staffList = await db.select({ id: users.id }).from(users).where(or(...STAFF_ROLES.map(role => eq(users.role, role))));
                     const staffIds = staffList.map(s => s.id);
 
@@ -127,7 +128,7 @@ export async function POST(req: NextRequest) {
 
         let finalReceiverId = receiverId;
 
-        if (!["admin", "super_admin", "vendor", "sales_rep"].includes(user.role)) {
+        if (![USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN, USER_ROLES.VENDOR, USER_ROLES.SALES_REP].includes(user.role as any)) {
             // If client is sending, find an appropriate receiver
             if (!finalReceiverId) {
                 // 1. Try to route by Project/Vendor Composite ID
@@ -166,7 +167,7 @@ export async function POST(req: NextRequest) {
                     const [admin] = await db
                         .select()
                         .from(users)
-                        .where(or(eq(users.role, "super_admin"), eq(users.role, "admin")))
+                        .where(or(eq(users.role, USER_ROLES.SUPER_ADMIN), eq(users.role, USER_ROLES.ADMIN)))
                         .limit(1);
 
                     if (!admin) {
@@ -174,7 +175,7 @@ export async function POST(req: NextRequest) {
                         const [anyStaff] = await db
                             .select()
                             .from(users)
-                            .where(or(eq(users.role, "sales_rep"), eq(users.role, "warehouse_manager")))
+                            .where(or(eq(users.role, USER_ROLES.SALES_REP), eq(users.role, USER_ROLES.WAREHOUSE_MANAGER)))
                             .limit(1);
                         
                         if (anyStaff) {

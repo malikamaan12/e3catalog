@@ -8,6 +8,9 @@ import { renderToStream } from "@react-pdf/renderer";
 import { QuotePDFTemplate } from "@/components/pdf/QuotePDFTemplate";
 import React from "react";
 import { format } from "date-fns";
+import { getAllSiteSettings } from "@/lib/settings";
+import { COMMISSION_TYPE, BOOKING_STATUS } from "@/lib/constants";
+import { calculateTax } from "@/lib/finances";
 
 const getAbsoluteUrl = (url: string | null | undefined) => {
     if (!url) return undefined;
@@ -46,7 +49,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             siblingBookings.map(async (b: any) => {
                 const product = await db.query.products.findFirst({
                     where: eq(products.id, b.productId),
-                    with: { vendor: true }
+                    with: { 
+                        vendor: true,
+                        productTags: { with: { tag: true } },
+                        safetyCertificates: true
+                    }
                 });
                 const media = await db.query.productMedia.findFirst({
                     where: eq(productMedia.productId, b.productId)
@@ -61,9 +68,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
                 const vendor = product?.vendor;
 
                 if (vendor) {
-                    if (vendor.commissionType === "percentage") {
+                    if (vendor.commissionType === COMMISSION_TYPE.PERCENTAGE) {
                         finalPricePerDay = basePricePerDay * (1 + vendor.commissionValue / 100);
-                    } else if (vendor.commissionType === "fixed_per_item") {
+                    } else if (vendor.commissionType === COMMISSION_TYPE.FIXED_PER_ITEM) {
                         finalPricePerDay = basePricePerDay + vendor.commissionValue;
                     }
                 }
@@ -84,8 +91,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
                     pricePerDay: finalPricePerDay,
                     totalLinePrice: lineTotal,
                     vendorId: product?.vendorId,
-                    smartTags: ["Premium Grade", "Inspected"], // Adding dummy tags for visual effect or swap with real ones if added to DB
-                    certifications: ["TUV Certified"], // Same for certifications
+                    smartTags: product?.productTags?.map((pt: any) => pt.tag.name) || [],
+                    certifications: product?.safetyCertificates?.map((sc: any) => sc.name) || [],
                     qrCodeUrl: product ? `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(getAbsoluteUrl(`/catalog/${product.slug}`) || "")}` : undefined,
                     modelLink: "View 3D Model Online"
                 };
@@ -99,7 +106,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             if (vId && !processedVendors.has(vId)) {
                 processedVendors.add(vId);
                 const vendor = await db.query.vendors.findFirst({ where: eq(vendors.id, vId) });
-                if (vendor && vendor.commissionType === "per_project_fee") {
+                if (vendor && vendor.commissionType === COMMISSION_TYPE.PER_PROJECT_FEE) {
                     hydratedItems.push({
                         name: "Platform Service Fee",
                         itemCode: "FEE-001",
@@ -156,7 +163,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         const discountPct = booking.discount || 0;
         const discountAmount = subtotal * (discountPct / 100);
         const logistics = booking.logisticsCost || 0;
-        const grandTotal = subtotal - discountAmount + logistics;
+        
+        const settings = await getAllSiteSettings();
+        const taxAmount = await calculateTax(subtotal - discountAmount + logistics);
+        const grandTotal = subtotal - discountAmount + logistics + taxAmount;
 
         const props = {
             quoteNumber: booking.id.slice(0, 8).toUpperCase(),
@@ -173,12 +183,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
                 logisticsCost: logistics,
                 setupLaborCost: booking.laborCost || 0,
                 discount: discountPct,
-                tax: 0,
+                tax: taxAmount,
                 grandTotal: booking.totalPrice || grandTotal,
             },
             bankDetails: pBankDetails,
             paymentTerms: pPaymentTerms,
-            termsAndConditions: termsAndConditions || [
+            currencySymbol: settings.currency_symbol,
+            platformName: settings.platform_name,
+            footerLegalText: settings.footer_legal_text,
+            termsAndConditions: termsAndConditions || settings.default_quote_terms?.split("|") || [
                 "Strictly 100% advance payment required to confirm booking.",
                 "Any damages to the equipment will be charged at full replacement value.",
                 "Delivery will only commence post fund clearance.",

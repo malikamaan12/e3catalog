@@ -4,10 +4,11 @@ import { eq, and } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { v4 as uuidv4 } from "uuid";
+import { USER_ROLES } from "@/lib/constants";
 
 export async function GET() {
     try {
-        const { user, error } = await requireAdmin(["vendor"]);
+        const { user, error } = await requireAdmin([USER_ROLES.VENDOR]);
         if (error) return error;
 
         const targetVendorId = (user as any).vendorId;
@@ -46,7 +47,7 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
     try {
-        const { user, error } = await requireAdmin(["vendor"]);
+        const { user, error } = await requireAdmin([USER_ROLES.VENDOR]);
         if (error) return error;
 
         const targetVendorId = (user as any).vendorId;
@@ -62,7 +63,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
         }
 
-        if (!["sales_rep", "warehouse_manager"].includes(role)) {
+        if (![USER_ROLES.SALES_REP, USER_ROLES.WAREHOUSE_MANAGER].includes(role as any)) {
             return NextResponse.json({ error: "Invalid role. Only Sales Rep or Warehouse Manager are allowed." }, { status: 400 });
         }
 
@@ -109,7 +110,7 @@ export async function POST(req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
     try {
-        const { user, error } = await requireAdmin(["vendor"]);
+        const { user, error } = await requireAdmin([USER_ROLES.VENDOR]);
         if (error) return error;
 
         const targetVendorId = (user as any).vendorId;
@@ -134,7 +135,7 @@ export async function PATCH(req: NextRequest) {
             return NextResponse.json({ error: "User not found or you do not have permission to modify them." }, { status: 404 });
         }
 
-        if (targetUser.role === "vendor") {
+        if (targetUser.role === USER_ROLES.VENDOR) {
             return NextResponse.json({ error: "You cannot modify the root vendor account status from here." }, { status: 403 });
         }
 

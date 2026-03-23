@@ -12,7 +12,8 @@ import { cn } from "@/lib/utils";
 import { VendorDrillDown } from "./VendorDrillDown";
 import toast from "react-hot-toast";
 
-export default function VendorCommandCenter() {
+export default function VendorCommandCenter({ settings }: { settings: any }) {
+    const currency = settings?.currency_symbol || "QAR";
     const [vendors, setVendors] = useState<any[]>([]);
     const [stats, setStats] = useState<any>(null);
     const [loading, setLoading] = useState(true);
@@ -55,7 +56,7 @@ export default function VendorCommandCenter() {
         },
         { 
             label: "Cumulative Platform Cut", 
-            value: `${(stats?.totalCommission || 0).toLocaleString()} QAR`, 
+            value: `${(stats?.totalCommission || 0).toLocaleString()} ${currency}`, 
             icon: TrendingUp, 
             color: "text-blue-400",
             sub: "Total approved settlements"
@@ -70,7 +71,7 @@ export default function VendorCommandCenter() {
         },
         { 
             label: "Overdue Receivables", 
-            value: `${(stats?.overdueReceivables || 0).toLocaleString()} QAR`, 
+            value: `${(stats?.overdueReceivables || 0).toLocaleString()} ${currency}`, 
             icon: AlertCircle, 
             color: "text-red-400",
             sub: "At-risk platform revenue",
@@ -142,8 +143,8 @@ export default function VendorCommandCenter() {
                         <table className="w-full border-collapse">
                             <thead>
                                 <tr className="bg-white/[0.02] border-b border-white/5">
-                                    <th className="px-10 py-6 text-left text-[10px] font-black text-[var(--color-slate)] uppercase tracking-[0.2em]">Strategic Partner</th>
-                                    <th className="px-10 py-6 text-left text-[10px] font-black text-[var(--color-slate)] uppercase tracking-[0.2em]">Reliability Index</th>
+                                    <th className="px-10 py-6 text-left text-[10px] font-black text-[var(--color-slate)] uppercase tracking-[0.2em]">Marketplace Merchant</th>
+                                    <th className="px-10 py-6 text-left text-[10px] font-black text-[var(--color-slate)] uppercase tracking-[0.2em]">Performance Rating</th>
                                     <th className="px-10 py-6 text-left text-[10px] font-black text-[var(--color-slate)] uppercase tracking-[0.2em]">Fiscal Policy</th>
                                     <th className="px-10 py-6 text-left text-[10px] font-black text-[var(--color-slate)] uppercase tracking-[0.2em]">Platform Debt</th>
                                     <th className="px-10 py-6 text-left text-[10px] font-black text-[var(--color-slate)] uppercase tracking-[0.2em]">Operational Status</th>
@@ -190,7 +191,7 @@ export default function VendorCommandCenter() {
                                                 <div className="flex flex-col">
                                                     <span className="text-xs font-bold text-white capitalize">{v.vendor.commissionType?.replace(/_/g, ' ')}</span>
                                                     <span className="text-[10px] font-black text-[var(--color-gold)] uppercase tracking-widest">
-                                                        {v.vendor.commissionValue}{v.vendor.commissionType === 'percentage' ? "%" : " QAR"}
+                                                        {v.vendor.commissionValue}{v.vendor.commissionType === 'percentage' ? "%" : ` ${currency}`}
                                                     </span>
                                                 </div>
                                             </td>
@@ -199,7 +200,7 @@ export default function VendorCommandCenter() {
                                                     "text-sm font-black",
                                                     v.amountOwed > 0 ? "text-red-400" : "text-emerald-400"
                                                 )}>
-                                                    {(v.amountOwed || 0).toLocaleString()} <span className="text-[10px] opacity-40">QAR</span>
+                                                    {(v.amountOwed || 0).toLocaleString()} <span className="text-[10px] opacity-40">{currency}</span>
                                                 </span>
                                             </td>
                                             <td className="px-10 py-8">

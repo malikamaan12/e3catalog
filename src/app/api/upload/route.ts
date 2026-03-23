@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { generatePresignedUploadUrl, getPublicCDNUrl } from "@/lib/s3";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { v4 as uuid } from "uuid";
+import { USER_ROLES } from "@/lib/constants";
 
 export async function POST(req: NextRequest) {
     try {
@@ -33,7 +34,7 @@ export async function POST(req: NextRequest) {
 
         let user = null;
         if (folder !== "kyc") {
-            const authCheck = await requireAdmin(["super_admin", "admin", "vendor", "client"]);
+            const authCheck = await requireAdmin([USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN, USER_ROLES.VENDOR, USER_ROLES.CLIENT]);
             if (authCheck.error) {
                 console.error("UPLOAD AUTH ERROR: User not authorized to upload to folder:", folder);
                 return authCheck.error;
@@ -53,7 +54,7 @@ export async function POST(req: NextRequest) {
 
         // Tenant partitioning for vendors
         let prefix = folder;
-        if (user && user.role === "vendor" && (user as any).vendorId) {
+        if (user && user.role === USER_ROLES.VENDOR && (user as any).vendorId) {
             prefix = `vendors/${(user as any).vendorId}/${folder}`;
         }
 

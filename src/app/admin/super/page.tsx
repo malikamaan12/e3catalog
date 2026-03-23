@@ -13,6 +13,7 @@ import { UserManagement } from "@/components/admin/UserManagement";
 import { SiteSettingsManager } from "@/components/admin/SiteSettingsManager";
 import { VendorManagement } from "@/components/admin/VendorManagement";
 import { SystemLogs } from "@/components/admin/SystemLogs";
+import { USER_ROLES } from "@/lib/constants";
 
 export default function SuperAdminPage() {
     const [activeTab, setActiveTab] = useState<"users" | "settings" | "activity" | "vendors">("users");
@@ -24,7 +25,7 @@ export default function SuperAdminPage() {
             try {
                 const res = await fetch("/api/auth/me");
                 const data = await res.json();
-                if (data.user?.role === "super_admin") {
+                if (data.user?.role === USER_ROLES.SUPER_ADMIN) {
                     setIsVerified(true);
                 }
             } catch (err) {
@@ -53,7 +54,7 @@ export default function SuperAdminPage() {
                 <h1 className="text-2xl font-bold text-[var(--color-warm-white)]">Access Restricted</h1>
                 <p className="text-[var(--color-slate)] max-w-md">
                     You do not have the required permissions to access the Super Admin console.
-                    Only accounts with the <span className="text-[var(--color-gold)] font-bold">super_admin</span> role can view this page.
+                    Only accounts with the <span className="text-[var(--color-gold)] font-bold">{USER_ROLES.SUPER_ADMIN}</span> role can view this page.
                 </p>
                 <div className="pt-4">
                     <button

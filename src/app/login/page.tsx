@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Box, Lock, Mail, ArrowRight, Loader2, User, ShieldCheck } from "lucide-react";
+import { USER_ROLES } from "@/lib/constants";
 
 export default function LoginPage() {
     const router = useRouter();
@@ -38,7 +39,7 @@ export default function LoginPage() {
             const data = await res.json();
 
             // Route based on actual role claim instead of what tab they clicked
-            const adminRoles = ["admin", "super_admin", "sales_rep", "warehouse_manager", "vendor"];
+            const adminRoles = [USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN, USER_ROLES.SALES_REP, USER_ROLES.WAREHOUSE_MANAGER, USER_ROLES.VENDOR];
             if (adminRoles.includes(data.user?.role)) {
                 router.push("/admin");
             } else {

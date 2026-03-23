@@ -1,7 +1,10 @@
 import VendorCommandCenter from "@/components/admin/VendorCommandCenter";
 import { ShieldCheck, Zap } from "lucide-react";
+import { getAllSiteSettings } from "@/lib/settings";
 
-export default function SuperAdminVendorsPage() {
+export default async function SuperAdminVendorsPage() {
+    const settings = await getAllSiteSettings();
+
     return (
         <div className="min-h-screen bg-[#0A0F1C] pt-28 pb-20 px-8">
             <div className="max-w-[1800px] mx-auto">
@@ -11,11 +14,11 @@ export default function SuperAdminVendorsPage() {
                             <div className="w-10 h-10 rounded-2xl bg-[var(--color-gold)]/10 flex items-center justify-center border border-[var(--color-gold)]/20">
                                 <ShieldCheck className="w-5 h-5 text-[var(--color-gold)]" />
                             </div>
-                            <span className="text-[10px] font-black text-[var(--color-gold)] uppercase tracking-[0.3em]">Super Admin Protocol • Lvl 4</span>
+                            <span className="text-[10px] font-black text-[var(--color-gold)] uppercase tracking-[0.3em]">Super Admin Protocol • {settings.platform_name || "Lvl 4"}</span>
                         </div>
                         <h1 className="text-5xl font-black text-white tracking-tighter leading-tight mb-2">Vendor Command Center</h1>
                         <p className="text-lg text-[var(--color-slate)] font-medium max-w-2xl">
-                            Consolidated marketplace intelligence and operational control. Approve KYC, manage fiscal agreements, and audit platform settlements.
+                            Consolidated marketplace intelligence and operational control for {settings.platform_name}. Approve KYC, manage fiscal agreements, and audit platform settlements.
                         </p>
                     </div>
                     <div className="flex items-center gap-4 bg-white/5 border border-white/10 px-6 py-4 rounded-3xl backdrop-blur-xl">
@@ -26,7 +29,7 @@ export default function SuperAdminVendorsPage() {
                     </div>
                 </header>
 
-                <VendorCommandCenter />
+                <VendorCommandCenter settings={settings} />
             </div>
         </div>
     );

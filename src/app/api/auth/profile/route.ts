@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { getCurrentUser } from "@/lib/auth";
+import { USER_ROLES } from "@/lib/constants";
 
 export async function GET() {
     const user = await getCurrentUser();
@@ -12,7 +13,7 @@ export async function GET() {
     if (!row) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
     let vendorData = null;
-    if ((row as any).role === "vendor") {
+    if ((row as any).role === USER_ROLES.VENDOR) {
         const vendor = await db.query.vendors.findFirst({
             where: eq(users.id, row.id) // userId in vendors table
         });
@@ -63,7 +64,7 @@ export async function PUT(req: Request) {
         await db.update(users).set(userUpdate).where(eq(users.id, user.id));
 
         // 2. Update Vendor Table if applicable
-        if (user.role === "vendor" && vendorUpdate) {
+        if (user.role === USER_ROLES.VENDOR && vendorUpdate) {
             const { vendors: vendorTable } = await import("@/lib/db/schema");
             
             const vUpdate: any = { updatedAt: new Date() };

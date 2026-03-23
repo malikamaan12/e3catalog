@@ -426,6 +426,10 @@ interface QuotePDFProps extends React.ComponentProps<typeof Document> {
     eventProjectName?: string;
     letterheadHeaderUrl?: string | null;
     letterheadFooterUrl?: string | null;
+    currencySymbol?: string;
+    platformName?: string;
+    footerLegalText?: string;
+    quoteTitle?: string;
     items: Array<{
         name: string;
         itemCode?: string;
@@ -474,6 +478,10 @@ export function QuotePDFTemplate({
     eventProjectName,
     letterheadHeaderUrl,
     letterheadFooterUrl,
+    currencySymbol = "QAR",
+    platformName = "E3 Rentals",
+    footerLegalText = "Generated automatically • Confidential Tender Document",
+    quoteTitle = "Standard Rental Proposal",
     items,
     financials,
     termsAndConditions,
@@ -495,7 +503,7 @@ export function QuotePDFTemplate({
             <Image src={letterheadFooterUrl} style={styles.footerOverlay} fixed />
         ) : (
             <View style={[styles.footerOverlay, { paddingHorizontal: 40, paddingTop: 20, borderTopWidth: 1, borderTopColor: "#e2e8f0" }]} fixed>
-                <Text style={{ fontSize: 8, color: "#94a3b8", textAlign: "center" }}>Generated automatically by Rental Fleet OS • Confidential Tender Document</Text>
+                <Text style={{ fontSize: 8, color: "#94a3b8", textAlign: "center" }}>{platformName} • {footerLegalText}</Text>
             </View>
         )
     );
@@ -510,7 +518,7 @@ export function QuotePDFTemplate({
                 <View style={styles.section}>
                     <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", borderBottomWidth: 1, borderBottomColor: "#e2e8f0", paddingBottom: 10, marginBottom: 15 }}>
                         <View>
-                            <Text style={[styles.title, { marginBottom: 0 }]}>Rental Proposal</Text>
+                            <Text style={[styles.title, { marginBottom: 0 }]}>{quoteTitle}</Text>
                             <Text style={{ fontSize: 10, color: "#64748b" }}>Ref: #{quoteNumber} | {date}</Text>
                         </View>
                         <View style={{ alignItems: "flex-end" }}>
@@ -567,7 +575,7 @@ export function QuotePDFTemplate({
                                     </View>
                                     <View style={styles.compactSpecItem}>
                                         <Text style={styles.label}>Line Total</Text>
-                                        <Text style={[styles.text, { fontSize: 9, fontWeight: "bold", color: "#0f172a" }]}>{typeof item.totalLinePrice === 'number' ? `${item.totalLinePrice.toLocaleString()} QAR` : item.totalLinePrice}</Text>
+                                        <Text style={[styles.text, { fontSize: 9, fontWeight: "bold", color: "#0f172a" }]}>{typeof item.totalLinePrice === 'number' ? `${item.totalLinePrice.toLocaleString()} ${currencySymbol}` : item.totalLinePrice}</Text>
                                     </View>
                                 </View>
                             </View>
@@ -592,7 +600,7 @@ export function QuotePDFTemplate({
                         </View>
                         <View style={[styles.grandTotalBox, { marginTop: 0, padding: 12, minWidth: 200 }]}>
                             <Text style={[styles.grandTotalLabel, { fontSize: 9 }]}>Total Payable Value</Text>
-                            <Text style={[styles.grandTotalValue, { fontSize: 16 }]}>{typeof financials.grandTotal === 'number' ? financials.grandTotal.toLocaleString() : financials.grandTotal} QAR</Text>
+                            <Text style={[styles.grandTotalValue, { fontSize: 16 }]}>{typeof financials.grandTotal === 'number' ? financials.grandTotal.toLocaleString() : financials.grandTotal} {currencySymbol}</Text>
                         </View>
                     </View>
                 </View>

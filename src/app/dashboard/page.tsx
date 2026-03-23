@@ -5,6 +5,7 @@ import { bookings, products, vendors, commissionSettlements } from "@/lib/db/sch
 import { eq, desc } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import DashboardClient from "./DashboardClient";
+import { USER_ROLES, BOOKING_STATUS } from "@/lib/constants";
 
 export default async function DashboardPage() {
     const user = await getCurrentUser();
@@ -26,7 +27,7 @@ export default async function DashboardPage() {
         active: 0,
     };
 
-    if (user.role === "vendor") {
+    if (user.role === USER_ROLES.VENDOR) {
         const vendorData = await db
             .select()
             .from(vendors)
@@ -78,9 +79,9 @@ export default async function DashboardPage() {
 
             stats = {
                 total: projects.length,
-                awaitingQuote: projects.filter((p: any) => p.status === "request").length,
-                reviewQuote: projects.filter((p: any) => p.status === "quote_sent").length,
-                confirmed: projects.filter((p: any) => ["approved", "booked"].includes(p.status)).length,
+                awaitingQuote: projects.filter((p: any) => p.status === BOOKING_STATUS.REQUEST).length,
+                reviewQuote: projects.filter((p: any) => p.status === BOOKING_STATUS.QUOTE_SENT).length,
+                confirmed: projects.filter((p: any) => [BOOKING_STATUS.APPROVED, BOOKING_STATUS.BOOKED].includes(p.status)).length,
                 // Marketplace metrics
                 grossEarnings: projects.filter((p: any) => ["approved", "booked"].includes(p.status)).reduce((sum: number, p: any) => sum + (p.totalUnits * 100), 0), // Placeholder logic, actual price logic in finance.ts
                 amountOwed: settlements.filter(s => s.status !== "approved_paid").reduce((sum, s) => sum + s.amountOwed, 0),
@@ -129,10 +130,10 @@ export default async function DashboardPage() {
 
         stats = {
             total: projects.length,
-            awaitingQuote: projects.filter((p: any) => p.status === "request").length,
-            reviewQuote: projects.filter((p: any) => p.status === "quote_sent").length,
-            confirmed: projects.filter((p: any) => ["approved", "booked"].includes(p.status)).length,
-            active: projects.filter((p: any) => !["cancelled", "completed"].includes(p.status)).length,
+            awaitingQuote: projects.filter((p: any) => p.status === BOOKING_STATUS.REQUEST).length,
+            reviewQuote: projects.filter((p: any) => p.status === BOOKING_STATUS.QUOTE_SENT).length,
+            confirmed: projects.filter((p: any) => [BOOKING_STATUS.APPROVED, BOOKING_STATUS.BOOKED].includes(p.status)).length,
+            active: projects.filter((p: any) => ![BOOKING_STATUS.CANCELLED, BOOKING_STATUS.COMPLETED].includes(p.status)).length,
         };
     }
 

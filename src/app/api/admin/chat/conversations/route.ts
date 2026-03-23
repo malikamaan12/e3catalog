@@ -3,14 +3,15 @@ import { chatMessages, users } from "@/lib/db/schema";
 import { eq, or, desc, inArray } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/requireAdmin";
+import { USER_ROLES } from "@/lib/constants";
 
 export async function GET(req: NextRequest) {
     try {
-        const { user: currentAdmin, error } = await requireAdmin(["admin", "super_admin", "vendor", "sales_rep"]);
+        const { user: currentAdmin, error } = await requireAdmin([USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN, USER_ROLES.VENDOR, USER_ROLES.SALES_REP]);
         if (error) return error;
 
         // Staff roles that constitute the "Support Team"
-        const STAFF_ROLES = ["admin", "super_admin", "vendor", "sales_rep"];
+        const STAFF_ROLES = [USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN, USER_ROLES.VENDOR, USER_ROLES.SALES_REP];
 
         // 1. Fetch ALL users with staff roles
         const staffList = await db.select({ id: users.id }).from(users).where(or(...STAFF_ROLES.map(role => eq(users.role, role))));
@@ -20,7 +21,7 @@ export async function GET(req: NextRequest) {
 
         // 2. Determine Vendor Access
         let vendorProjectIds: string[] = [];
-        if (currentAdmin.role === "vendor" && currentAdmin.vendorId) {
+        if (currentAdmin.role === USER_ROLES.VENDOR && currentAdmin.vendorId) {
             // Vendors can only see chats tied to their bookings
             const { bookings } = await import("@/lib/db/schema");
             const vBookings = await db.select({ projectId: bookings.projectId, id: bookings.id }).from(bookings).where(eq(bookings.vendorId, currentAdmin.vendorId));
@@ -44,7 +45,7 @@ export async function GET(req: NextRequest) {
 
         for (const msg of allMessages) {
             // Apply Vendor Security Filter
-            if (currentAdmin.role === "vendor") {
+            if (currentAdmin.role === USER_ROLES.VENDOR) {
                 // If it's a quote chat, must be one of their quotes
                 if (msg.projectId && !vendorProjectIds.includes(msg.projectId)) continue;
                 // If no quote ID, they shouldn't see it unless they are specifically the sender/receiver

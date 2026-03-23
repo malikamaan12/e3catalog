@@ -4,12 +4,13 @@ import { eq, and, desc, gte, inArray } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { subMonths, startOfMonth, format } from "date-fns";
+import { USER_ROLES, BOOKING_STATUS } from "@/lib/constants";
 
 export async function GET(request: Request) {
-    const { user, error } = await requireAdmin(["super_admin", "admin", "vendor"]);
+    const { user, error } = await requireAdmin([USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN, USER_ROLES.VENDOR]);
     if (error) return error;
 
-    const isVendor = user.role === "vendor";
+    const isVendor = user.role === USER_ROLES.VENDOR;
     const vendorId = isVendor ? (user as any).vendorId : null;
 
     // Six months ago for historic charting
@@ -85,7 +86,7 @@ export async function GET(request: Request) {
 
         allBookingsQuery.forEach((b: any) => {
              totalQuotes++;
-             if (["quote_accepted", "approved", "booked"].includes(b.status)) {
+             if ([BOOKING_STATUS.QUOTE_ACCEPTED, BOOKING_STATUS.APPROVED, BOOKING_STATUS.BOOKED].includes(b.status)) {
                  totalConverted++;
              }
              if (!isVendor) {
@@ -128,7 +129,7 @@ export async function GET(request: Request) {
              .innerJoin(products, eq(bookings.productId, products.id))
              .innerJoin(vendors, eq(products.vendorId, vendors.id))
              .where(and(
-                  inArray(bookings.status, ["quote_accepted", "approved", "booked"]),
+                  inArray(bookings.status, [BOOKING_STATUS.QUOTE_ACCEPTED, BOOKING_STATUS.APPROVED, BOOKING_STATUS.BOOKED]),
                   gte(bookings.endDate, now),
                   eq(products.vendorId, vendorId)
              ));
@@ -144,7 +145,7 @@ export async function GET(request: Request) {
              .innerJoin(products, eq(bookings.productId, products.id))
              .innerJoin(vendors, eq(products.vendorId, vendors.id))
              .where(and(
-                  inArray(bookings.status, ["quote_accepted", "approved", "booked"]),
+                  inArray(bookings.status, [BOOKING_STATUS.QUOTE_ACCEPTED, BOOKING_STATUS.APPROVED, BOOKING_STATUS.BOOKED]),
                   gte(bookings.endDate, now)
              ));
         }
@@ -173,7 +174,7 @@ export async function GET(request: Request) {
             })
             .from(bookings)
             .where(and(
-                inArray(bookings.status, ["quote_accepted", "approved", "booked"]),
+                inArray(bookings.status, [BOOKING_STATUS.QUOTE_ACCEPTED, BOOKING_STATUS.APPROVED, BOOKING_STATUS.BOOKED]),
                 gte(bookings.endDate, now)
            ));
            

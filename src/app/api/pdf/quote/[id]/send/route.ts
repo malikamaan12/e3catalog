@@ -8,11 +8,14 @@ import { QuotePDFTemplate } from "@/components/pdf/QuotePDFTemplate";
 import React from "react";
 import { format } from "date-fns";
 import { Resend } from "resend";
+import { getAllSiteSettings } from "@/lib/settings";
+import { calculateTax } from "@/lib/finances";
+import { USER_ROLES, BOOKING_STATUS, COMMISSION_TYPE } from "@/lib/constants";
 
-const getAbsoluteUrl = (url: string | null | undefined) => {
+const getAbsoluteUrl = (url: string | null | undefined, settings?: any) => {
     if (!url) return undefined;
     if (url.startsWith("http")) return url;
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_PROJECT_PRODUCTION_URL || "https://e3catalog.com";
+    const baseUrl = settings?.base_production_url || process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_PROJECT_PRODUCTION_URL || "https://e3catalog.com";
     return `${baseUrl.replace(/\/$/, "")}${url.startsWith("/") ? url : `/${url}`}`;
 };
 
@@ -27,7 +30,8 @@ async function streamToBuffer(stream: NodeJS.ReadableStream): Promise<Buffer> {
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     try {
-        const { error } = await requireAdmin(["admin", "super_admin", "vendor", "sales_rep"]);
+        const settings = await getAllSiteSettings();
+        const { error } = await requireAdmin([USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN, USER_ROLES.VENDOR, USER_ROLES.SALES_REP]);
         if (error) return error;
 
         const resolvedParams = await params;
@@ -49,7 +53,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
         const hydratedItems = await Promise.all(
             siblingBookings.map(async (b: any) => {
-                const product = await db.query.products.findFirst({ where: eq(products.id, b.productId) });
+                const product = await db.query.products.findFirst({ 
+                    where: eq(products.id, b.productId),
+                    with: {
+                        productTags: { with: { tag: true } },
+                        safetyCertificates: true
+                    }
+                });
                 const media = await db.query.productMedia.findFirst({ where: eq(productMedia.productId, b.productId) });
 
                 const startDate = new Date(b.startDate);
@@ -65,17 +75,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
                     dimensions: product?.dimensions || "N/A",
                     weight: product?.weight || "N/A",
                     powerRequirements: product?.powerRequirements || "N/A",
-                    thumbnailUrl: getAbsoluteUrl(media?.url || product?.thumbnailUrl),
+                    thumbnailUrl: getAbsoluteUrl(media?.url || product?.thumbnailUrl, settings),
                     quantity: b.units,
                     startDate: format(startDate, "dd MMM yyyy"),
                     endDate: format(endDate, "dd MMM yyyy"),
                     pricePerDay,
                     totalLinePrice: lineTotal,
                     vendorId: product?.vendorId,
-                    smartTags: ["Premium Grade", "Inspected"],
-                    certifications: ["TUV Certified"],
-                    qrCodeUrl: product ? `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(getAbsoluteUrl(`/${product.slug}`) || "")}` : undefined,
-                    modelLink: "View 3D Model Online"
+                    smartTags: product?.productTags?.map((pt: any) => pt.tag.name) || [],
+                    certifications: product?.safetyCertificates?.map((sc: any) => sc.name) || [],
+                    qrCodeUrl: product ? `${settings.qr_code_provider_url || 'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data='}${encodeURIComponent(getAbsoluteUrl(`/${product.slug}`, settings) || "")}` : undefined,
+                    modelLink: `View ${settings.platform_name} 3D Model`
                 };
             })
         );
@@ -91,8 +101,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
                 where: eq(vendors.id, vendorIds[0] as string)
             });
             if (vProfile) {
-                primaryVendorHeader = getAbsoluteUrl(vProfile.letterheadHeaderUrl);
-                primaryVendorFooter = getAbsoluteUrl(vProfile.letterheadFooterUrl);
+                primaryVendorHeader = getAbsoluteUrl(vProfile.letterheadHeaderUrl, settings);
+                primaryVendorFooter = getAbsoluteUrl(vProfile.letterheadFooterUrl, settings);
                 
                 if (vProfile.bankName && vProfile.accountNumber) {
                     pBankDetails = {
@@ -111,7 +121,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         const discountPct = booking.discount || 0;
         const discountAmount = subtotal * (discountPct / 100);
         const logistics = booking.logisticsCost || 0;
-        const grandTotal = subtotal - discountAmount + logistics;
+        const taxAmount = await calculateTax(subtotal - discountAmount + logistics);
+        const grandTotal = subtotal - discountAmount + logistics + taxAmount;
 
         const quoteNumber = booking.id.slice(0, 8).toUpperCase();
         
@@ -130,9 +141,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
                 logisticsCost: logistics,
                 setupLaborCost: booking.laborCost || 0,
                 discount: discountPct,
-                tax: 0,
+                tax: taxAmount,
                 grandTotal: booking.totalPrice || grandTotal,
             },
+            currencySymbol: settings.currency_symbol,
+            platformName: settings.platform_name,
+            footerLegalText: settings.footer_legal_text,
             bankDetails: pBankDetails,
             paymentTerms: pPaymentTerms,
             termsAndConditions: termsAndConditions || [
@@ -152,13 +166,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         }
 
         const resend = new Resend(process.env.RESEND_API_KEY);
-        const EMAIL_FROM = process.env.EMAIL_FROM || "E3 Rentals <noreply@e3rentals.com>";
+        const EMAIL_FROM = settings.resend_from_email || process.env.EMAIL_FROM || "E3 Rentals <noreply@e3rentals.com>";
 
         await resend.emails.send({
             from: EMAIL_FROM,
             to: booking.customerEmail,
-            subject: `Official Quote #${quoteNumber} - ${booking.projectName || "E3 Rentals"}`,
-            html: `<p>Hi ${booking.customerName},</p><p>Please find attached your official quote/proposal ${quoteNumber} for your review.</p><p>Thank you.</p>`,
+            subject: `Official Quote #${quoteNumber} - ${booking.projectName || settings.platform_name}`,
+            html: `<p>Hi ${booking.customerName},</p><p>Please find attached your official quote/proposal ${quoteNumber} for your review.</p><p>Thank you.</p><p>— The ${settings.platform_name} Team</p>`,
             attachments: [
                 {
                     filename: `Quote-${quoteNumber}.pdf`,
@@ -169,7 +183,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
         // Update DB status to quote_sent
         await db.update(bookings)
-            .set({ status: "quote_sent" })
+            .set({ status: BOOKING_STATUS.QUOTE_SENT })
             .where(eq(bookings.id, bookingId));
 
         return NextResponse.json({ success: true, message: "Quote sent successfully" });
