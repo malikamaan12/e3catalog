@@ -89,6 +89,9 @@ export default function HeroSection() {
         return () => ctx.revert();
     }, []);
 
+    const [splineLoaded, setSplineLoaded] = useState(false);
+    const [splineError, setSplineError] = useState(false);
+
     return (
         <section
             ref={containerRef}
@@ -101,13 +104,22 @@ export default function HeroSection() {
                 style={{
                     rotateY,
                     rotateX,
+                    opacity: splineLoaded ? 1 : 0,
+                    transition: "opacity 1s ease-in-out"
                 }}
             >
                 <div className="absolute inset-0 z-10 bg-gradient-to-br from-[#0a0f1e]/80 via-transparent to-[#0a0f1e]/80 pointer-events-none" />
-                <Spline 
-                    scene="https://prod.spline.design/6Wq1Q7YAn9YqO79P/scene.splinecode"
-                    className="w-full h-full"
-                />
+                {!splineError && (
+                    <Spline 
+                        scene="https://prod.spline.design/6Wq1Q7YAn9YqO79P/scene.splinecode"
+                        className="w-full h-full"
+                        onLoad={() => setSplineLoaded(true)}
+                        onError={() => {
+                            setSplineError(true);
+                            console.error("Spline failed to load. Falling back to premium gradient system.");
+                        }}
+                    />
+                )}
             </motion.div>
 
             <div className="absolute inset-0 z-[1] pointer-events-none">
