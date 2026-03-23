@@ -85,6 +85,7 @@ export async function POST(req: NextRequest) {
         featured: body.featured || false,
         requiresLicense: body.requiresLicense || false,
         requiresApproval: body.requiresApproval || false,
+        isPublished: body.isPublished || false,
         adminNotes: body.adminNotes || null,
         itemCode: body.itemCode?.trim() || null,
         createdAt: now,
@@ -230,6 +231,9 @@ export async function PUT(req: NextRequest) {
     // Drizzle ORM Type strictness: Convert empty strings to null for numeric fields
     delete updates.createdAt;
     updates.updatedAt = new Date();
+    if (typeof updates.isPublished !== 'undefined') {
+        updates.isPublished = !!updates.isPublished;
+    }
     if (updates.minOrderQty) updates.minOrderQty = Number(updates.minOrderQty);
     if (updates.priceRangeMax === "") updates.priceRangeMax = null;
     else if (updates.priceRangeMax !== undefined && updates.priceRangeMax !== null) updates.priceRangeMax = Number(updates.priceRangeMax);

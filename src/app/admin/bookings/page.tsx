@@ -358,6 +358,15 @@ export default function AdminBookingsPage() {
                                             >
                                                 Manage →
                                             </Link>
+                                            {(booking.status === BOOKING_STATUS.APPROVED || booking.status === BOOKING_STATUS.BOOKED) && (
+                                                <Link
+                                                    href={`/admin/fulfillment/${booking.id}`}
+                                                    className="text-xs px-4 py-2 rounded-lg bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/30 transition-colors font-bold uppercase tracking-wider text-center"
+                                                    onClick={(e) => e.stopPropagation()}
+                                                >
+                                                    Fulfill
+                                                </Link>
+                                            )}
                                             {booking.userId && (
                                                 <Link
                                                     href={`/admin/chat?userId=${booking.userId}&quoteId=${booking.id}`}
@@ -424,6 +433,15 @@ export default function AdminBookingsPage() {
                                                     >
                                                         Manage →
                                                     </Link>
+                                                    {(booking.status === BOOKING_STATUS.APPROVED || booking.status === BOOKING_STATUS.BOOKED) && (
+                                                        <Link
+                                                            href={`/admin/fulfillment/${booking.id}`}
+                                                            className="inline-block text-xs px-3 py-1.5 rounded bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/30 transition-colors font-bold uppercase tracking-wider"
+                                                            onClick={(e) => e.stopPropagation()}
+                                                        >
+                                                            Fulfill
+                                                        </Link>
+                                                    )}
                                                     {booking.userId && (
                                                         <Link
                                                             href={`/admin/chat?userId=${booking.userId}&quoteId=${booking.id}`}

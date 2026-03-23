@@ -178,6 +178,7 @@ export const products = pgTable("products", {
     viewCount: integer("view_count").default(0), // Added for Catalog Demand Analytics
     averageRating: real("average_rating").default(5.0),
     reviewCount: integer("review_count").default(0),
+    isPublished: boolean("is_published").default(false),
     adminNotes: varchar("admin_notes", { length: 1000 }), // Internal use only
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
@@ -408,6 +409,22 @@ export const commissionSettlements = pgTable("commission_settlements", {
     };
 });
 
+// ─── Booking Unit Assignments (The physical bridge) ───
+export const bookingUnitAssignments = pgTable("booking_unit_assignments", {
+    id: varchar("id", { length: 255 }).primaryKey(),
+    bookingId: varchar("booking_id", { length: 255 }).notNull().references(() => bookings.id),
+    inventoryUnitId: varchar("inventory_unit_id", { length: 255 }).notNull().references(() => inventoryUnits.id),
+    assignedAt: timestamp("assigned_at").notNull().defaultNow(),
+    scannedOutAt: timestamp("scanned_out_at"), // Bump-In
+    scannedInAt: timestamp("scanned_in_at"),   // Bump-Out
+    status: varchar("status", { length: 50 }).notNull().default("reserved"), // reserved | dispatched | returned
+}, (table) => {
+    return {
+        bookingIdIdx: index("booking_unit_assignments_booking_id_idx").on(table.bookingId),
+        unitIdIdx: index("booking_unit_assignments_unit_id_idx").on(table.inventoryUnitId),
+    };
+});
+
 // ─── Cart Items ───
 export const cartItems = pgTable("cart_items", {
     id: varchar("id", { length: 255 }).primaryKey(),
@@ -513,7 +530,7 @@ export const installationGuidesRelations = relations(installationGuides, ({ one 
     }),
 }));
 
-export const bookingsRelations = relations(bookings, ({ one }) => ({
+export const bookingsRelations = relations(bookings, ({ one, many }) => ({
     product: one(products, {
         fields: [bookings.productId],
         references: [products.id],
@@ -521,7 +538,19 @@ export const bookingsRelations = relations(bookings, ({ one }) => ({
     review: one(reviews, {
         fields: [bookings.id],
         references: [reviews.bookingId]
-    })
+    }),
+    unitAssignments: many(bookingUnitAssignments),
+}));
+
+export const bookingUnitAssignmentsRelations = relations(bookingUnitAssignments, ({ one }) => ({
+    booking: one(bookings, {
+        fields: [bookingUnitAssignments.bookingId],
+        references: [bookings.id],
+    }),
+    inventoryUnit: one(inventoryUnits, {
+        fields: [bookingUnitAssignments.inventoryUnitId],
+        references: [inventoryUnits.id],
+    }),
 }));
 
 export const cartItemsRelations = relations(cartItems, ({ one }) => ({

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { inventoryUnits, products, vendors } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { inventoryUnits, products, vendors, inspectionLogs } from "@/lib/db/schema";
+import { eq, desc } from "drizzle-orm";
 import { getSession } from "@/lib/auth";
 import { USER_ROLES } from "@/lib/constants";
 
@@ -45,10 +45,25 @@ export async function GET(
             (session.role === USER_ROLES.VENDOR && session.id === (await db.query.vendors.findFirst({ where: eq(vendors.id, asset[0].vendorId) }))?.userId) ||
             session.role === USER_ROLES.WAREHOUSE_MANAGER
         );
+        
+        // 3. Fetch History (Inspection Logs)
+        const history = await db.select({
+            id: inspectionLogs.id,
+            date: inspectionLogs.createdAt,
+            inspectionType: inspectionLogs.inspectionType,
+            conditionBefore: inspectionLogs.conditionBefore,
+            conditionAfter: inspectionLogs.conditionAfter,
+            notes: inspectionLogs.notes,
+        })
+        .from(inspectionLogs)
+        .where(eq(inspectionLogs.unitId, asset[0].id))
+        .orderBy(desc(inspectionLogs.createdAt))
+        .execute();
 
         return NextResponse.json({
             ...asset[0],
-            isAuthorized: !!isAuthorized
+            isAuthorized: !!isAuthorized,
+            history: history || []
         });
     } catch (error) {
         console.error("Passport API Error:", error);

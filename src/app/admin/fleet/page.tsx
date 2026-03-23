@@ -4,7 +4,7 @@ import React, { useState, useEffect, Suspense, useCallback, useRef } from "react
 import { 
     QrCode, Plus, Filter, Search, Printer, Wrench, CheckCircle2,
     Package, RefreshCcw, ChevronRight, ChevronDown, FolderOpen,
-    ScanLine, X, Camera, Building2, Tag, Eye
+    ScanLine, X, Camera, Building2, Tag, Eye, List, History as HistoryIcon
 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { PDFDownloadLink } from "@react-pdf/renderer";
@@ -131,11 +131,13 @@ function FleetPageContent() {
     const [userRole, setUserRole] = useState<string>("vendor");
     const [sidebarFilter, setSidebarFilter] = useState<{ id: string; type: string } | null>(null);
     const [expanded, setExpanded] = useState<Set<string>>(new Set());
+    const [groupByProduct, setGroupByProduct] = useState(false);
 
     // Modals
     const [showInspectionModal, setShowInspectionModal] = useState<string | null>(null);
     const [showAddAssetModal, setShowAddAssetModal] = useState(false);
     const [showScannerModal, setShowScannerModal] = useState(false);
+    const [viewLogsUnit, setViewLogsUnit] = useState<InventoryUnit | null>(null);
 
     // Products & categories for add-asset form
     const [productsForAdd, setProductsForAdd] = useState<Array<{ id: string; name: string; categoryName: string; vendorId: string }>>([]);
@@ -261,9 +263,21 @@ function FleetPageContent() {
                             Asset Fleet Manager
                         </h1>
                         <p className="text-[var(--color-slate)] text-sm">
-                            {sidebarFilter ? `Filtered: ${filteredUnits.length} units` : `${units.length} total units across all products`}
+                            {units.length} total units across all products
                         </p>
                     </div>
+                    
+                    {/* Breadcrumbs */}
+                    {sidebarFilter && (
+                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-[10px] uppercase font-bold tracking-widest text-[var(--color-gold)]">
+                            <span className="opacity-50">Filter:</span>
+                            {sidebarFilter.type === 'vendor' && <><Building2 className="w-3 h-3" /> {tree.find(v => v.id === sidebarFilter.id)?.label || "Vendor"}</>}
+                            {sidebarFilter.type === 'category' && <><FolderOpen className="w-3 h-3" /> {units.find(u => u.categoryId === sidebarFilter.id)?.categoryName || "Category"}</>}
+                            {sidebarFilter.type === 'product' && <><Package className="w-3 h-3" /> {units.find(u => u.productId === sidebarFilter.id)?.productName || "Product"}</>}
+                            <button onClick={() => setSidebarFilter(null)} className="ml-2 hover:text-white"><X className="w-3 h-3" /></button>
+                        </div>
+                    )}
+
                     <div className="flex items-center gap-2 flex-wrap">
                         {/* QR Scanner */}
                         <button onClick={() => setShowScannerModal(true)} className="flex items-center gap-2 bg-blue-500/10 border border-blue-500/20 text-blue-400 px-3 py-2 rounded-xl font-bold text-xs hover:bg-blue-500/20 transition-all">
@@ -299,8 +313,14 @@ function FleetPageContent() {
                             className="w-full bg-black/40 border border-white/10 rounded-xl pl-10 pr-4 py-2 outline-none focus:border-[var(--color-gold)] transition-all text-sm text-white"
                             value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
                     </div>
-                    <button onClick={fetchFleet} className="p-2 rounded-xl border border-white/10 hover:bg-white/5 transition-all text-[var(--color-slate)]">
+                    <button onClick={fetchFleet} className="p-2 rounded-xl border border-white/10 hover:bg-white/5 transition-all text-[var(--color-slate)]" title="Refresh">
                         <RefreshCcw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                    </button>
+                    <button 
+                        onClick={() => setGroupByProduct(!groupByProduct)} 
+                        className={`flex items-center gap-2 px-3 py-2 rounded-xl border transition-all text-xs font-bold ${groupByProduct ? 'bg-[var(--color-gold)]/20 border-[var(--color-gold)]/40 text-[var(--color-gold)]' : 'bg-white/5 border-white/10 text-[var(--color-slate)] hover:text-white'}`}
+                    >
+                        <List className="w-4 h-4" /> Grouped
                     </button>
                 </div>
 
@@ -331,46 +351,50 @@ function FleetPageContent() {
                                     <p className="font-bold text-white">No assets found</p>
                                     <p className="text-xs mt-1">Try a different filter or add new assets.</p>
                                 </td></tr>
-                            ) : filteredUnits.map(unit => (
-                                <tr key={unit.id} className="hover:bg-white/5 transition-colors group">
-                                    <td className="p-3 text-center">
-                                        <input type="checkbox" className="accent-[var(--color-gold)]"
-                                            checked={selectedIds.includes(unit.id)} onChange={() => toggleSelect(unit.id)} />
-                                    </td>
-                                    <td className="p-3">
-                                        <span className="font-black text-white font-mono text-xs">{unit.assetTagCode}</span>
-                                        <br/><span className="text-[10px] text-[var(--color-slate)] font-mono">{unit.serialNumber || '—'}</span>
-                                    </td>
-                                    <td className="p-3">
-                                        <span className="text-sm font-bold text-white">{unit.productName}</span>
-                                        <br/><span className="text-[10px] text-[var(--color-slate)]">{unit.categoryName}</span>
-                                    </td>
-                                    {isAdmin && <td className="p-3"><span className="text-xs font-bold text-[var(--color-slate)]">{unit.vendorName || "E3"}</span></td>}
-                                    <td className="p-3">
-                                        <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-wider ${availabilityColors[unit.availabilityStatus] || ''}`}>
-                                            {unit.availabilityStatus.replace(/_/g, ' ')}
-                                        </span>
-                                    </td>
-                                    <td className="p-3">
-                                        <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-wider ${conditionColors[unit.conditionStatus] || ''}`}>
-                                            {unit.conditionStatus.replace(/_/g, ' ')}
-                                        </span>
-                                    </td>
-                                    <td className="p-3">
-                                        <div className="flex items-center justify-center gap-1 opacity-40 group-hover:opacity-100 transition-opacity">
-                                            <button onClick={() => handleViewPassport(unit.assetTagCode)} className="p-1.5 rounded-lg hover:bg-[var(--color-gold)] hover:text-black transition-all" title="View Passport">
-                                                <Eye className="w-3.5 h-3.5" />
-                                            </button>
-                                            <button onClick={() => setShowInspectionModal(unit.id)} className="p-1.5 rounded-lg hover:bg-blue-500 hover:text-white transition-all" title="Log Inspection">
-                                                <CheckCircle2 className="w-3.5 h-3.5" />
-                                            </button>
-                                            <button onClick={() => handleMaintenanceToggle(unit)} className={`p-1.5 rounded-lg transition-all ${unit.availabilityStatus === 'in_maintenance' ? 'bg-orange-500 text-white' : 'hover:bg-red-500 hover:text-white'}`} title={unit.availabilityStatus === 'in_maintenance' ? 'Return to Warehouse' : 'Mark Maintenance'}>
-                                                <Wrench className="w-3.5 h-3.5" />
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
+                            ) : !groupByProduct ? (
+                                filteredUnits.map(unit => <AssetRow 
+                                    key={unit.id} unit={unit} isAdmin={isAdmin} 
+                                    isSelected={selectedIds.includes(unit.id)} 
+                                    onSelect={() => toggleSelect(unit.id)}
+                                    onInspect={() => setShowInspectionModal(unit.id)}
+                                    onMaintenance={() => handleMaintenanceToggle(unit)}
+                                    conditionColors={conditionColors}
+                                    availabilityColors={availabilityColors}
+                                    onViewPassport={handleViewPassport}
+                                    setViewLogsUnit={setViewLogsUnit}
+                                />)
+                            ) : (
+                                Array.from(new Set(filteredUnits.map(u => u.productId))).map(pId => {
+                                    const productUnits = filteredUnits.filter(u => u.productId === pId);
+                                    const pName = productUnits[0].productName;
+                                    const catName = productUnits[0].categoryName;
+                                    return (
+                                        <React.Fragment key={pId}>
+                                            <tr className="bg-white/5 border-y border-white/10">
+                                                <td colSpan={isAdmin ? 7 : 6} className="px-4 py-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <Package className="w-3.5 h-3.5 text-[var(--color-gold)]" />
+                                                        <span className="text-xs font-black text-white uppercase tracking-wider">{pName}</span>
+                                                        <span className="text-[10px] text-[var(--color-slate)] uppercase font-bold opacity-50">• {catName}</span>
+                                                        <span className="ml-auto text-[10px] bg-white/10 px-2 py-0.5 rounded-full font-mono">{productUnits.length} Total Units</span>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            {productUnits.map(unit => <AssetRow 
+                                                key={unit.id} unit={unit} isAdmin={isAdmin} 
+                                                isSelected={selectedIds.includes(unit.id)} 
+                                                onSelect={() => toggleSelect(unit.id)}
+                                                onInspect={() => setShowInspectionModal(unit.id)}
+                                                onMaintenance={() => handleMaintenanceToggle(unit)}
+                                                conditionColors={conditionColors}
+                                                availabilityColors={availabilityColors}
+                                                onViewPassport={handleViewPassport}
+                                                setViewLogsUnit={setViewLogsUnit}
+                                            />)}
+                                        </React.Fragment>
+                                    );
+                                })
+                            )}
                         </tbody>
                     </table>
                 </div>
@@ -387,10 +411,71 @@ function FleetPageContent() {
                 <AddAssetModal products={productsForAdd} onClose={() => setShowAddAssetModal(false)} onSuccess={fetchFleet} />
             )}
 
+            {/* ─── Log Viewer Modal ─── */}
+            {viewLogsUnit && (
+                <LogViewer unit={viewLogsUnit} onClose={() => setViewLogsUnit(null)} />
+            )}
+
             {/* ─── QR Scanner Modal ─── */}
             {showScannerModal && (
                 <ScannerModal onClose={() => setShowScannerModal(false)} />
             )}
+        </div>
+    );
+}
+
+// ─── Log Viewer Modal ───
+function LogViewer({ unit, onClose }: { unit: InventoryUnit; onClose: () => void }) {
+    const [logs, setLogs] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        fetch(`/api/passport/${unit.assetTagCode}`)
+            .then(r => r.json())
+            .then(data => { setLogs(data.history || []); setLoading(false); })
+            .catch(() => setLoading(false));
+    }, [unit]);
+
+    return (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[60] flex items-center justify-center p-4" onClick={onClose}>
+            <div className="glass border border-white/10 rounded-3xl p-6 w-full max-w-lg max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+                <div className="flex justify-between items-center mb-6">
+                    <div>
+                        <h3 className="font-black text-lg text-white flex items-center gap-2 tracking-tight">
+                            <HistoryIcon className="w-5 h-5 text-[var(--color-gold)]" /> Maintenance History
+                        </h3>
+                        <p className="text-[var(--color-gold)] font-mono text-[10px] font-bold mt-0.5">{unit.assetTagCode} • {unit.productName}</p>
+                    </div>
+                    <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-all"><X className="w-5 h-5 text-[var(--color-slate)]" /></button>
+                </div>
+
+                {loading ? (
+                    <div className="py-12 text-center text-[var(--color-slate)] animate-pulse">Scanning records...</div>
+                ) : logs.length === 0 ? (
+                    <div className="py-12 text-center text-[var(--color-slate)] italic">No maintenance logs found for this asset.</div>
+                ) : (
+                    <div className="space-y-6 relative before:absolute before:left-3.5 before:top-2 before:bottom-0 before:w-px before:bg-white/5">
+                        {logs.map((log) => (
+                            <div key={log.id} className="relative pl-10">
+                                <div className="absolute left-1.5 top-1.5 w-4 h-4 rounded-full bg-[var(--color-navy)] border-2 border-white/10" />
+                                <p className="text-[10px] font-black text-[var(--color-slate)] uppercase tracking-[0.1em]">{new Date(log.date).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</p>
+                                <p className="text-sm font-bold text-white uppercase tracking-tight leading-none mt-1">{log.inspectionType.replace('_', ' ')}</p>
+                                <div className="flex items-center gap-2 mt-1.5 mb-2">
+                                    <span className="text-[10px] font-bold text-[var(--color-slate)] bg-white/5 px-1.5 py-0.5 rounded border border-white/5">{log.conditionBefore}</span>
+                                    <ChevronRight className="w-3 h-3 text-[var(--color-slate)]" />
+                                    <span className="text-[10px] font-black text-[var(--color-gold)] bg-[var(--color-gold)]/10 px-1.5 py-0.5 rounded border border-[var(--color-gold)]/20">{log.conditionAfter}</span>
+                                </div>
+                                {log.notes && (
+                                    <div className="p-3 rounded-xl bg-white/5 border border-white/5 text-xs text-[var(--color-slate)] italic relative overflow-hidden">
+                                        <div className="absolute top-0 left-0 w-1 h-full bg-[var(--color-gold)] opacity-30" />
+                                        "{log.notes}"
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
         </div>
     );
 }
@@ -504,16 +589,22 @@ function AddAssetModal({ products, onClose, onSuccess }: { products: Array<{ id:
                         {filteredProducts.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                     </select>
 
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 gap-3">
                         <div>
                             <label className="block text-xs font-bold text-[var(--color-slate)] uppercase tracking-widest">Serial Number</label>
                             <input value={form.serialNumber} onChange={e => setForm(p => ({ ...p, serialNumber: e.target.value }))}
                                 className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-[var(--color-gold)]" placeholder="Optional" />
                         </div>
                         <div>
-                            <label className="block text-xs font-bold text-[var(--color-slate)] uppercase tracking-widest">Asset Tag</label>
-                            <input value={form.assetTagCode} onChange={e => setForm(p => ({ ...p, assetTagCode: e.target.value }))}
-                                className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-[var(--color-gold)]" placeholder="Auto-generated" />
+                            <label className="block text-xs font-bold text-[var(--color-slate)] uppercase tracking-widest flex items-center justify-between">
+                                Asset Tag
+                                <span className="text-[10px] text-[var(--color-gold)] opacity-50 font-normal normal-case italic">Empty for auto-generate</span>
+                            </label>
+                            <div className="flex gap-2">
+                                <input value={form.assetTagCode} onChange={e => setForm(p => ({ ...p, assetTagCode: e.target.value }))}
+                                    className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-[var(--color-gold)]" placeholder="E3-XXXXX" />
+                                <ScannerButton onScan={code => setForm(p => ({ ...p, assetTagCode: code }))} />
+                            </div>
                         </div>
                     </div>
 
@@ -625,6 +716,111 @@ function ScannerModal({ onClose }: { onClose: () => void }) {
                     <p className="text-center text-xs text-[var(--color-slate)]">Point camera at an E3 asset QR code</p>
                 )}
             </div>
+        </div>
+    );
+}
+
+function AssetRow({ 
+    unit, isAdmin, isSelected, onSelect, onInspect, onMaintenance, 
+    conditionColors, availabilityColors, onViewPassport, setViewLogsUnit
+}: { 
+    unit: InventoryUnit, isAdmin: boolean, isSelected: boolean, 
+    onSelect: () => void, onInspect: () => void, onMaintenance: () => void,
+    conditionColors: Record<string, string>, availabilityColors: Record<string, string>,
+    onViewPassport: (tag: string) => void,
+    setViewLogsUnit: (unit: InventoryUnit) => void
+}) {
+    return (
+        <tr className="hover:bg-white/5 transition-colors group border-b border-white/5 last:border-0">
+            <td className="p-3 text-center">
+                <input type="checkbox" className="accent-[var(--color-gold)]"
+                    checked={isSelected} onChange={onSelect} />
+            </td>
+            <td className="p-3">
+                <span className="font-black text-white font-mono text-xs">{unit.assetTagCode}</span>
+                <br/><span className="text-[10px] text-[var(--color-slate)] font-mono">{unit.serialNumber || '—'}</span>
+            </td>
+            <td className="p-3">
+                <span className="text-sm font-bold text-white uppercase tracking-tight">{unit.productName}</span>
+                <br/><span className="text-[10px] text-[var(--color-slate)] capitalize">{unit.categoryName}</span>
+            </td>
+            {isAdmin && <td className="p-3"><span className="text-xs font-bold text-[var(--color-slate)]">{unit.vendorName || "E3"}</span></td>}
+            <td className="p-3">
+                <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-wider ${availabilityColors[unit.availabilityStatus] || ''}`}>
+                    {unit.availabilityStatus.replace(/_/g, ' ')}
+                </span>
+            </td>
+            <td className="p-3">
+                <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-wider ${conditionColors[unit.conditionStatus] || ''}`}>
+                    {unit.conditionStatus.replace(/_/g, ' ')}
+                </span>
+            </td>
+            <td className="p-3 text-right">
+                <div className="flex items-center justify-end gap-1 opacity-40 group-hover:opacity-100 transition-opacity">
+                    <button onClick={() => setViewLogsUnit(unit)} className="p-1.5 rounded-lg hover:bg-white/10 text-white transition-all" title="View History">
+                        <HistoryIcon className="w-3.5 h-3.5" />
+                    </button>
+                    <button onClick={() => onViewPassport(unit.assetTagCode)} className="p-1.5 rounded-lg hover:bg-[var(--color-gold)] hover:text-navy transition-all" title="View Passport">
+                        <Eye className="w-3.5 h-3.5" />
+                    </button>
+                    <button onClick={onInspect} className="p-1.5 rounded-lg hover:bg-emerald-500 hover:text-white transition-all" title="Log Inspection">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                    </button>
+                    <button onClick={onMaintenance} className={`p-1.5 rounded-lg transition-all ${unit.availabilityStatus === 'in_maintenance' ? 'bg-orange-500 text-white' : 'hover:bg-red-500 hover:text-white'}`} title={unit.availabilityStatus === 'in_maintenance' ? 'Return to Warehouse' : 'Mark Maintenance'}>
+                        <Wrench className="w-3.5 h-3.5" />
+                    </button>
+                </div>
+            </td>
+        </tr>
+    );
+}
+
+function ScannerButton({ onScan }: { onScan: (code: string) => void }) {
+    const [scanning, setScanning] = useState(false);
+    const videoRef = useRef<HTMLVideoElement>(null);
+
+    const startScan = async () => {
+        setScanning(true);
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+            if (videoRef.current) {
+                videoRef.current.srcObject = stream;
+                const detector = new (window as any).BarcodeDetector({ formats: ["qr_code"] });
+                const interval = setInterval(async () => {
+                    const barcodes = await detector.detect(videoRef.current);
+                    if (barcodes.length > 0) {
+                        onScan(barcodes[barcodes.length - 1].rawValue);
+                        stopScan(stream, interval);
+                    }
+                }, 500);
+            }
+        } catch (e) {
+            console.error(e);
+            setScanning(false);
+        }
+    };
+
+    const stopScan = (stream: MediaStream, interval: any) => {
+        clearInterval(interval);
+        stream.getTracks().forEach(t => t.stop());
+        setScanning(false);
+    };
+
+    return (
+        <div className="relative">
+            <button onClick={startScan} className="p-2.5 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 hover:bg-blue-500/20 transition-all">
+                <Camera className="w-4 h-4" />
+            </button>
+            {scanning && (
+                <div className="fixed inset-0 bg-black z-[100] flex flex-col items-center justify-center p-6">
+                    <h3 className="text-white font-black mb-4 uppercase tracking-[0.2em] animate-pulse text-xs">Align QR Code</h3>
+                    <div className="relative w-full max-w-sm aspect-square border-4 border-[var(--color-gold)] rounded-3xl overflow-hidden shadow-[0_0_100px_rgba(255,191,0,0.2)]">
+                        <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[var(--color-gold)]/10 to-transparent animate-scan-line" />
+                    </div>
+                    <button onClick={() => setScanning(false)} className="mt-8 px-8 py-3 rounded-2xl bg-white/10 text-white font-black uppercase text-xs tracking-widest border border-white/10">Cancel</button>
+                </div>
+            )}
         </div>
     );
 }

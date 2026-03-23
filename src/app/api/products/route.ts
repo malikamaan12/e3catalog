@@ -226,6 +226,7 @@ export async function GET(req: NextRequest) {
             categoryFilter,
             searchFilter,
             cursorFilter,
+            eq(products.isPublished, true),
         );
 
         // ── 5. Fetch limit+1 items (micro-payload columns only) ────────────

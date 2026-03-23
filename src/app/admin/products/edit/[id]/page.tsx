@@ -117,6 +117,7 @@ export default function EditProductPage() {
         installGuideUrl: "",
         dismantleGuideUrl: "",
         adminNotes: "",
+        isPublished: true,
     });
 
     // Rich Installation/Dismantling Guides
@@ -182,6 +183,7 @@ export default function EditProductPage() {
                         installGuideUrl: data.installGuideUrl || "",
                         dismantleGuideUrl: data.dismantleGuideUrl || "",
                         adminNotes: data.adminNotes || "",
+                        isPublished: data.isPublished ?? true,
                     });
                     setRealProductId(data.id);
                     if (data.media) {
@@ -572,6 +574,17 @@ export default function EditProductPage() {
                                 <div className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-all ${form.featured ? "left-6" : "left-1"}`} />
                             </button>
                             <span className="text-sm text-[var(--color-slate)]">Featured product (shown on homepage)</span>
+                        </div>
+
+                        <div className="flex items-center gap-3 p-4 rounded-xl bg-[var(--color-gold)]/5 border border-[var(--color-gold)]/10">
+                            <button type="button" onClick={() => updateField("isPublished", !form.isPublished)}
+                                className={`w-11 h-6 rounded-full transition-all relative ${form.isPublished ? "bg-emerald-500" : "bg-slate-600"}`}>
+                                <div className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-all ${form.isPublished ? "left-6" : "left-1"}`} />
+                            </button>
+                            <div>
+                                <span className="text-sm font-bold text-[var(--color-warm-white)] block">Publish to Storefront</span>
+                                <span className="text-xs text-[var(--color-slate)]">If off, this product will be hidden from the public catalog but manageable in fleet.</span>
+                            </div>
                         </div>
 
                         <div className="pt-4 mt-4 border-t border-white/5">

@@ -31,6 +31,14 @@ interface AssetPassportData {
     serialNumber: string;
     // Mock user status for demo
     isAuthorized: boolean; 
+    history: Array<{
+        id: string;
+        date: string;
+        inspectionType: string;
+        conditionBefore: string;
+        conditionAfter: string;
+        notes: string | null;
+    }>;
 }
 
 export default function PassportPage() {
@@ -206,19 +214,30 @@ export default function PassportPage() {
                             className="space-y-4"
                         >
                             <div className="relative pl-8 space-y-8 before:absolute before:left-3 before:top-2 before:bottom-0 before:w-px before:bg-white/10">
-                                {[
-                                    { date: 'Today, 08:30 AM', event: 'Scanned at Warehouse A', icon: MapPin },
-                                    { date: 'Yesterday, 11:00 PM', event: 'Marked as Returned (Cleaned)', icon: CheckCircle2 },
-                                    { date: 'Feb 20, 2026', event: 'Annual Safety Certification', icon: ShieldCheck }
-                                ].map((step, i) => (
-                                    <div key={i} className="relative">
-                                        <div className="absolute -left-8 top-1 w-6 h-6 rounded-full bg-[#070b14] border border-white/10 flex items-center justify-center">
-                                            <step.icon className="w-3 h-3 text-[var(--color-gold)]" />
+                                {data.history.length > 0 ? data.history.map((h, i) => {
+                                    const iconMap: any = {
+                                        routine: CheckCircle2,
+                                        pre_rental: ShieldCheck,
+                                        return: ArrowRightLeft,
+                                        damage: AlertTriangle,
+                                    };
+                                    const Icon = iconMap[h.inspectionType] || History;
+                                    return (
+                                        <div key={h.id} className="relative">
+                                            <div className="absolute -left-8 top-1 w-6 h-6 rounded-full bg-[#070b14] border border-white/10 flex items-center justify-center">
+                                                <Icon className={`w-3 h-3 ${h.inspectionType === 'damage' ? 'text-red-400' : 'text-[var(--color-gold)]'}`} />
+                                            </div>
+                                            <p className="text-[10px] font-black text-[var(--color-slate)] uppercase tracking-widest">{new Date(h.date).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</p>
+                                            <p className="text-sm font-bold text-white uppercase tracking-tight">{h.inspectionType.replace('_', ' ')}</p>
+                                            <p className="text-[10px] text-[var(--color-slate)] uppercase font-bold">
+                                                {h.conditionBefore} → <span className="text-white">{h.conditionAfter}</span>
+                                            </p>
+                                            {h.notes && <p className="text-xs text-[var(--color-slate)] mt-1 italic italic">"{h.notes}"</p>}
                                         </div>
-                                        <p className="text-[10px] font-black text-[var(--color-slate)] uppercase tracking-widest">{step.date}</p>
-                                        <p className="text-sm font-bold text-white">{step.event}</p>
-                                    </div>
-                                ))}
+                                    );
+                                }) : (
+                                    <div className="text-center py-10 opacity-30 italic text-sm">No recorded history for this asset.</div>
+                                )}
                             </div>
                         </motion.div>
                     )}

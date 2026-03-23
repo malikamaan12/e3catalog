@@ -64,6 +64,32 @@ const LABEL_CONFIGS = {
         padding: 10,
         perPage: 18,
     },
+    a5_single: {
+        label: "A5 Single (Large Asset)",
+        pageWidth: 420, // A5 landscape
+        pageHeight: 595,
+        cols: 1,
+        rows: 1,
+        stickerW: 400,
+        stickerH: 575,
+        qrSize: 150,
+        fontSize: { vendor: 12, product: 14, tag: 20 },
+        padding: 30,
+        perPage: 1,
+    },
+    a4_single: {
+        label: "A4 Single (Huge Asset)",
+        pageWidth: 595, // A4 portrait
+        pageHeight: 842,
+        cols: 1,
+        rows: 1,
+        stickerW: 575,
+        stickerH: 822,
+        qrSize: 200,
+        fontSize: { vendor: 16, product: 20, tag: 28 },
+        padding: 40,
+        perPage: 1,
+    },
 };
 
 export type LabelSize = keyof typeof LABEL_CONFIGS;

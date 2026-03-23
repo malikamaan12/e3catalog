@@ -20,6 +20,7 @@ interface Product {
     vendor: { id: string; companyName: string } | null;
     media: Array<{ id: string; type: string }>;
     safetyCertificates: Array<{ id: string; certName: string }>;
+    isPublished: boolean;
 }
 
 export default function AdminProductsPage() {
@@ -57,6 +58,21 @@ export default function AdminProductsPage() {
             .then(data => { if (data?.user?.role) setUserRole(data.user.role); })
             .catch(() => { });
     }, []);
+
+    const togglePublished = async (id: string, currentStatus: boolean) => {
+        setProducts(prev => prev.map(p => p.id === id ? { ...p, isPublished: !currentStatus } : p));
+        try {
+            await fetch(`/api/admin/products`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ id, isPublished: !currentStatus })
+            });
+        } catch (err) {
+            console.error("Toggle Visibility Error:", err);
+            // Revert on error
+            setProducts(prev => prev.map(p => p.id === id ? { ...p, isPublished: currentStatus } : p));
+        }
+    };
 
     const deleteProduct = async (id: string) => {
         if (!confirm("Delete this product and all associated data?")) return;
@@ -214,6 +230,7 @@ export default function AdminProductsPage() {
                                     <th className="text-center py-3 px-4 text-xs font-semibold text-[var(--color-gold)] tracking-wider hidden md:table-cell">CONDITION</th>
                                     <th className="text-center py-3 px-4 text-xs font-semibold text-[var(--color-gold)] tracking-wider hidden lg:table-cell">MEDIA</th>
                                     <th className="text-center py-3 px-4 text-xs font-semibold text-[var(--color-gold)] tracking-wider hidden lg:table-cell">CERTS</th>
+                                    <th className="text-center py-3 px-4 text-xs font-semibold text-[var(--color-gold)] tracking-wider">VISIBILITY</th>
                                     {canManageProducts && (
                                         <th className="text-right py-3 px-4 text-xs font-semibold text-[var(--color-gold)] tracking-wider">ACTIONS</th>
                                     )}
@@ -285,6 +302,18 @@ export default function AdminProductsPage() {
                                             </td>
                                             <td className="py-3 px-4 text-sm text-center text-[var(--color-slate)] hidden lg:table-cell">{product.media?.length || 0}</td>
                                             <td className="py-3 px-4 text-sm text-center text-[var(--color-slate)] hidden lg:table-cell">{product.safetyCertificates?.length || 0}</td>
+                                            <td className="py-3 px-4 text-center">
+                                                <button 
+                                                    onClick={() => togglePublished(product.id, product.isPublished)}
+                                                    className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all border ${
+                                                        product.isPublished 
+                                                            ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20 hover:bg-emerald-500/20" 
+                                                            : "bg-slate-500/10 text-slate-400 border-white/5 hover:bg-white/10"
+                                                    }`}
+                                                >
+                                                    {product.isPublished ? "Live" : "Hidden"}
+                                                </button>
+                                            </td>
                                             {canManageProducts && (
                                                 <td className="py-3 px-4 text-right">
                                                     <div className="flex items-center justify-end gap-2">

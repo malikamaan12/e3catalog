@@ -167,11 +167,15 @@ export async function checkAvailability(req: AvailabilityRequest): Promise<Avail
     }
 
     // 6. Query actual physical inventory units dynamically from Drizzle
+    // Only count units that are in rentable condition
     const physicalUnits = await db.query.inventoryUnits.findMany({
-        where: eq(inventoryUnits.productId, req.productId),
+        where: and(
+            eq(inventoryUnits.productId, req.productId),
+            inArray(inventoryUnits.conditionStatus, ["excellent", "good"])
+        ),
     });
 
-    const totalUnitsCount = physicalUnits.length > 0 ? physicalUnits.length : ((product as any).inventoryUnits?.length || 0);
+    const totalUnitsCount = physicalUnits.length;
     const unitsAvailable = totalUnitsCount - peakBooked;
 
     return {
@@ -219,7 +223,12 @@ export async function getAvailabilityTimeline(productId: string, lookaheadDays: 
 
     if (!product) return [];
 
-    const totalUnitsCount = product.inventoryUnits?.length || 0;
+    // Only count units that are in rentable condition
+    const rentableUnits = product.inventoryUnits?.filter(u => 
+        u.conditionStatus === "excellent" || u.conditionStatus === "good"
+    ) || [];
+    
+    const totalUnitsCount = rentableUnits.length;
     const installHours = product.installTime || 0;
     const dismantleHours = product.dismantleTime || 0;
 
