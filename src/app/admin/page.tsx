@@ -72,7 +72,7 @@ export default async function AdminDashboard() {
             .select({ monthlyRevenue: sql<number>`sum(${bookings.totalPrice})` })
             .from(bookings)
             .where(and(
-                inArray(bookings.status, ["approved", "booked"]),
+                inArray(bookings.status, [BOOKING_STATUS.APPROVED, BOOKING_STATUS.BOOKED] as string[]),
                 gte(bookings.createdAt, startOfMonth),
                 lte(bookings.createdAt, endOfMonth),
                 targetVendorId ? eq(bookings.vendorId, targetVendorId) : sql`1=1`
@@ -82,7 +82,7 @@ export default async function AdminDashboard() {
             .select({ prevMonthlyRevenue: sql<number>`sum(${bookings.totalPrice})` })
             .from(bookings)
             .where(and(
-                inArray(bookings.status, ["approved", "booked"]),
+                inArray(bookings.status, [BOOKING_STATUS.APPROVED, BOOKING_STATUS.BOOKED] as string[]),
                 gte(bookings.createdAt, startOfLastMonth),
                 lte(bookings.createdAt, endOfLastMonth),
                 targetVendorId ? eq(bookings.vendorId, targetVendorId) : sql`1=1`
