@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
@@ -14,7 +14,9 @@ import {
     AlertTriangle,
     Info,
     History,
-    Unlock
+    Unlock,
+    X,
+    ChevronRight
 } from "lucide-react";
 import Link from "next/link";
 
@@ -47,23 +49,24 @@ export default function PassportPage() {
     const [data, setData] = useState<AssetPassportData | null>(null);
     const [loading, setLoading] = useState(true);
     const [tab, setTab] = useState<"status" | "compliance" | "history">("status");
+    const [showInspectModal, setShowInspectModal] = useState<{ type: string; label: string } | null>(null);
+
+    const fetchPassport = useCallback(async () => {
+        try {
+            const res = await fetch(`/api/passport/${assetTag}`);
+            if (res.ok) {
+                setData(await res.json());
+            }
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setLoading(false);
+        }
+    }, [assetTag]);
 
     useEffect(() => {
-        // Fetch asset data from public/private API
-        const fetchPassport = async () => {
-            try {
-                const res = await fetch(`/api/passport/${assetTag}`);
-                if (res.ok) {
-                    setData(await res.json());
-                }
-            } catch (err) {
-                console.error(err);
-            } finally {
-                setLoading(false);
-            }
-        };
         fetchPassport();
-    }, [assetTag]);
+    }, [fetchPassport]);
 
     if (loading) {
         return (
@@ -279,13 +282,19 @@ export default function PassportPage() {
                         <span className="text-[10px] font-black uppercase tracking-[0.3em]">Authorized Operator Panel</span>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
-                        <button className="group flex flex-col items-center justify-center p-5 rounded-[2rem] bg-white/5 border border-white/10 hover:bg-white/10 active:scale-95 transition-all outline-none focus:ring-2 ring-[var(--color-gold)]">
+                        <button 
+                            onClick={() => setShowInspectModal({ type: 'pre_rental', label: 'Bump-In' })}
+                            className="group flex flex-col items-center justify-center p-5 rounded-[2rem] bg-white/5 border border-white/10 hover:bg-white/10 active:scale-95 transition-all outline-none focus:ring-2 ring-[var(--color-gold)]"
+                        >
                             <div className="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
                                 <ArrowRightLeft className="w-6 h-6 text-blue-400" />
                             </div>
                             <span className="text-[10px] font-black uppercase tracking-widest">Bump-In</span>
                         </button>
-                        <button className="group flex flex-col items-center justify-center p-5 rounded-[2rem] bg-[var(--color-gold)] hover:bg-[var(--color-gold)]/90 active:scale-95 transition-all shadow-[0_10px_25px_rgba(255,191,0,0.3)] outline-none">
+                        <button 
+                            onClick={() => setShowInspectModal({ type: 'damage', label: 'Log Damage' })}
+                            className="group flex flex-col items-center justify-center p-5 rounded-[2rem] bg-[var(--color-gold)] hover:bg-[var(--color-gold)]/90 active:scale-95 transition-all shadow-[0_10px_25px_rgba(255,191,0,0.3)] outline-none"
+                        >
                             <div className="w-12 h-12 rounded-2xl bg-black/10 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
                                 <Wrench className="w-6 h-6 text-black" />
                             </div>
@@ -294,6 +303,79 @@ export default function PassportPage() {
                     </div>
                 </div>
             )}
+
+            {/* Inspection Modal */}
+            {showInspectModal && (
+                <MobileInspectModal 
+                    assetId={data.id}
+                    assetTag={data.assetTagCode}
+                    currentCondition={data.conditionStatus}
+                    type={showInspectModal.type}
+                    label={showInspectModal.label}
+                    onClose={() => setShowInspectModal(null)}
+                    onSuccess={() => { setShowInspectModal(null); fetchPassport(); setTab('history'); }}
+                />
+            )}
+        </div>
+    );
+}
+
+// ─── Mobile-First Inspect Modal ───
+function MobileInspectModal({ assetId, assetTag, currentCondition, type, label, onClose, onSuccess }: any) {
+    const [conditionAfter, setConditionAfter] = useState(currentCondition);
+    const [notes, setNotes] = useState("");
+    const [saving, setSaving] = useState(false);
+
+    const submit = async () => {
+        setSaving(true);
+        try {
+            const res = await fetch("/api/admin/fleet/inspection", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ unitId: assetId, inspectionType: type, conditionBefore: currentCondition, conditionAfter, notes }),
+            });
+            if (res.ok) onSuccess();
+        } catch (e) { console.error(e); }
+        finally { setSaving(false); }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[100] flex items-end md:items-center justify-center p-0 md:p-4" onClick={onClose}>
+            <motion.div 
+                initial={{ y: "100%" }} animate={{ y: 0 }}
+                className="w-full max-w-lg bg-[#0a0f1e] border-t md:border border-white/10 rounded-t-[2.5rem] md:rounded-[2.5rem] p-8 space-y-6 shadow-2xl"
+                onClick={e => e.stopPropagation()}
+            >
+                <div className="flex justify-between items-center">
+                    <h3 className="font-black text-xl text-white tracking-tight">{label}</h3>
+                    <button onClick={onClose} className="p-2 bg-white/5 rounded-full"><X className="w-5 h-5 text-[var(--color-slate)]" /></button>
+                </div>
+                <p className="text-xs text-[var(--color-slate)] uppercase font-bold tracking-widest">Asset: <span className="text-[var(--color-gold)]">{assetTag}</span></p>
+
+                <div className="space-y-4">
+                    <div>
+                        <label className="block text-[10px] font-black text-[var(--color-slate)] uppercase tracking-[0.2em] mb-2">Updated Condition</label>
+                        <div className="grid grid-cols-2 gap-2">
+                            {['excellent', 'good', 'fair', 'maintenance_required'].map(c => (
+                                <button key={c} onClick={() => setConditionAfter(c)}
+                                    className={`py-3 px-4 rounded-2xl text-[10px] font-black uppercase tracking-widest border transition-all ${conditionAfter === c ? 'bg-[var(--color-gold)] text-black border-transparent' : 'bg-white/5 text-[var(--color-slate)] border-white/5'}`}>
+                                    {c.replace('_', ' ')}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-[10px] font-black text-[var(--color-slate)] uppercase tracking-[0.2em] mb-2">Operator Notes</label>
+                        <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3}
+                            className="w-full bg-black/40 border border-white/10 rounded-2xl p-4 text-sm text-white outline-none focus:border-[var(--color-gold)] resize-none" placeholder="Describe damage or check-in notes..." />
+                    </div>
+                </div>
+
+                <button onClick={submit} disabled={saving}
+                    className="w-full py-4 rounded-2xl bg-[var(--color-gold)] text-[var(--color-navy)] font-black text-sm hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 shadow-[0_10px_30px_rgba(255,191,0,0.3)]">
+                    {saving ? "Transmitting..." : `Submit ${label}`}
+                </button>
+            </motion.div>
         </div>
     );
 }
