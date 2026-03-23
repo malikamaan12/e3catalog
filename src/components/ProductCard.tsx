@@ -60,7 +60,7 @@ export const ProductCard = memo(function ProductCard({
                         src={thumbnailUrl}
                         alt={name}
                         fill
-                        className="object-cover transition-transform duration-1000 group-hover:scale-110"
+                        className="object-cover transition-transform duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] group-hover:scale-105"
                         sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, (max-width: 1536px) 25vw, (max-width: 1920px) 20vw, 16vw"
                     />
                 ) : (
@@ -70,15 +70,15 @@ export const ProductCard = memo(function ProductCard({
                 )}
                 
                 {/* Status Badges Overlay */}
-                <div className="absolute top-4 left-4 right-4 flex justify-between items-start pointer-events-none">
+                <div className="absolute top-5 left-5 right-5 flex justify-between items-start pointer-events-none z-10">
                     {category && (
-                        <span className="glass-light text-[9px] font-black uppercase tracking-[0.2em] px-3 py-1.5 rounded-full text-white/70">
+                        <span className="bg-white/10 backdrop-blur-md border border-white/10 text-[10px] font-black uppercase tracking-[0.2em] px-4 py-2 rounded-full text-white/90">
                             {category.name}
                         </span>
                     )}
-                    <div className={`glass-light backdrop-blur-md px-3 py-1.5 rounded-full flex items-center gap-1.5`}>
-                        <div className={`w-1.5 h-1.5 rounded-full dot-${availabilityStatus} animate-pulse`} />
-                        <span className="text-[9px] font-black uppercase tracking-widest text-white/90">
+                    <div className="bg-navy/40 backdrop-blur-md border border-white/5 px-4 py-2 rounded-full flex items-center gap-2">
+                        <div className={`w-2 h-2 rounded-full dot-${availabilityStatus} shadow-[0_0_10px_rgba(201,168,76,0.3)] animate-pulse`} />
+                        <span className="text-[10px] font-black uppercase tracking-widest text-white/90">
                             {availabilityStatus}
                         </span>
                     </div>

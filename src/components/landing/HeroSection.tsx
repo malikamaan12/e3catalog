@@ -8,6 +8,7 @@ import { useSiteSettings } from "@/components/SiteSettingsProvider";
 import { useInView } from "react-intersection-observer";
 import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 import { Box, FileText, Truck, CheckCircle2 } from "lucide-react";
+import Spline from "@splinetool/react-spline";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -60,11 +61,12 @@ export default function HeroSection() {
                         trigger: containerRef.current,
                         start: "top top",
                         end: "bottom top",
-                        scrub: 1,
+                        scrub: 1.5,
                     },
-                    scale: 2,
-                    z: 500,
-                    opacity: 0.3,
+                    scale: 2.5,
+                    z: 800,
+                    y: 100,
+                    opacity: 0.1,
                     ease: "power2.inOut"
                 });
             }
@@ -101,10 +103,11 @@ export default function HeroSection() {
                     rotateX,
                 }}
             >
-                {/* 3D Scene Removed - Failed to load resource (403/404) */}
-                
-                {/* Fallback Overlays (previously underneath Spline) */}
-                <div className="absolute inset-0 bg-gradient-to-br from-navy/60 via-transparent to-navy/60 pointer-events-none" />
+                <div className="absolute inset-0 z-10 bg-gradient-to-br from-[#0a0f1e]/80 via-transparent to-[#0a0f1e]/80 pointer-events-none" />
+                <Spline 
+                    scene="https://prod.spline.design/6Wq1Q7YAn9YqO79P/scene.splinecode"
+                    className="w-full h-full"
+                />
             </motion.div>
 
             <div className="absolute inset-0 z-[1] pointer-events-none">
@@ -145,18 +148,16 @@ export default function HeroSection() {
                         </p>
                     </div>
 
-                    <div className="hero-cta flex flex-col sm:flex-row items-center justify-center gap-4 mt-12 pointer-events-auto">
-                        <Link href="/catalog" className="w-full sm:w-auto btn-primary text-lg px-10 py-5 rounded-2xl group relative overflow-hidden">
-                            <span className="relative z-10 flex items-center gap-2">
-                                Explorer Catalog
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="group-hover:translate-x-1 transition-transform">
-                                    <line x1="5" y1="12" x2="19" y2="12"></line>
-                                    <polyline points="12 5 19 12 12 19"></polyline>
-                                </svg>
-                            </span>
+                    <div className="hero-cta flex flex-col sm:flex-row items-center justify-center gap-6 mt-12 pointer-events-auto">
+                        <Link href="/catalog" className="w-full sm:w-auto px-12 py-5 rounded-full bg-gold text-navy font-black text-sm uppercase tracking-[0.3em] transition-all hover:scale-105 hover:shadow-[0_20px_50px_rgba(201,168,76,0.3)] active:scale-95 flex items-center justify-center gap-3">
+                            Explore Catalog
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                                <line x1="5" y1="12" x2="19" y2="12"></line>
+                                <polyline points="12 5 19 12 12 19"></polyline>
+                            </svg>
                         </Link>
-                        <Link href="/how-it-works" className="w-full sm:w-auto btn-secondary text-lg px-10 py-5 rounded-2xl group border-white/10 hover:border-gold/30 hover:bg-gold/5">
-                            How it Works
+                        <Link href="/how-it-works" className="w-full sm:w-auto px-12 py-5 rounded-full glass-light border border-white/10 text-white font-black text-sm uppercase tracking-[0.3em] transition-all hover:bg-white/10 active:scale-95 flex items-center justify-center">
+                            Architecture
                         </Link>
                     </div>
                 </div>

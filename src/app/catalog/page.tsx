@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSearchParams } from "next/navigation";
 import { ProductCard } from "@/components/ProductCard";
+import gsap from "gsap";
 import { Footer } from "@/components/Footer";
 import { Suspense } from "react";
 import {
@@ -140,7 +141,18 @@ function CatalogContent() {
         } catch (err) {
             console.error("Fetch error:", err);
         } finally {
-            if (replace) setLoading(false); else setLoadingMore(false);
+            if (replace) {
+                setLoading(false);
+                // Staggered entrance for premium feel
+                setTimeout(() => {
+                    gsap.fromTo(".product-card-anim", 
+                        { y: 30, opacity: 0 }, 
+                        { y: 0, opacity: 1, duration: 0.8, stagger: 0.05, ease: "power3.out" }
+                    );
+                }, 100);
+            } else {
+                setLoadingMore(false);
+            }
         }
     }, []);
 
@@ -305,7 +317,9 @@ function CatalogContent() {
                                 <>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 3xl:grid-cols-5 min-[2200px]:grid-cols-6 gap-6 md:gap-8">
                                         {products.map((product) => (
-                                            <ProductCard key={product.id} {...product} />
+                                            <div key={product.id} className="product-card-anim opacity-0">
+                                                <ProductCard {...product} />
+                                            </div>
                                         ))}
                                     </div>
 

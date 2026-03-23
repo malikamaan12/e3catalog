@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import dynamic from "next/dynamic";
+import gsap from "gsap";
 import * as Accordion from "@radix-ui/react-accordion";
 import { Footer } from "@/components/Footer";
 import Link from "next/link";
@@ -139,6 +140,13 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
                 .then((data) => {
                     setProduct(data);
                     setLoading(false);
+                    // Entrance animation for content
+                    setTimeout(() => {
+                        gsap.fromTo(".pdp-content-anim", 
+                            { y: 40, opacity: 0 }, 
+                            { y: 0, opacity: 1, duration: 1.2, stagger: 0.1, ease: "expo.out" }
+                        );
+                    }, 100);
                 })
                 .catch(() => setLoading(false));
         }
@@ -231,27 +239,27 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
                         {/* LEFT: Media */}
                         <div>
                             {/* Tab Switcher — High Fidelity Floating Style */}
-                            <div className="flex gap-2 mb-6 p-1.5 glass-dark rounded-2xl border border-white/5">
+                            <div className="flex gap-3 mb-8 p-2 bg-white/5 backdrop-blur-2xl rounded-3xl border border-white/10 shadow-2xl">
                                 <button
                                     onClick={() => setActiveTab("images")}
-                                    className={`flex-1 py-3 px-4 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-300 flex items-center justify-center gap-2 ${activeTab === "images" ? "bg-gold text-navy shadow-xl shadow-gold/20" : "text-slate hover:text-white"}`}
+                                    className={`flex-1 py-4 px-6 rounded-2xl text-[10px] font-black uppercase tracking-[0.3em] transition-all duration-500 flex items-center justify-center gap-3 ${activeTab === "images" ? "bg-gold text-navy shadow-[0_10px_30px_rgba(201,168,76,0.3)] scale-100" : "text-slate/60 hover:text-white hover:bg-white/5 opacity-60 hover:opacity-100"}`}
                                 >
-                                    <span className="text-lg">📷</span> <span className="hidden sm:inline">Gallery</span>
+                                    <span className="text-xl">📷</span> <span className="hidden sm:inline">Gallery</span>
                                 </button>
                                 {show3d && (
                                     <button
                                         onClick={() => setActiveTab("3d")}
-                                        className={`flex-1 py-3 px-4 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-300 flex items-center justify-center gap-2 ${activeTab === "3d" ? "bg-gold text-navy shadow-xl shadow-gold/20" : "text-slate hover:text-white"}`}
+                                        className={`flex-1 py-4 px-6 rounded-2xl text-[10px] font-black uppercase tracking-[0.3em] transition-all duration-500 flex items-center justify-center gap-3 ${activeTab === "3d" ? "bg-gold text-navy shadow-[0_10px_30px_rgba(201,168,76,0.3)] scale-100" : "text-slate/60 hover:text-white hover:bg-white/5 opacity-60 hover:opacity-100"}`}
                                     >
-                                        <span className="text-lg">🎲</span> <span className="hidden sm:inline">3D View</span>
+                                        <span className="text-xl">🎲</span> <span className="hidden sm:inline">3D View</span>
                                     </button>
                                 )}
                                 {showVideo && (
                                     <button
                                         onClick={() => setActiveTab("video")}
-                                        className={`flex-1 py-3 px-4 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-300 flex items-center justify-center gap-2 ${activeTab === "video" ? "bg-gold text-navy shadow-xl shadow-gold/20" : "text-slate hover:text-white"}`}
+                                        className={`flex-1 py-4 px-6 rounded-2xl text-[10px] font-black uppercase tracking-[0.3em] transition-all duration-500 flex items-center justify-center gap-3 ${activeTab === "video" ? "bg-gold text-navy shadow-[0_10px_30px_rgba(201,168,76,0.3)] scale-100" : "text-slate/60 hover:text-white hover:bg-white/5 opacity-60 hover:opacity-100"}`}
                                     >
-                                        <span className="text-lg">🎬</span> <span className="hidden sm:inline">Video</span>
+                                        <span className="text-xl">🎬</span> <span className="hidden sm:inline">Video</span>
                                     </button>
                                 )}
                             </div>
