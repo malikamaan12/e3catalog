@@ -54,13 +54,13 @@ export const ProductCard = memo(function ProductCard({
     return (
         <Link href={`/catalog/${slug}`} className="group relative bg-[#0d152a] rounded-[2rem] border border-white/5 overflow-hidden transition-all duration-500 hover:border-gold/30 hover:shadow-2xl hover:shadow-gold/5 flex flex-col h-full">
             {/* Thumbnail Header */}
-            <div className="relative aspect-[4/3] overflow-hidden bg-navy">
+            <div className="relative aspect-[4/3] overflow-hidden bg-[#f5f5f7] flex items-center justify-center p-6">
                 {thumbnailUrl ? (
                     <Image
                         src={thumbnailUrl}
                         alt={name}
                         fill
-                        className="object-cover transition-transform duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] group-hover:scale-105"
+                        className="object-contain transition-transform duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] group-hover:scale-95"
                         sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, (max-width: 1536px) 25vw, (max-width: 1920px) 20vw, 16vw"
                     />
                 ) : (
