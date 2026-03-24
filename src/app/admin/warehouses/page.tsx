@@ -23,16 +23,44 @@ export default function WarehousesPage() {
     const [showModal, setShowModal] = useState<"add" | "edit" | null>(null);
     const [editTarget, setEditTarget] = useState<WarehouseData | null>(null);
     const [toast, setToast] = useState<string | null>(null);
+    const [vendors, setVendors] = useState<any[]>([]);
+    const [isAdmin, setIsAdmin] = useState(false);
+    const [selectedVendorId, setSelectedVendorId] = useState<string>("");
 
-    const fetchWarehouses = async () => {
+    const fetchWarehouses = async (vId?: string) => {
         try {
-            const res = await fetch("/api/dashboard/warehouses");
+            const url = vId ? `/api/dashboard/warehouses?vendorId=${vId}` : "/api/dashboard/warehouses";
+            const res = await fetch(url);
             if (res.ok) setWarehouses(await res.json());
         } catch (e) { console.error(e); }
         finally { setLoading(false); }
     };
 
-    useEffect(() => { fetchWarehouses(); }, []);
+    const fetchInitialData = async () => {
+        setLoading(true);
+        // Check if admin
+        try {
+            const userRes = await fetch("/api/auth/me");
+            if (userRes.ok) {
+                const user = await userRes.json();
+                const isSystemAdmin = ["admin", "super_admin"].includes(user.role);
+                setIsAdmin(isSystemAdmin);
+                
+                if (isSystemAdmin) {
+                    const vendorRes = await fetch("/api/admin/vendors");
+                    if (vendorRes.ok) setVendors(await vendorRes.json());
+                }
+            }
+        } catch (e) { console.error(e); }
+        await fetchWarehouses();
+    };
+
+    useEffect(() => { fetchInitialData(); }, []);
+
+    const handleVendorFilterChange = (vId: string) => {
+        setSelectedVendorId(vId);
+        fetchWarehouses(vId);
+    };
 
     const handleDelete = async (id: string) => {
         if (!confirm("Are you sure you want to delete this warehouse?")) return;
@@ -93,6 +121,27 @@ export default function WarehousesPage() {
                     </div>
                 )}
 
+                {/* Filters / Context */}
+                {isAdmin && (
+                    <div className="mb-8 flex flex-col md:flex-row gap-4 items-center justify-between p-6 bg-white/[0.02] border border-white/5 rounded-3xl">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 rounded-xl bg-blue-500/10"><Plus className="w-5 h-5 text-blue-400" /></div>
+                            <div>
+                                <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Admin Control</p>
+                                <p className="text-sm font-bold text-white">Filter by Vendor Context</p>
+                            </div>
+                        </div>
+                        <select 
+                            value={selectedVendorId} 
+                            onChange={(e) => handleVendorFilterChange(e.target.value)}
+                            className="bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-sm text-white outline-none focus:border-[var(--color-gold)] min-w-[200px]"
+                        >
+                            <option value="">All Warehouses</option>
+                            {vendors.map(v => <option key={v.id} value={v.id}>{v.companyName}</option>)}
+                        </select>
+                    </div>
+                )}
+
                 {/* Warehouse Grid */}
                 {loading ? (
                     <div className="py-20 text-center">
@@ -104,7 +153,7 @@ export default function WarehousesPage() {
                         <Warehouse className="h-10 w-10 text-[var(--color-slate)]/40 mx-auto mb-4" />
                         <h3 className="text-lg font-semibold text-[var(--color-warm-white)] mb-2">No warehouses yet</h3>
                         <p className="text-[var(--color-slate)] text-sm mb-6 max-w-xs mx-auto">
-                            Create your first warehouse to start organizing your inventory by location and shelf.
+                            {isAdmin ? "Select a vendor or create your first warehouse to get started." : "Create your first warehouse to start organizing your inventory by location and shelf."}
                         </p>
                     </div>
                 ) : (
@@ -164,8 +213,10 @@ export default function WarehousesPage() {
                     <WarehouseModal 
                         mode={showModal}
                         warehouse={editTarget}
+                        isAdmin={isAdmin}
+                        vendors={vendors}
                         onClose={() => { setShowModal(null); setEditTarget(null); }}
-                        onSuccess={() => { setShowModal(null); setEditTarget(null); setToast(showModal === "add" ? "Warehouse created." : "Warehouse updated."); fetchWarehouses(); }}
+                        onSuccess={() => { setShowModal(null); setEditTarget(null); setToast(showModal === "add" ? "Warehouse created." : "Warehouse updated."); fetchWarehouses(selectedVendorId); }}
                     />
                 )}
             </main>
@@ -174,10 +225,11 @@ export default function WarehousesPage() {
 }
 
 // ─── Add/Edit Modal ───
-function WarehouseModal({ mode, warehouse, onClose, onSuccess }: { mode: "add" | "edit", warehouse: WarehouseData | null, onClose: () => void, onSuccess: () => void }) {
+function WarehouseModal({ mode, warehouse, isAdmin, vendors, onClose, onSuccess }: { mode: "add" | "edit", warehouse: WarehouseData | null, isAdmin: boolean, vendors: any[], onClose: () => void, onSuccess: () => void }) {
     const [name, setName] = useState(warehouse?.name || "");
     const [address, setAddress] = useState(warehouse?.address || "");
     const [city, setCity] = useState(warehouse?.city || "");
+    const [targetVendorId, setTargetVendorId] = useState(warehouse?.vendorId || "");
     const [isDefault, setIsDefault] = useState(warehouse?.isDefault || false);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -191,7 +243,7 @@ function WarehouseModal({ mode, warehouse, onClose, onSuccess }: { mode: "add" |
             const res = await fetch(url, {
                 method: mode === "add" ? "POST" : "PUT",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name, address, city, isDefault }),
+                body: JSON.stringify({ name, address, city, isDefault, targetVendorId }),
             });
             if (res.ok) {
                 onSuccess();
@@ -225,6 +277,16 @@ function WarehouseModal({ mode, warehouse, onClose, onSuccess }: { mode: "add" |
                 )}
 
                 <div className="space-y-4">
+                    {isAdmin && mode === "add" && (
+                        <div>
+                            <label className="block text-[10px] font-black text-blue-400 uppercase tracking-[0.2em] mb-2">Assign to Vendor *</label>
+                            <select value={targetVendorId} onChange={e => setTargetVendorId(e.target.value)}
+                                className="w-full bg-white/[0.02] border border-white/10 rounded-xl p-3 text-sm text-[var(--color-warm-white)] outline-none focus:border-blue-500 transition-all">
+                                <option value="">Select Vendor</option>
+                                {vendors.map(v => <option key={v.id} value={v.id}>{v.companyName}</option>)}
+                            </select>
+                        </div>
+                    )}
                     <div>
                         <label className="block text-[10px] font-black text-[var(--color-slate)] uppercase tracking-[0.2em] mb-2">Warehouse Name *</label>
                         <input value={name} onChange={e => setName(e.target.value)}

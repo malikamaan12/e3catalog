@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { vendorWarehouses, vendors, inventoryUnits } from "@/lib/db/schema";
+import { vendorWarehouses, vendors, inventoryUnits, users } from "@/lib/db/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { getSession } from "@/lib/auth";
 import { USER_ROLES } from "@/lib/constants";
@@ -10,10 +10,20 @@ async function getVendorId(session: any) {
     if ([USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN].includes(session.role)) {
         return null; // Admin can manage any
     }
+
+    // 1. Check if the user is the PRIMARY vendor owner
     const vendor = await db.query.vendors.findFirst({
         where: eq(vendors.userId, session.id),
     });
-    return vendor?.id || null;
+    if (vendor) return vendor.id;
+
+    // 2. Check if the user is a sub-employee of a vendor (staff/manager)
+    const userRecord = await db.query.users.findFirst({
+        where: eq(users.id, session.id),
+        columns: { vendorId: true }
+    });
+    
+    return userRecord?.vendorId || null;
 }
 
 // GET — List warehouses for the current vendor
@@ -26,13 +36,10 @@ export async function GET(req: NextRequest) {
         const { searchParams } = new URL(req.url);
         const filterVendorId = searchParams.get("vendorId") || vendorId;
 
-        if (!filterVendorId) {
-            return NextResponse.json({ error: "No vendor context" }, { status: 400 });
-        }
-
-        const warehouses = await db.select({
+        let query = db.select({
             id: vendorWarehouses.id,
             vendorId: vendorWarehouses.vendorId,
+            vendorName: vendors.companyName,
             name: vendorWarehouses.name,
             address: vendorWarehouses.address,
             city: vendorWarehouses.city,
@@ -41,9 +48,16 @@ export async function GET(req: NextRequest) {
             unitCount: sql<number>`(SELECT COUNT(*) FROM inventory_units WHERE warehouse_id = ${vendorWarehouses.id})`.as("unit_count"),
         })
         .from(vendorWarehouses)
-        .where(eq(vendorWarehouses.vendorId, filterVendorId))
-        .execute();
+        .leftJoin(vendors, eq(vendorWarehouses.vendorId, vendors.id));
 
+        if (filterVendorId) {
+            query = query.where(eq(vendorWarehouses.vendorId, filterVendorId)) as any;
+        } else if (session.role === USER_ROLES.VENDOR) {
+            return NextResponse.json({ error: "No vendor context" }, { status: 400 });
+        }
+        // Admins see all if no filter
+
+        const warehouses = await query.execute();
         return NextResponse.json(warehouses);
     } catch (error) {
         console.error("Warehouse GET Error:", error);
@@ -68,7 +82,11 @@ export async function POST(req: NextRequest) {
         if (!name) return NextResponse.json({ error: "Warehouse name is required" }, { status: 400 });
 
         const effectiveVendorId = targetVendorId || vendorId;
-        if (!effectiveVendorId) return NextResponse.json({ error: "No vendor context" }, { status: 400 });
+        if (!effectiveVendorId) {
+            return NextResponse.json({ 
+                error: "No vendor context. Please specify which vendor this warehouse belongs to." 
+            }, { status: 400 });
+        }
 
         // If this is default, unset other defaults
         if (isDefault) {

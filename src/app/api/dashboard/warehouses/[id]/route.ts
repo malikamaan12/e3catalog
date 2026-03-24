@@ -1,9 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { vendorWarehouses, vendors, inventoryUnits } from "@/lib/db/schema";
+import { vendorWarehouses, vendors, inventoryUnits, users } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { getSession } from "@/lib/auth";
 import { USER_ROLES } from "@/lib/constants";
+
+async function getVendorId(session: any) {
+    if ([USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN].includes(session.role)) {
+        return null; // Admin can manage any
+    }
+
+    // 1. Check if the user is the PRIMARY vendor owner
+    const vendor = await db.query.vendors.findFirst({
+        where: eq(vendors.userId, session.id),
+    });
+    if (vendor) return vendor.id;
+
+    // 2. Check if the user is a sub-employee of a vendor (staff/manager)
+    const userRecord = await db.query.users.findFirst({
+        where: eq(users.id, session.id),
+        columns: { vendorId: true }
+    });
+    
+    return userRecord?.vendorId || null;
+}
 
 // PUT — Update a warehouse
 export async function PUT(
@@ -21,9 +41,9 @@ export async function PUT(
         if (!warehouse) return NextResponse.json({ error: "Warehouse not found" }, { status: 404 });
 
         // Verify ownership
-        if (session.role === USER_ROLES.VENDOR) {
-            const vendor = await db.query.vendors.findFirst({ where: eq(vendors.userId, session.id) });
-            if (warehouse.vendorId !== vendor?.id) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        const currentVendorId = await getVendorId(session);
+        if (session.role === USER_ROLES.VENDOR && warehouse.vendorId !== currentVendorId) {
+            return NextResponse.json({ error: "Forbidden" }, { status: 403 });
         }
 
         const body = await req.json();
@@ -69,6 +89,12 @@ export async function DELETE(
             where: eq(vendorWarehouses.id, id),
         });
         if (!warehouse) return NextResponse.json({ error: "Warehouse not found" }, { status: 404 });
+        
+        // Verify ownership
+        const currentVendorId = await getVendorId(session);
+        if (session.role === USER_ROLES.VENDOR && warehouse.vendorId !== currentVendorId) {
+            return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        }
 
         // Check for linked units
         const linkedUnits = await db.query.inventoryUnits.findFirst({
