@@ -293,102 +293,107 @@ export default function InventoryAdminPage() {
                             </div>
                             <span className="text-xs text-[var(--color-slate)] shrink-0 ml-auto">{filteredMatrix.length} of {matrixData.length} products</span>
                         </div>
-                        {filteredMatrix.length === 0 ? (
-                            <div className="p-8 text-center text-[var(--color-slate)]">No products match your search.</div>
-                        ) : (
-                            <div className="overflow-x-auto custom-scrollbar">
-                                <table className="w-full text-left border-collapse min-w-max">
-                                    <thead>
-                                        <tr className="bg-[var(--color-navy-lighter)] shadow-sm">
-                                            <th className="sticky left-0 z-20 bg-[var(--color-navy-lighter)] p-4 border-r border-white/5 border-b shadow-[4px_0_12px_rgba(0,0,0,0.1)] min-w-[280px]">
-                                                <div className="text-xs font-semibold text-[var(--color-gold)] tracking-wider">PRODUCT</div>
+                        {/* Matrix Grid (Desktop) / Cards (Mobile) */}
+                        <div className="hidden md:block overflow-x-auto custom-scrollbar">
+                            <table className="w-full text-left border-collapse min-w-max">
+                                <thead>
+                                    <tr className="bg-[var(--color-navy-lighter)] shadow-sm">
+                                        <th className="sticky left-0 z-20 bg-[var(--color-navy-lighter)] p-4 border-r border-white/5 border-b shadow-[4px_0_12px_rgba(0,0,0,0.1)] min-w-[280px]">
+                                            <div className="text-xs font-semibold text-[var(--color-gold)] tracking-wider">PRODUCT</div>
+                                        </th>
+                                        {/* Date Headers */}
+                                        {filteredMatrix[0].timeline.map((day) => (
+                                            <th key={`head-${day.date}`} className="p-3 border-r border-white/5 border-b min-w-[60px] text-center whitespace-nowrap">
+                                                <div className="text-[10px] text-[var(--color-slate)] uppercase">{format(parseISO(day.date), "EEE")}</div>
+                                                <div className="text-sm font-medium text-[var(--color-warm-white)]">{format(parseISO(day.date), "dd")}</div>
                                             </th>
-                                            {/* Date Headers */}
-                                            {filteredMatrix[0].timeline.map((day) => (
-                                                <th key={`head-${day.date}`} className="p-3 border-r border-white/5 border-b min-w-[60px] text-center whitespace-nowrap">
-                                                    <div className="text-[10px] text-[var(--color-slate)] uppercase">{format(parseISO(day.date), "EEE")}</div>
-                                                    <div className="text-sm font-medium text-[var(--color-warm-white)]">{format(parseISO(day.date), "dd")}</div>
-                                                </th>
-                                            ))}
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-white/5">
-                                        {filteredMatrix.map((row) => (
-                                            <tr key={row.product.id} className="hover:bg-white/5 transition-colors group">
-                                                <td className="sticky left-0 z-10 bg-[var(--color-inventory-bg,var(--color-navy))] group-hover:bg-[var(--color-inventory-hover,var(--color-navy-lighter))] p-4 border-r border-white/5 shadow-[4px_0_12px_rgba(0,0,0,0.1)] transition-colors">
-                                                    <div className="flex items-start justify-between gap-2">
-                                                        <div className="font-medium text-sm text-[var(--color-warm-white)] truncate w-[180px]" title={row.product.name}>
-                                                            {row.product.name}
-                                                        </div>
-                                                        <Link 
-                                                            href={`/admin/fleet?search=${encodeURIComponent(row.product.name)}`}
-                                                            className="text-[10px] font-bold text-[var(--color-gold)] hover:underline flex items-center gap-1 shrink-0"
-                                                        >
-                                                            <span>PASSPORTS</span>
-                                                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M7 17L17 7M17 7H7M17 7V17"/></svg>
-                                                        </Link>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-white/5">
+                                    {filteredMatrix.map((row) => (
+                                        <tr key={row.product.id} className="hover:bg-white/5 transition-colors group">
+                                            <td className="sticky left-0 z-10 bg-[var(--color-inventory-bg,var(--color-navy))] group-hover:bg-[var(--color-inventory-hover,var(--color-navy-lighter))] p-4 border-r border-white/5 shadow-[4px_0_12px_rgba(0,0,0,0.1)] transition-colors">
+                                                <div className="flex items-start justify-between gap-2">
+                                                    <div className="font-medium text-sm text-[var(--color-warm-white)] truncate w-[180px]" title={row.product.name}>
+                                                        {row.product.name}
                                                     </div>
-                                                    <div className="text-[10px] text-[var(--color-slate)] mt-0.5">
-                                                        Total fleet: {row.product.totalUnits} {row.product.unit}
-                                                    </div>
-                                                </td>
-                                                {/* Matrix Cells */}
-                                                {row.timeline.map((day) => {
-                                                    // Determine color coding
-                                                    const pct = day.available / day.total;
-                                                    let bgColor = "bg-[var(--color-navy-lighter)] text-[var(--color-success)]"; // Full/Good stock
-                                                    if (day.available === 0) bgColor = "bg-red-500/10 text-red-400 font-bold border-red-500/20"; // Out of stock
-                                                    else if (pct <= 0.25) bgColor = "bg-yellow-500/10 text-yellow-500 border-yellow-500/20"; // Low stock
+                                                    <Link 
+                                                        href={`/admin/fleet?search=${encodeURIComponent(row.product.name)}`}
+                                                        className="text-[10px] font-bold text-[var(--color-gold)] hover:underline flex items-center gap-1 shrink-0"
+                                                    >
+                                                        <span>PASSPORTS</span>
+                                                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M7 17L17 7M17 7H7M17 7V17"/></svg>
+                                                    </Link>
+                                                </div>
+                                                <div className="text-[10px] text-[var(--color-slate)] mt-0.5">
+                                                    Total fleet: {row.product.totalUnits} {row.product.unit}
+                                                </div>
+                                            </td>
+                                            {/* Matrix Cells */}
+                                            {row.timeline.map((day) => {
+                                                // Determine color coding
+                                                const pct = day.available / day.total;
+                                                let bgColor = "bg-[var(--color-navy-lighter)] text-[var(--color-success)]"; // Full/Good stock
+                                                if (day.available === 0) bgColor = "bg-red-500/10 text-red-400 font-bold border-red-500/20"; // Out of stock
+                                                else if (pct <= 0.25) bgColor = "bg-yellow-500/10 text-yellow-500 border-yellow-500/20"; // Low stock
 
-                                                    const hasBlock = day.maintenance > 0;
+                                                const hasBlock = day.maintenance > 0;
 
-                                                    return (
-                                                        <td key={`${row.product.id}-${day.date}`} className="p-2 border-r border-white/5 text-center">
-                                                            <Tooltip.Root>
-                                                                <Tooltip.Trigger asChild>
-                                                                    <div className={`w-full py-2 px-1 rounded cursor-help transition-all border hover:border-white/20 relative overflow-hidden flex flex-col items-center justify-center min-h-[44px] ${hasBlock ? 'border-red-500/30' : 'border-transparent'} ${bgColor}`}>
-                                                                        {hasBlock && (
-                                                                            <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 4px, #ef4444 4px, #ef4444 8px)' }} />
-                                                                        )}
-                                                                        {hasBlock && (
-                                                                            <div className="absolute top-0 right-0 w-1.5 h-1.5 bg-red-500 rounded-bl-sm" />
-                                                                        )}
-                                                                        <span className="text-sm font-medium relative z-10">{day.available}</span>
-                                                                        {hasBlock && (
-                                                                            <span className="text-[9px] text-red-400 relative z-10 leading-none mt-0.5 font-bold tracking-wider">-offline-</span>
+                                                return (
+                                                    <td key={`${row.product.id}-${day.date}`} className="p-2 border-r border-white/5 text-center">
+                                                        <Tooltip.Root>
+                                                            <Tooltip.Trigger asChild>
+                                                                <div className={`w-full py-2 px-1 rounded cursor-help transition-all border hover:border-white/20 relative overflow-hidden flex flex-col items-center justify-center min-h-[44px] ${hasBlock ? 'border-red-500/30' : 'border-transparent'} ${bgColor}`}>
+                                                                    {hasBlock && (
+                                                                        <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 4px, #ef4444 4px, #ef4444 8px)' }} />
+                                                                    )}
+                                                                    {hasBlock && (
+                                                                        <div className="absolute top-0 right-0 w-1.5 h-1.5 bg-red-500 rounded-bl-sm" />
+                                                                    )}
+                                                                    <span className="text-sm font-medium relative z-10">{day.available}</span>
+                                                                    {hasBlock && (
+                                                                        <span className="text-[9px] text-red-400 relative z-10 leading-none mt-0.5 font-bold tracking-wider">-offline-</span>
+                                                                    )}
+                                                                </div>
+                                                            </Tooltip.Trigger>
+                                                            <Tooltip.Portal>
+                                                                <Tooltip.Content
+                                                                    className="z-50 bg-[var(--color-surface)] border border-[var(--color-border-subtle)] shadow-xl p-3 rounded-lg text-xs animate-in fade-in zoom-in-95"
+                                                                    sideOffset={5}
+                                                                >
+                                                                    <div className="font-semibold text-[var(--color-warm-white)] mb-2 border-b border-white/10 pb-1 flex justify-between gap-4">
+                                                                        <span>{format(parseISO(day.date), "MMM d, yyyy")}</span>
+                                                                        <span className="text-[var(--color-slate)] font-normal ml-4">Total: {day.total}</span>
+                                                                    </div>
+                                                                    <div className="space-y-1.5">
+                                                                        <div className="flex justify-between gap-4"><span className="text-[var(--color-slate)]">Available</span><span className="text-[var(--color-success)] font-bold">{day.available}</span></div>
+                                                                        <div className="flex justify-between gap-4"><span className="text-[var(--color-slate)]">Booked</span><span className="text-[var(--color-gold)] font-medium">{day.booked}</span></div>
+                                                                        {day.maintenance > 0 && (
+                                                                            <div className="flex justify-between gap-4 pt-1 border-t border-white/5"><span className="text-red-400 font-medium">Blocked/Offline</span><span className="text-red-400 font-bold">{day.maintenance}</span></div>
                                                                         )}
                                                                     </div>
-                                                                </Tooltip.Trigger>
-                                                                <Tooltip.Portal>
-                                                                    <Tooltip.Content
-                                                                        className="z-50 bg-[var(--color-surface)] border border-[var(--color-border-subtle)] shadow-xl p-3 rounded-lg text-xs animate-in fade-in zoom-in-95"
-                                                                        sideOffset={5}
-                                                                    >
-                                                                        <div className="font-semibold text-[var(--color-warm-white)] mb-2 border-b border-white/10 pb-1 flex justify-between gap-4">
-                                                                            <span>{format(parseISO(day.date), "MMM d, yyyy")}</span>
-                                                                            <span className="text-[var(--color-slate)] font-normal ml-4">Total: {day.total}</span>
-                                                                        </div>
-                                                                        <div className="space-y-1.5">
-                                                                            <div className="flex justify-between gap-4"><span className="text-[var(--color-slate)]">Available</span><span className="text-[var(--color-success)] font-bold">{day.available}</span></div>
-                                                                            <div className="flex justify-between gap-4"><span className="text-[var(--color-slate)]">Booked</span><span className="text-[var(--color-gold)] font-medium">{day.booked}</span></div>
-                                                                            {day.maintenance > 0 && (
-                                                                                <div className="flex justify-between gap-4 pt-1 border-t border-white/5"><span className="text-red-400 font-medium">Blocked/Offline</span><span className="text-red-400 font-bold">{day.maintenance}</span></div>
-                                                                            )}
-                                                                        </div>
-                                                                        <Tooltip.Arrow className="fill-[var(--color-surface)]" />
-                                                                    </Tooltip.Content>
-                                                                </Tooltip.Portal>
-                                                            </Tooltip.Root>
-                                                        </td>
-                                                    );
-                                                })}
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
-                        <div className="bg-[var(--color-navy-lighter)] p-4 border-t border-white/10 flex items-center justify-end gap-6 text-xs text-[var(--color-slate)]">
+                                                                    <Tooltip.Arrow className="fill-[var(--color-surface)]" />
+                                                                </Tooltip.Content>
+                                                            </Tooltip.Portal>
+                                                        </Tooltip.Root>
+                                                    </td>
+                                                );
+                                            })}
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {/* Mobile List View */}
+                        <div className="md:hidden divide-y divide-white/5">
+                            {filteredMatrix.map((row) => (
+                                <MatrixProductCard key={row.product.id} row={row} />
+                            ))}
+                        </div>
+
+                        <div className="bg-[var(--color-navy-lighter)] p-4 border-t border-white/10 flex items-center justify-end gap-x-4 gap-y-2 flex-wrap text-xs text-[var(--color-slate)]">
                             <div className="flex items-center gap-2"><span className="w-3 h-3 rounded bg-[var(--color-navy)] border border-white/10 text-[var(--color-success)] flex items-center justify-center font-bold">#</span> In Stock</div>
                             <div className="flex items-center gap-2"><span className="w-3 h-3 rounded bg-yellow-500/20 text-yellow-500 flex items-center justify-center font-bold">#</span> Low Stock</div>
                             <div className="flex items-center gap-2"><span className="w-3 h-3 rounded bg-red-500/20 text-red-500 flex items-center justify-center font-bold">0</span> Out of Stock</div>
@@ -550,59 +555,70 @@ export default function InventoryAdminPage() {
                                         {overrides.length === 0 ? "No inventory blocks currently active." : "No overrides match your search."}
                                     </div>
                                 ) : (
-                                    <div className="overflow-x-auto custom-scrollbar">
-                                        <table className="w-full text-left text-sm">
-                                            <thead className="bg-[var(--color-navy-lighter)] text-[var(--color-slate)] uppercase text-xs font-semibold">
-                                                <tr>
-                                                    <th className="px-6 py-4">Product</th>
-                                                    <th className="px-6 py-4">Date Range</th>
-                                                    <th className="px-6 py-4">Status</th>
-                                                    <th className="px-6 py-4 text-center">Actions</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-[var(--color-border-subtle)]">
-                                                {filteredOverrides.map((override) => {
-                                                    const today = new Date();
-                                                    today.setHours(0, 0, 0, 0);
-                                                    const start = parseISO(override.startDate);
-                                                    const end = parseISO(override.endDate);
+                                        <div className="hidden md:block overflow-x-auto custom-scrollbar">
+                                            <table className="w-full text-left text-sm">
+                                                <thead className="bg-[var(--color-navy-lighter)] text-[var(--color-slate)] uppercase text-xs font-semibold">
+                                                    <tr>
+                                                        <th className="px-6 py-4">Product</th>
+                                                        <th className="px-6 py-4">Date Range</th>
+                                                        <th className="px-6 py-4">Status</th>
+                                                        <th className="px-6 py-4 text-center">Actions</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-[var(--color-border-subtle)]">
+                                                    {filteredOverrides.map((override) => {
+                                                        const today = new Date();
+                                                        today.setHours(0, 0, 0, 0);
+                                                        const start = parseISO(override.startDate);
+                                                        const end = parseISO(override.endDate);
 
-                                                    // Status logic
-                                                    const isPast = end < today;
-                                                    const isFuture = start > today;
-                                                    const isActive = !isPast && !isFuture;
+                                                        // Status logic
+                                                        const isPast = end < today;
+                                                        const isFuture = start > today;
+                                                        const isActive = !isPast && !isFuture;
 
-                                                    return (
-                                                        <tr key={override.id} className="hover:bg-white/5 transition-colors group">
-                                                            <td className="px-6 py-4">
-                                                                <p className="font-medium text-[var(--color-warm-white)] truncate max-w-[200px]" title={override.product?.name}>{override.product?.name || "Unknown Product"}</p>
-                                                                <p className="text-xs text-[var(--color-gold)] mt-1">{override.unitsOffline} units blocked</p>
-                                                            </td>
-                                                            <td className="px-6 py-4">
-                                                                <p className="text-[var(--color-warm-white)] whitespace-nowrap">
-                                                                    {format(start, "MMM do")} - {format(end, "MMM do, yyyy")}
-                                                                </p>
-                                                                <p className="text-xs text-[var(--color-slate)] mt-1 truncate max-w-[150px]">{override.reason}</p>
-                                                            </td>
-                                                            <td className="px-6 py-4">
-                                                                {isActive && <span className="px-2 py-1 text-[10px] font-medium bg-red-500/10 text-red-500 border border-red-500/20 rounded-lg">ACTIVE INVENTORY BLOCK</span>}
-                                                                {isFuture && <span className="px-2 py-1 text-[10px] font-medium bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 rounded-lg">UPCOMING</span>}
-                                                                {isPast && <span className="px-2 py-1 text-[10px] font-medium bg-[var(--color-navy-lighter)] text-[var(--color-slate)] border border-white/10 rounded-lg">HISTORICAL</span>}
-                                                            </td>
-                                                            <td className="px-6 py-4 text-center">
-                                                                <button
-                                                                    onClick={() => handleDelete(override.id)}
-                                                                    className="text-xs text-[var(--color-slate)] hover:text-[var(--color-danger)] transition-colors underline"
-                                                                >
-                                                                    Revoke
-                                                                </button>
-                                                            </td>
-                                                        </tr>
-                                                    );
-                                                })}
-                                            </tbody>
-                                        </table>
-                                    </div>
+                                                        return (
+                                                            <tr key={override.id} className="hover:bg-white/5 transition-colors group">
+                                                                <td className="px-6 py-4">
+                                                                    <p className="font-medium text-[var(--color-warm-white)] truncate max-w-[200px]" title={override.product?.name}>{override.product?.name || "Unknown Product"}</p>
+                                                                    <p className="text-xs text-[var(--color-gold)] mt-1">{override.unitsOffline} units blocked</p>
+                                                                </td>
+                                                                <td className="px-6 py-4">
+                                                                    <p className="text-[var(--color-warm-white)] whitespace-nowrap">
+                                                                        {format(start, "MMM do")} - {format(end, "MMM do, yyyy")}
+                                                                    </p>
+                                                                    <p className="text-xs text-[var(--color-slate)] mt-1 truncate max-w-[150px]">{override.reason}</p>
+                                                                </td>
+                                                                <td className="px-6 py-4">
+                                                                    {isActive && <span className="px-2 py-1 text-[10px] font-medium bg-red-500/10 text-red-500 border border-red-500/20 rounded-lg">ACTIVE INVENTORY BLOCK</span>}
+                                                                    {isFuture && <span className="px-2 py-1 text-[10px] font-medium bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 rounded-lg">UPCOMING</span>}
+                                                                    {isPast && <span className="px-2 py-1 text-[10px] font-medium bg-[var(--color-navy-lighter)] text-[var(--color-slate)] border border-white/10 rounded-lg">HISTORICAL</span>}
+                                                                </td>
+                                                                <td className="px-6 py-4 text-center">
+                                                                    <button
+                                                                        onClick={() => handleDelete(override.id)}
+                                                                        className="text-xs text-[var(--color-slate)] hover:text-[var(--color-danger)] transition-colors underline"
+                                                                    >
+                                                                        Revoke
+                                                                    </button>
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    })}
+                                                </tbody>
+                                            </table>
+                                        </div>
+
+                                        {/* Mobile Overrides List */}
+                                        <div className="md:hidden divide-y divide-white/5">
+                                            {filteredOverrides.map((override) => (
+                                                <InventoryOverrideCard 
+                                                    key={override.id} 
+                                                    override={override} 
+                                                    onDelete={handleDelete} 
+                                                />
+                                            ))}
+                                        </div>
                                 )}
                             </div>
                         </div>
@@ -610,5 +626,89 @@ export default function InventoryAdminPage() {
                 )}
             </div>
         </Tooltip.Provider>
+    );
+}
+
+function MatrixProductCard({ row }: { row: MatrixRow }) {
+    return (
+        <div className="p-4 border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
+            <div className="flex justify-between items-start mb-4">
+                <div>
+                    <h4 className="font-bold text-white text-sm uppercase tracking-tight leading-tight">{row.product.name}</h4>
+                    <p className="text-[10px] text-[var(--color-slate)] mt-1 uppercase tracking-widest opacity-60">Total Fleet: {row.product.totalUnits} {row.product.unit}</p>
+                </div>
+                <Link 
+                    href={`/admin/fleet?search=${encodeURIComponent(row.product.name)}`}
+                    className="p-2 rounded-xl bg-[var(--color-gold)]/10 text-[var(--color-gold)] hover:bg-[var(--color-gold)] hover:text-navy transition-all border border-[var(--color-gold)]/20 shadow-sm"
+                >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M7 17L17 7M17 7H7M17 7V17"/></svg>
+                </Link>
+            </div>
+            
+            {/* Horizontal Mini-Timeline */}
+            <div className="flex items-center gap-2 overflow-x-auto pb-2 custom-scrollbar">
+                {row.timeline.slice(0, 14).map((day) => {
+                    const pct = day.available / day.total;
+                    let bgColor = "bg-green-500/10 text-green-400 border-green-500/20";
+                    if (day.available === 0) bgColor = "bg-red-500/20 text-red-500 border-red-500/30 font-black";
+                    else if (pct <= 0.25) bgColor = "bg-yellow-500/10 text-yellow-500 border-yellow-500/20";
+                    const hasBlock = day.maintenance > 0;
+
+                    return (
+                        <div key={day.date} className={`flex flex-col items-center justify-center min-w-[50px] py-2 rounded-xl border ${bgColor} relative shrink-0`}>
+                            <span className="text-[8px] uppercase font-bold opacity-60 mb-0.5">{format(parseISO(day.date), "EEE")}</span>
+                            <span className="text-[10px] font-black">{day.available}</span>
+                            {hasBlock && <div className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-bl-sm" />}
+                        </div>
+                    )
+                })}
+            </div>
+        </div>
+    )
+}
+
+function InventoryOverrideCard({ override, onDelete }: { override: Override, onDelete: (id: string) => void }) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const start = parseISO(override.startDate);
+    const end = parseISO(override.endDate);
+
+    const isPast = end < today;
+    const isFuture = start > today;
+    const isActive = !isPast && !isFuture;
+
+    return (
+        <div className="p-4 border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
+            <div className="flex justify-between items-start mb-2">
+                <div className="flex-1 pr-4">
+                    <h4 className="font-bold text-white text-sm uppercase tracking-tight">{override.product?.name || "Unknown Product"}</h4>
+                    <p className="text-[var(--color-gold)] font-black text-xs mt-0.5">{override.unitsOffline} units offline</p>
+                </div>
+                <div className="flex flex-col items-end gap-1 shrink-0">
+                    {isActive && <span className="px-2 py-0.5 text-[9px] font-black bg-red-500/20 text-red-400 border border-red-500/30 rounded-full uppercase tracking-widest">Active</span>}
+                    {isFuture && <span className="px-2 py-0.5 text-[9px] font-black bg-yellow-500/20 text-yellow-500 border border-yellow-500/30 rounded-full uppercase tracking-widest">Upcoming</span>}
+                    {isPast && <span className="px-2 py-0.5 text-[9px] font-black bg-white/5 text-[var(--color-slate)] border border-white/10 rounded-full uppercase tracking-widest">Historical</span>}
+                </div>
+            </div>
+            
+            <div className="flex items-center gap-2 text-xs text-[var(--color-warm-white)] font-medium mb-3">
+                <span className="opacity-40 text-[10px] uppercase font-bold tracking-tighter">Timeline:</span>
+                {format(start, "MMM do")} — {format(end, "MMM d, yyyy")}
+            </div>
+            
+            <div className="flex items-end justify-between gap-4">
+                <div className="flex-1">
+                    <p className="text-[10px] text-[var(--color-slate)] italic leading-tight uppercase tracking-tight opacity-70">
+                        "{override.reason}"
+                    </p>
+                </div>
+                <button
+                    onClick={() => onDelete(override.id)}
+                    className="px-3 py-2 rounded-xl bg-red-500/10 text-red-400 text-[10px] font-black uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all border border-red-500/20 shadow-sm"
+                >
+                    Revoke
+                </button>
+            </div>
+        </div>
     );
 }

@@ -209,15 +209,15 @@ function CatalogContent() {
                             placeholder="Search equipment..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full pl-12 pr-4 py-3.5 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border-subtle)] text-[var(--color-warm-white)] placeholder:text-[var(--color-slate)] focus:border-[var(--color-gold)] focus:outline-none transition-colors"
+                            className="w-full pl-12 pr-12 py-4 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border-subtle)] text-[var(--color-warm-white)] placeholder:text-[var(--color-slate)] focus:border-[var(--color-gold)] focus:outline-none transition-colors"
                         />
                         {searchQuery && (
                             <button
                                 onClick={() => setSearchQuery("")}
-                                className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--color-slate)] hover:text-[var(--color-warm-white)] transition-colors"
+                                className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center text-[var(--color-slate)] hover:text-[var(--color-warm-white)] transition-colors"
                                 aria-label="Clear search"
                             >
-                                ✕
+                                <span className="text-lg">✕</span>
                             </button>
                         )}
                     </div>
@@ -291,9 +291,9 @@ function CatalogContent() {
                                 {selectedCategory && (
                                     <button 
                                         onClick={() => handleCategorySelect("")}
-                                        className="text-[10px] font-black text-gold uppercase tracking-widest flex items-center gap-1 hover:opacity-70 transition-opacity"
+                                        className="text-xs font-black text-gold uppercase tracking-widest flex items-center gap-2 hover:opacity-70 transition-opacity min-h-[44px] px-2"
                                     >
-                                        Clear Filter <span className="text-lg">×</span>
+                                        Clear Filter <span className="text-xl">×</span>
                                     </button>
                                 )}
                             </div>

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useSiteSettings } from "./SiteSettingsProvider";
 import { ArrowRight } from "lucide-react";
+import Spline from "@splinetool/react-spline";
 
 export function Footer() {
     const { getSetting } = useSiteSettings();
@@ -17,8 +18,14 @@ export function Footer() {
         <footer className="bg-[var(--color-surface)] border-t border-[var(--color-border-subtle)]">
             {/* CTA Banner */}
             <div className="max-w-7xl mx-auto px-6 py-16">
-                <div className="glass rounded-2xl p-12 text-center relative overflow-hidden">
-                    <div className="absolute inset-0 opacity-20" style={{ background: "radial-gradient(ellipse at center, rgba(201,168,76,0.2), transparent 70%)" }} />
+                <div className="glass rounded-2xl p-12 text-center relative overflow-hidden group">
+                    <div className="absolute inset-0 opacity-10 md:opacity-20 pointer-events-none">
+                        <Spline 
+                            scene="https://prod.spline.design/6Wq1Q7YGyWf8Zhp5/scene.splinecode" 
+                            className="w-full h-full object-cover scale-150"
+                        />
+                    </div>
+                    <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[var(--color-surface)]/40 to-[var(--color-surface)] pointer-events-none" />
                     <div className="relative z-10">
                         <h2 className="font-[family-name:var(--font-heading)] text-3xl md:text-4xl font-bold mb-4">
                             Ready to Build Something Extraordinary?

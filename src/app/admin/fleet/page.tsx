@@ -366,36 +366,97 @@ function FleetPageContent() {
                     </button>
                 </div>
 
-                {/* Table */}
-                <div className="glass border border-white/10 rounded-2xl overflow-hidden overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                        <thead className="bg-white/5 border-b border-white/10">
-                            <tr>
-                                <th className="p-3 w-10 text-center">
-                                    <input type="checkbox" className="accent-[var(--color-gold)]"
-                                        checked={selectedIds.length === filteredUnits.length && filteredUnits.length > 0}
-                                        onChange={e => setSelectedIds(e.target.checked ? filteredUnits.map(u => u.id) : [])} />
-                                </th>
-                                <th className="p-3 text-[10px] font-black uppercase text-[var(--color-gold)] tracking-widest">Asset Tag</th>
-                                <th className="p-3 text-[10px] font-black uppercase text-[var(--color-gold)] tracking-widest">Product</th>
-                                {isAdmin && <th className="p-3 text-[10px] font-black uppercase text-[var(--color-gold)] tracking-widest">Vendor</th>}
-                                <th className="p-3 text-[10px] font-black uppercase text-[var(--color-gold)] tracking-widest">Status</th>
-                                <th className="p-3 text-[10px] font-black uppercase text-[var(--color-gold)] tracking-widest">Location</th>
-                                <th className="p-3 text-[10px] font-black uppercase text-[var(--color-gold)] tracking-widest">Condition</th>
-                                <th className="p-3 text-[10px] font-black uppercase text-[var(--color-gold)] tracking-widest text-center">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-white/5">
-                            {loading && units.length === 0 ? (
-                                Array.from({ length: 5 }).map((_, i) => <tr key={i} className="animate-pulse"><td colSpan={7} className="p-5 bg-white/5" /></tr>)
-                            ) : filteredUnits.length === 0 ? (
-                                <tr><td colSpan={7} className="p-12 text-center text-[var(--color-slate)]">
-                                    <Package className="w-10 h-10 mx-auto mb-3 opacity-20" />
-                                    <p className="font-bold text-white">No assets found</p>
-                                    <p className="text-xs mt-1">Try a different filter or add new assets.</p>
-                                </td></tr>
-                            ) : !groupByProduct ? (
-                                filteredUnits.map(unit => <AssetRow 
+                {/* Table (Desktop) / Cards (Mobile) */}
+                <div className="glass border border-white/10 rounded-2xl overflow-hidden">
+                    <div className="hidden md:block overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                            <thead className="bg-white/5 border-b border-white/10">
+                                <tr>
+                                    <th className="p-3 w-10 text-center">
+                                        <input type="checkbox" className="accent-[var(--color-gold)]"
+                                            checked={selectedIds.length === filteredUnits.length && filteredUnits.length > 0}
+                                            onChange={e => setSelectedIds(e.target.checked ? filteredUnits.map(u => u.id) : [])} />
+                                    </th>
+                                    <th className="p-3 text-[10px] font-black uppercase text-[var(--color-gold)] tracking-widest">Asset Tag</th>
+                                    <th className="p-3 text-[10px] font-black uppercase text-[var(--color-gold)] tracking-widest">Product</th>
+                                    {isAdmin && <th className="p-3 text-[10px] font-black uppercase text-[var(--color-gold)] tracking-widest">Vendor</th>}
+                                    <th className="p-3 text-[10px] font-black uppercase text-[var(--color-gold)] tracking-widest">Status</th>
+                                    <th className="p-3 text-[10px] font-black uppercase text-[var(--color-gold)] tracking-widest">Location</th>
+                                    <th className="p-3 text-[10px] font-black uppercase text-[var(--color-gold)] tracking-widest">Condition</th>
+                                    <th className="p-3 text-[10px] font-black uppercase text-[var(--color-gold)] tracking-widest text-center">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-white/5">
+                                {loading && units.length === 0 ? (
+                                    Array.from({ length: 5 }).map((_, i) => <tr key={i} className="animate-pulse"><td colSpan={7} className="p-5 bg-white/5" /></tr>)
+                                ) : filteredUnits.length === 0 ? (
+                                    <tr><td colSpan={7} className="p-12 text-center text-[var(--color-slate)]">
+                                        <Package className="w-10 h-10 mx-auto mb-3 opacity-20" />
+                                        <p className="font-bold text-white">No assets found</p>
+                                        <p className="text-xs mt-1">Try a different filter or add new assets.</p>
+                                    </td></tr>
+                                ) : !groupByProduct ? (
+                                    filteredUnits.map(unit => <AssetRow 
+                                        key={unit.id} unit={unit} isAdmin={isAdmin} 
+                                        isSelected={selectedIds.includes(unit.id)} 
+                                        onSelect={() => toggleSelect(unit.id)}
+                                        onInspect={() => setShowInspectionModal(unit.id)}
+                                        onMaintenance={() => handleMaintenanceToggle(unit)}
+                                        onUpdateLocation={() => setShowLocationModal(unit)}
+                                        conditionColors={conditionColors}
+                                        availabilityColors={availabilityColors}
+                                        onViewPassport={handleViewPassport}
+                                        setViewLogsUnit={setViewLogsUnit}
+                                    />)
+                                ) : (
+                                    Array.from(new Set(filteredUnits.map(u => u.productId))).map(pId => {
+                                        const productUnits = filteredUnits.filter(u => u.productId === pId);
+                                        const pName = productUnits[0].productName;
+                                        const catName = productUnits[0].categoryName;
+                                        return (
+                                            <React.Fragment key={pId}>
+                                                <tr className="bg-white/5 border-y border-white/10">
+                                                    <td colSpan={isAdmin ? 7 : 6} className="px-4 py-2">
+                                                        <div className="flex items-center gap-2">
+                                                            <Package className="w-3.5 h-3.5 text-[var(--color-gold)]" />
+                                                            <span className="text-xs font-black text-white uppercase tracking-wider">{pName}</span>
+                                                            <span className="text-[10px] text-[var(--color-slate)] uppercase font-bold opacity-50">• {catName}</span>
+                                                            <span className="ml-auto text-[10px] bg-white/10 px-2 py-0.5 rounded-full font-mono">{productUnits.length} Total Units</span>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                                {productUnits.map(unit => <AssetRow 
+                                                    key={unit.id} unit={unit} isAdmin={isAdmin} 
+                                                    isSelected={selectedIds.includes(unit.id)} 
+                                                    onSelect={() => toggleSelect(unit.id)}
+                                                    onInspect={() => setShowInspectionModal(unit.id)}
+                                                    onMaintenance={() => handleMaintenanceToggle(unit)}
+                                                    onUpdateLocation={() => setShowLocationModal(unit)}
+                                                    conditionColors={conditionColors}
+                                                    availabilityColors={availabilityColors}
+                                                    onViewPassport={handleViewPassport}
+                                                    setViewLogsUnit={setViewLogsUnit}
+                                                />)}
+                                            </React.Fragment>
+                                        );
+                                    })
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {/* Mobile Card List */}
+                    <div className="md:hidden divide-y divide-white/5">
+                        {loading && units.length === 0 ? (
+                            Array.from({ length: 5 }).map((_, i) => <div key={i} className="p-5 bg-white/5 animate-pulse h-32" />)
+                        ) : filteredUnits.length === 0 ? (
+                            <div className="p-12 text-center text-[var(--color-slate)]">
+                                <Package className="w-10 h-10 mx-auto mb-3 opacity-20" />
+                                <p className="font-bold text-white">No assets found</p>
+                            </div>
+                        ) : (
+                            filteredUnits.map(unit => (
+                                <AssetCard 
                                     key={unit.id} unit={unit} isAdmin={isAdmin} 
                                     isSelected={selectedIds.includes(unit.id)} 
                                     onSelect={() => toggleSelect(unit.id)}
@@ -406,42 +467,10 @@ function FleetPageContent() {
                                     availabilityColors={availabilityColors}
                                     onViewPassport={handleViewPassport}
                                     setViewLogsUnit={setViewLogsUnit}
-                                />)
-                            ) : (
-                                Array.from(new Set(filteredUnits.map(u => u.productId))).map(pId => {
-                                    const productUnits = filteredUnits.filter(u => u.productId === pId);
-                                    const pName = productUnits[0].productName;
-                                    const catName = productUnits[0].categoryName;
-                                    return (
-                                        <React.Fragment key={pId}>
-                                            <tr className="bg-white/5 border-y border-white/10">
-                                                <td colSpan={isAdmin ? 7 : 6} className="px-4 py-2">
-                                                    <div className="flex items-center gap-2">
-                                                        <Package className="w-3.5 h-3.5 text-[var(--color-gold)]" />
-                                                        <span className="text-xs font-black text-white uppercase tracking-wider">{pName}</span>
-                                                        <span className="text-[10px] text-[var(--color-slate)] uppercase font-bold opacity-50">• {catName}</span>
-                                                        <span className="ml-auto text-[10px] bg-white/10 px-2 py-0.5 rounded-full font-mono">{productUnits.length} Total Units</span>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                            {productUnits.map(unit => <AssetRow 
-                                                key={unit.id} unit={unit} isAdmin={isAdmin} 
-                                                isSelected={selectedIds.includes(unit.id)} 
-                                                onSelect={() => toggleSelect(unit.id)}
-                                                onInspect={() => setShowInspectionModal(unit.id)}
-                                                onMaintenance={() => handleMaintenanceToggle(unit)}
-                                                onUpdateLocation={() => setShowLocationModal(unit)}
-                                                conditionColors={conditionColors}
-                                                availabilityColors={availabilityColors}
-                                                onViewPassport={handleViewPassport}
-                                                setViewLogsUnit={setViewLogsUnit}
-                                            />)}
-                                        </React.Fragment>
-                                    );
-                                })
-                            )}
-                        </tbody>
-                    </table>
+                                />
+                            ))
+                        )}
+                    </div>
                 </div>
             </div>
 
@@ -510,8 +539,10 @@ function LogViewer({ unit, onClose }: { unit: InventoryUnit; onClose: () => void
     }, [unit]);
 
     return (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[60] flex items-center justify-center p-4" onClick={onClose}>
-            <div className="glass border border-white/10 rounded-3xl p-6 w-full max-w-lg max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[60] flex items-end md:items-center justify-center" onClick={onClose}>
+            <div className="glass border border-white/10 rounded-t-[2.5rem] md:rounded-3xl p-6 w-full max-w-lg max-h-[92vh] md:max-h-[80vh] overflow-y-auto animate-in slide-in-from-bottom-10 duration-300 md:duration-200 md:zoom-in-95" onClick={e => e.stopPropagation()}>
+                {/* Mobile Handle */}
+                <div className="w-12 h-1.5 bg-white/10 rounded-full mx-auto mb-6 md:hidden" />
                 <div className="flex justify-between items-center mb-6">
                     <div>
                         <h3 className="font-black text-lg text-white flex items-center gap-2 tracking-tight">
@@ -573,8 +604,10 @@ function LocationModal({ unit, warehouses, onClose, onSuccess }: { unit: Invento
     };
 
     return (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[60] flex items-center justify-center p-4" onClick={onClose}>
-            <div className="glass border border-white/10 rounded-3xl p-6 w-full max-w-sm space-y-6 shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[60] flex items-end md:items-center justify-center" onClick={onClose}>
+            <div className="glass border border-white/10 rounded-t-[2.5rem] md:rounded-3xl p-6 w-full max-w-sm space-y-6 shadow-2xl animate-in slide-in-from-bottom-10 duration-300 md:duration-200 md:zoom-in-95" onClick={e => e.stopPropagation()}>
+                {/* Mobile Handle */}
+                <div className="w-12 h-1.5 bg-white/10 rounded-full mx-auto md:hidden" />
                 <div className="flex justify-between items-center">
                     <h3 className="font-black text-lg text-white flex items-center gap-2 tracking-tight">
                         <MapPin className="w-5 h-5 text-blue-400" /> Update Location
@@ -636,8 +669,10 @@ function InspectionModal({ unitIds, units, onClose, onSuccess }: { unitIds: stri
     };
 
     return (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
-            <div className="glass border border-white/10 rounded-3xl p-6 w-full max-w-md space-y-5" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end md:items-center justify-center" onClick={onClose}>
+            <div className="glass border border-white/10 rounded-t-[2.5rem] md:rounded-3xl p-6 w-full max-w-md space-y-5 animate-in slide-in-from-bottom-10 duration-300 md:duration-200 md:zoom-in-95" onClick={e => e.stopPropagation()}>
+                {/* Mobile Handle */}
+                <div className="w-12 h-1.5 bg-white/10 rounded-full mx-auto md:hidden" />
                 <div className="flex justify-between items-center">
                     <h3 className="font-black text-lg text-white flex items-center gap-2"><CheckCircle2 className="w-5 h-5 text-emerald-400" /> {units.length > 1 ? `Bulk Inspection (${units.length})` : "Log Inspection"}</h3>
                     <button onClick={onClose}><X className="w-5 h-5 text-[var(--color-slate)]" /></button>
@@ -713,8 +748,10 @@ function AddAssetModal({ products, warehouses, onClose, onSuccess }: { products:
     };
 
     return (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
-            <div className="glass border border-white/10 rounded-3xl p-6 w-full max-w-lg space-y-5" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end md:items-center justify-center" onClick={onClose}>
+            <div className="glass border border-white/10 rounded-t-[2.5rem] md:rounded-3xl p-6 w-full max-w-lg space-y-5 animate-in slide-in-from-bottom-10 duration-300 md:duration-200 md:zoom-in-95" onClick={e => e.stopPropagation()}>
+                {/* Mobile Handle */}
+                <div className="w-12 h-1.5 bg-white/10 rounded-full mx-auto md:hidden" />
                 <div className="flex justify-between items-center">
                     <h3 className="font-black text-lg text-white flex items-center gap-2"><Plus className="w-5 h-5 text-[var(--color-gold)]" /> Add New Asset</h3>
                     <button onClick={onClose}><X className="w-5 h-5 text-[var(--color-slate)]" /></button>
@@ -942,6 +979,77 @@ function AssetRow({
                 </div>
             </td>
         </tr>
+    );
+}
+
+function AssetCard({ 
+    unit, isAdmin, isSelected, onSelect, onInspect, onMaintenance, 
+    conditionColors, availabilityColors, onViewPassport, setViewLogsUnit, onUpdateLocation
+}: { 
+    unit: InventoryUnit, isAdmin: boolean, isSelected: boolean, 
+    onSelect: () => void, onInspect: () => void, onMaintenance: () => void,
+    conditionColors: Record<string, string>, availabilityColors: Record<string, string>,
+    onViewPassport: (tag: string) => void,
+    setViewLogsUnit: (unit: InventoryUnit) => void,
+    onUpdateLocation: () => void
+}) {
+    return (
+        <div className="p-4 border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
+            <div className="flex items-start justify-between gap-4 mb-3">
+                <div className="flex items-start gap-3">
+                    <input type="checkbox" className="accent-[var(--color-gold)] mt-1"
+                        checked={isSelected} onChange={onSelect} />
+                    <div onClick={onSelect} className="cursor-pointer">
+                        <span className="font-black text-white font-mono text-xs block">{unit.assetTagCode}</span>
+                        <span className="text-[10px] text-[var(--color-slate)] font-mono opacity-50 block mt-0.5">{unit.serialNumber || 'No Serial'}</span>
+                    </div>
+                </div>
+                <div className="flex flex-col items-end gap-1.5">
+                     <span className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-widest ${availabilityColors[unit.availabilityStatus] || ''}`}>
+                        {unit.availabilityStatus.replace(/_/g, ' ')}
+                    </span>
+                    <span className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider ${conditionColors[unit.conditionStatus] || ''}`}>
+                        {unit.conditionStatus.replace(/_/g, ' ')}
+                    </span>
+                </div>
+            </div>
+            
+            <div className="mb-4">
+                <span className="text-sm font-bold text-white uppercase tracking-tight leading-none block">{unit.productName}</span>
+                <span className="text-[10px] text-[var(--color-slate)] capitalize block mt-1 opacity-70">{unit.categoryName}</span>
+                {isAdmin && <span className="text-[9px] font-black text-[var(--color-gold)] bg-[var(--color-gold)]/10 px-2 py-0.5 rounded-full border border-[var(--color-gold)]/20 uppercase tracking-widest inline-block mt-2">{unit.vendorName || "Platform"}</span>}
+            </div>
+
+            <div className="flex items-center justify-between gap-4">
+                <div className="flex flex-col gap-1">
+                    <span className="text-[10px] text-white font-bold flex items-center gap-1.5">
+                        <MapPin className="w-3 h-3 text-[var(--color-slate)]" />
+                        {unit.warehouseName || 'Unassigned'}
+                    </span>
+                    {unit.shelfLocation && (
+                         <span className="text-[9px] text-[var(--color-slate)] uppercase tracking-widest font-black ml-4.5 opacity-50">{unit.shelfLocation}</span>
+                    )}
+                </div>
+
+                <div className="flex items-center gap-1">
+                    <button onClick={onUpdateLocation} className="p-2.5 rounded-lg bg-blue-500/10 text-blue-400 hover:bg-blue-500 hover:text-white transition-all shadow-sm" title="Update Location">
+                        <MapPin className="w-4.5 h-4.5" />
+                    </button>
+                    <button onClick={() => setViewLogsUnit(unit)} className="p-2.5 rounded-lg bg-white/5 text-white hover:bg-white/10 transition-all shadow-sm" title="View History">
+                        <HistoryIcon className="w-4.5 h-4.5" />
+                    </button>
+                    <button onClick={() => onViewPassport(unit.assetTagCode)} className="p-2.5 rounded-lg bg-[var(--color-gold)]/10 text-[var(--color-gold)] hover:bg-[var(--color-gold)] hover:text-navy transition-all shadow-sm" title="View Passport">
+                        <Eye className="w-4.5 h-4.5" />
+                    </button>
+                    <button onClick={onInspect} className="p-2.5 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500 hover:text-white transition-all shadow-sm" title="Log Inspection">
+                        <CheckCircle2 className="w-4.5 h-4.5" />
+                    </button>
+                    <button onClick={onMaintenance} className={`p-2.5 rounded-lg transition-all shadow-sm ${unit.availabilityStatus === 'in_maintenance' ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20' : 'bg-white/5 text-slate-400 hover:bg-red-500 hover:text-white'}`} title={unit.availabilityStatus === 'in_maintenance' ? 'Return to Warehouse' : 'Mark Maintenance'}>
+                        <Wrench className="w-4.5 h-4.5" />
+                    </button>
+                </div>
+            </div>
+        </div>
     );
 }
 

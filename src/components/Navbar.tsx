@@ -214,15 +214,23 @@ export function Navbar() {
                         </Link>
                     )}
 
-                    {/* Mobile hamburger */}
-                    <button className="md:hidden p-2" onClick={() => setMobileOpen(o => !o)}>
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                            {mobileOpen ? (
-                                <><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></>
-                            ) : (
-                                <><line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" /></>
-                            )}
-                        </svg>
+                    <button 
+                        className="md:hidden w-10 h-10 flex flex-col items-center justify-center gap-1.5 focus:outline-none z-[130] relative" 
+                        onClick={() => setMobileOpen(o => !o)}
+                        aria-label="Toggle menu"
+                    >
+                        <motion.span 
+                            animate={mobileOpen ? { rotate: 45, y: 8 } : { rotate: 0, y: 0 }}
+                            className="w-6 h-0.5 bg-[var(--color-gold)] rounded-full"
+                        />
+                        <motion.span 
+                            animate={mobileOpen ? { opacity: 0, x: 20 } : { opacity: 1, x: 0 }}
+                            className="w-6 h-0.5 bg-[var(--color-gold)] rounded-full"
+                        />
+                        <motion.span 
+                            animate={mobileOpen ? { rotate: -45, y: -8 } : { rotate: 0, y: 0 }}
+                            className="w-6 h-0.5 bg-[var(--color-gold)] rounded-full"
+                        />
                     </button>
                 </div>
             </div>

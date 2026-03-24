@@ -8,6 +8,7 @@ import { useSiteSettings } from "@/components/SiteSettingsProvider";
 import { useInView } from "react-intersection-observer";
 import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 import { Box, FileText, Truck, CheckCircle2 } from "lucide-react";
+import Spline from "@splinetool/react-spline";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -94,37 +95,13 @@ export default function HeroSection() {
             onMouseMove={handleMouseMove}
             className="relative h-[120vh] w-full bg-[#0a0f1e] flex items-center justify-center overflow-hidden z-20"
         >
-            {/* ── Premium Animated Orb Background ── */}
-            <motion.div 
-                className="absolute inset-0 z-0 spline-container"
-                style={{
-                    rotateY,
-                    rotateX,
-                    perspective: 1200,
-                }}
-            >
-                {/* Primary Gold Orb */}
-                <motion.div
-                    className="absolute w-[600px] h-[600px] rounded-full blur-[120px] opacity-[0.12]"
-                    style={{ background: "radial-gradient(circle, #c9a84c 0%, transparent 70%)", top: "10%", left: "15%" }}
-                    animate={{ x: [0, 60, -40, 0], y: [0, -40, 50, 0], scale: [1, 1.2, 0.9, 1] }}
-                    transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
+            {/* ── Premium 3D Spline Background ── */}
+            <div className="absolute inset-0 z-0 spline-container pointer-events-none md:pointer-events-auto">
+                <Spline 
+                    scene="https://prod.spline.design/6Wq1Q7YGyWf8Zhp5/scene.splinecode" 
+                    className="w-full h-full object-cover scale-110 md:scale-100"
                 />
-                {/* Secondary Blue Orb */}
-                <motion.div
-                    className="absolute w-[500px] h-[500px] rounded-full blur-[100px] opacity-[0.08]"
-                    style={{ background: "radial-gradient(circle, #3b82f6 0%, transparent 70%)", bottom: "5%", right: "10%" }}
-                    animate={{ x: [0, -50, 30, 0], y: [0, 30, -60, 0], scale: [1, 0.85, 1.15, 1] }}
-                    transition={{ duration: 25, repeat: Infinity, ease: "easeInOut" }}
-                />
-                {/* Tertiary Violet Orb */}
-                <motion.div
-                    className="absolute w-[400px] h-[400px] rounded-full blur-[80px] opacity-[0.06]"
-                    style={{ background: "radial-gradient(circle, #8b5cf6 0%, transparent 70%)", top: "50%", left: "60%" }}
-                    animate={{ x: [0, 40, -20, 0], y: [0, -50, 30, 0] }}
-                    transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
-                />
-            </motion.div>
+            </div>
 
             <div className="absolute inset-0 z-[1] pointer-events-none">
                 {/* Deep Gradient Base */}

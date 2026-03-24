@@ -119,26 +119,26 @@ export default function PassportPage() {
             </div>
 
             {/* Hero Section */}
-            <div className="relative h-72 w-full overflow-hidden flex items-end p-8 bg-gradient-to-b from-blue-950/40 via-blue-900/10 to-transparent">
+            <div className="relative h-64 md:h-72 w-full overflow-hidden flex items-end p-6 md:p-8 bg-gradient-to-b from-blue-950/40 via-blue-900/10 to-transparent">
                 <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-5" />
                 <motion.div 
                     initial={{ opacity: 0, y: 30 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="flex flex-col md:flex-row gap-6 items-start md:items-end w-full max-w-5xl mx-auto z-10"
+                    className="flex flex-col md:flex-row gap-4 md:gap-6 items-start md:items-end w-full max-w-5xl mx-auto z-10"
                 >
-                    <div className="w-28 h-28 rounded-[2rem] border-2 border-white/10 overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)] bg-black/40 backdrop-blur-xl p-1 shrink-0">
+                    <div className="w-24 h-24 md:w-28 md:h-28 rounded-[2rem] border-2 border-white/10 overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)] bg-black/40 backdrop-blur-xl p-1 shrink-0">
                         <div className="w-full h-full rounded-[1.8rem] overflow-hidden border border-white/5">
                             <img src={data.productThumbnail || "/placeholder.jpg"} alt={data.productName} className="w-full h-full object-cover transform hover:scale-110 transition-transform duration-700" />
                         </div>
                     </div>
                     <div className="flex-1 space-y-1">
-                        <div className="flex items-center gap-2 mb-2">
-                            <span className="px-2 py-0.5 rounded-full bg-[var(--color-gold)]/10 border border-[var(--color-gold)]/20 text-[var(--color-gold)] text-[10px] font-black uppercase tracking-widest">Digital Passport</span>
+                        <div className="flex items-center gap-2 mb-1 md:mb-2">
+                            <span className="px-2 py-0.5 rounded-full bg-[var(--color-gold)]/10 border border-[var(--color-gold)]/20 text-[var(--color-gold)] text-[9px] md:text-[10px] font-black uppercase tracking-widest">Digital Passport</span>
                             <span className="w-1 h-1 rounded-full bg-white/20" />
-                            <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">v2.0 Verified</span>
+                            <span className="text-[9px] md:text-[10px] font-bold text-white/40 uppercase tracking-widest">v2.0 Verified</span>
                         </div>
-                        <h1 className="text-3xl md:text-4xl font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-white to-white/60">{data.productName}</h1>
-                        <p className="text-[var(--color-gold)] font-mono font-black tracking-[0.2em] text-sm opacity-80">{data.assetTagCode}</p>
+                        <h1 className="text-2xl md:text-4xl font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-white to-white/60 leading-tight">{data.productName}</h1>
+                        <p className="text-[var(--color-gold)] font-mono font-black tracking-[0.2em] text-xs md:text-sm opacity-80">{data.assetTagCode}</p>
                     </div>
                 </motion.div>
             </div>
@@ -356,60 +356,60 @@ export default function PassportPage() {
 
             {/* Sticky Operations Panel (Authorized Only) */}
             {data.isAuthorized && (
-                <div className="fixed bottom-10 left-1/2 -translate-x-1/2 w-[calc(100%-48px)] max-w-md p-6 glass border border-white/20 rounded-[3rem] shadow-[0_30px_60px_rgba(0,0,0,0.8)] z-50">
-                    <div className="flex items-center justify-center gap-3 mb-6 text-[var(--color-gold)]">
-                        <Unlock className="w-4 h-4 animate-pulse" />
-                        <span className="text-[10px] font-black uppercase tracking-[0.3em]">Authorized Operator Panel</span>
+                <div className="fixed bottom-6 md:bottom-10 left-1/2 -translate-x-1/2 w-[calc(100%-32px)] md:w-[calc(100%-48px)] max-w-md p-5 md:p-6 glass border border-white/20 rounded-[2.5rem] md:rounded-[3rem] shadow-[0_30px_60px_rgba(0,0,0,0.8)] z-50">
+                    <div className="flex items-center justify-center gap-3 mb-4 md:mb-6 text-[var(--color-gold)]">
+                        <Unlock className="w-3.5 h-3.5 animate-pulse" />
+                        <span className="text-[9px] font-black uppercase tracking-[0.3em]">Operator Control Panel</span>
                     </div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div className="grid grid-cols-4 gap-2 md:gap-3">
                         <button 
                             onClick={() => setShowAssignModal(true)}
                             disabled={!!data.currentAssignment}
-                            className="group flex flex-col items-center justify-center p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 active:scale-95 transition-all outline-none focus:ring-2 ring-blue-500 disabled:opacity-30 disabled:grayscale"
+                            className="group flex flex-col items-center justify-center p-3 md:p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 active:scale-95 transition-all outline-none focus:ring-2 ring-blue-500 disabled:opacity-30 disabled:grayscale"
                         >
-                            <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
-                                <MapPin className="w-5 h-5 text-blue-400" />
+                            <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-blue-500/10 flex items-center justify-center mb-1.5 group-hover:scale-110 transition-transform">
+                                <MapPin className="w-4 h-4 md:w-5 md:h-5 text-blue-400" />
                             </div>
-                            <span className="text-[8px] font-black uppercase tracking-widest text-center">Assign Project</span>
+                            <span className="text-[7px] md:text-[8px] font-black uppercase tracking-tight text-center">Assign</span>
                         </button>
                         {data.currentAssignment ? (
                             <button 
                                 onClick={() => setShowBumpOutModal(true)}
-                                className="group flex flex-col items-center justify-center p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 hover:bg-emerald-500/20 active:scale-95 transition-all outline-none focus:ring-2 ring-emerald-500"
+                                className="group flex flex-col items-center justify-center p-3 md:p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 hover:bg-emerald-500/20 active:scale-95 transition-all outline-none focus:ring-2 ring-emerald-500"
                             >
-                                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
-                                    <LogOut className="w-5 h-5 text-emerald-400" />
+                                <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center mb-1.5 group-hover:scale-110 transition-transform">
+                                    <LogOut className="w-4 h-4 md:w-5 md:h-5 text-emerald-400" />
                                 </div>
-                                <span className="text-[8px] font-black uppercase tracking-widest text-center text-emerald-400">Bump-Out</span>
+                                <span className="text-[7px] md:text-[8px] font-black uppercase tracking-tight text-center text-emerald-400">Return</span>
                             </button>
                         ) : (
                             <button 
-                                onClick={() => setShowInspectModal({ type: 'pre_rental', label: 'Bump-In' })}
-                                className="group flex flex-col items-center justify-center p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 active:scale-95 transition-all outline-none focus:ring-2 ring-[var(--color-gold)]"
+                                onClick={() => setShowInspectModal({ type: 'pre_rental', label: 'Check-In' })}
+                                className="group flex flex-col items-center justify-center p-3 md:p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 active:scale-95 transition-all outline-none focus:ring-2 ring-[var(--color-gold)]"
                             >
-                                <div className="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
-                                    <ArrowRightLeft className="w-5 h-5 text-orange-400" />
+                                <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-orange-500/10 flex items-center justify-center mb-1.5 group-hover:scale-110 transition-transform">
+                                    <ArrowRightLeft className="w-4 h-4 md:w-5 md:h-5 text-orange-400" />
                                 </div>
-                                <span className="text-[8px] font-black uppercase tracking-widest text-center">Bump-In</span>
+                                <span className="text-[7px] md:text-[8px] font-black uppercase tracking-tight text-center">Bump-In</span>
                             </button>
                         )}
                         <button 
                             onClick={() => setShowInspectModal({ type: 'routine', label: 'Inspect' })}
-                            className="group flex flex-col items-center justify-center p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 active:scale-95 transition-all outline-none focus:ring-2 ring-[var(--color-gold)]"
+                            className="group flex flex-col items-center justify-center p-3 md:p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 active:scale-95 transition-all outline-none focus:ring-2 ring-[var(--color-gold)]"
                         >
-                            <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
-                                <ShieldCheck className="w-5 h-5 text-purple-400" />
+                            <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-purple-500/10 flex items-center justify-center mb-1.5 group-hover:scale-110 transition-transform">
+                                <ShieldCheck className="w-4 h-4 md:w-5 md:h-5 text-purple-400" />
                             </div>
-                            <span className="text-[8px] font-black uppercase tracking-widest text-center">Inspect</span>
+                            <span className="text-[7px] md:text-[8px] font-black uppercase tracking-tight text-center">Inspect</span>
                         </button>
                         <button 
                             onClick={() => setShowInspectModal({ type: 'damage', label: 'Log Damage' })}
-                            className="group flex flex-col items-center justify-center p-4 rounded-2xl bg-[var(--color-gold)] hover:bg-[var(--color-gold)]/90 active:scale-95 transition-all shadow-[0_10px_25px_rgba(255,191,0,0.3)] outline-none"
+                            className="group flex flex-col items-center justify-center p-3 md:p-4 rounded-2xl bg-[var(--color-gold)] hover:bg-[var(--color-gold)]/90 active:scale-95 transition-all shadow-[0_10px_25px_rgba(255,191,0,0.3)] outline-none"
                         >
-                            <div className="w-10 h-10 rounded-xl bg-black/10 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
-                                <Wrench className="w-5 h-5 text-black" />
+                            <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-black/10 flex items-center justify-center mb-1.5 group-hover:scale-110 transition-transform">
+                                <Wrench className="w-4 h-4 md:w-5 md:h-5 text-black" />
                             </div>
-                            <span className="text-[8px] font-black uppercase tracking-widest text-black text-center">Log Damage</span>
+                            <span className="text-[7px] md:text-[8px] font-black uppercase tracking-tight text-black text-center">Damage</span>
                         </button>
                     </div>
                 </div>
