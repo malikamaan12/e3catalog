@@ -221,18 +221,18 @@ export default function AdminProductsPage() {
                         <table className="w-full">
                             <thead>
                                 <tr className="border-b border-[var(--color-border-subtle)]">
-                                    <th className="text-left py-3 px-4 text-xs font-semibold text-[var(--color-gold)] tracking-wider">PRODUCT</th>
-                                    <th className="text-left py-3 px-4 text-xs font-semibold text-[var(--color-gold)] tracking-wider">SKU</th>
-                                    <th className="text-left py-3 px-4 text-xs font-semibold text-[var(--color-gold)] tracking-wider">VENDOR</th>
-                                    <th className="text-left py-3 px-4 text-xs font-semibold text-[var(--color-gold)] tracking-wider hidden md:table-cell">CATEGORY</th>
-                                    <th className="text-right py-3 px-4 text-xs font-semibold text-[var(--color-gold)] tracking-wider">PRICE/DAY</th>
-                                    <th className="text-center py-3 px-4 text-xs font-semibold text-[var(--color-gold)] tracking-wider hidden md:table-cell">UNITS</th>
-                                    <th className="text-center py-3 px-4 text-xs font-semibold text-[var(--color-gold)] tracking-wider hidden md:table-cell">CONDITION</th>
-                                    <th className="text-center py-3 px-4 text-xs font-semibold text-[var(--color-gold)] tracking-wider hidden lg:table-cell">MEDIA</th>
-                                    <th className="text-center py-3 px-4 text-xs font-semibold text-[var(--color-gold)] tracking-wider hidden lg:table-cell">CERTS</th>
-                                    <th className="text-center py-3 px-4 text-xs font-semibold text-[var(--color-gold)] tracking-wider">VISIBILITY</th>
+                                    <th className="text-left py-3 px-4 text-xs font-semibold text-[var(--color-gold)] tracking-wider whitespace-nowrap">PRODUCT</th>
+                                    <th className="text-left py-3 px-4 text-xs font-semibold text-[var(--color-gold)] tracking-wider whitespace-nowrap">SKU</th>
+                                    <th className="text-left py-3 px-4 text-xs font-semibold text-[var(--color-gold)] tracking-wider whitespace-nowrap">VENDOR</th>
+                                    <th className="text-left py-3 px-4 text-xs font-semibold text-[var(--color-gold)] tracking-wider hidden md:table-cell whitespace-nowrap">CATEGORY</th>
+                                    <th className="text-right py-3 px-4 text-xs font-semibold text-[var(--color-gold)] tracking-wider whitespace-nowrap">PRICE/DAY</th>
+                                    <th className="text-center py-3 px-4 text-xs font-semibold text-[var(--color-gold)] tracking-wider hidden md:table-cell whitespace-nowrap">UNITS</th>
+                                    <th className="text-center py-3 px-4 text-xs font-semibold text-[var(--color-gold)] tracking-wider hidden md:table-cell whitespace-nowrap">CONDITION</th>
+                                    <th className="text-center py-3 px-4 text-xs font-semibold text-[var(--color-gold)] tracking-wider hidden lg:table-cell whitespace-nowrap">MEDIA</th>
+                                    <th className="text-center py-3 px-4 text-xs font-semibold text-[var(--color-gold)] tracking-wider hidden lg:table-cell whitespace-nowrap">CERTS</th>
+                                    <th className="text-center py-3 px-4 text-xs font-semibold text-[var(--color-gold)] tracking-wider whitespace-nowrap">VISIBILITY</th>
                                     {canManageProducts && (
-                                        <th className="text-right py-3 px-4 text-xs font-semibold text-[var(--color-gold)] tracking-wider">ACTIONS</th>
+                                        <th className="text-right py-3 px-4 text-xs font-semibold text-[var(--color-gold)] tracking-wider whitespace-nowrap">ACTIONS</th>
                                     )}
                                 </tr>
                             </thead>
@@ -255,24 +255,24 @@ export default function AdminProductsPage() {
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td className="py-3 px-4">
-                                                <span className="text-xs font-mono bg-[var(--color-navy-lighter)] px-2 py-1 rounded border border-white/5 text-[var(--color-gold)]">
+                                            <td className="py-3 px-4 whitespace-nowrap min-w-[100px]">
+                                                <span className="text-[10px] font-mono bg-[var(--color-navy-lighter)] px-2 py-1 rounded border border-white/5 text-[var(--color-gold)] block w-fit">
                                                     {product.itemCode || "—"}
                                                 </span>
                                             </td>
-                                            <td className="py-3 px-4">
+                                            <td className="py-3 px-4 whitespace-nowrap min-w-[150px]">
                                                 {product.vendor ? (
-                                                    <span className="text-xs font-medium text-[var(--color-gold)] bg-[var(--color-gold)]/10 px-2 py-0.5 rounded-full border border-[var(--color-gold)]/20">
+                                                    <span className="text-[10px] font-medium text-[var(--color-gold)] bg-[var(--color-gold)]/10 px-2 py-1 rounded-full border border-[var(--color-gold)]/20">
                                                         {product.vendor.companyName}
                                                     </span>
                                                 ) : (
-                                                    <span className="text-xs font-medium text-[var(--color-slate)] bg-white/5 px-2 py-0.5 rounded-full border border-white/10 uppercase">
+                                                    <span className="text-[10px] font-medium text-[var(--color-slate)] bg-white/5 px-2 py-1 rounded-full border border-white/10 uppercase tracking-widest">
                                                         Platform
                                                     </span>
                                                 )}
                                             </td>
-                                            <td className="py-3 px-4 text-sm text-[var(--color-slate)] hidden md:table-cell">{product.category?.name || "—"}</td>
-                                            <td className="py-3 px-4 text-sm text-[var(--color-slate)] hidden md:table-cell text-right font-medium text-[var(--color-gold)]">{product.pricePerDay.toLocaleString()} QAR</td>
+                                            <td className="py-3 px-4 text-sm text-[var(--color-slate)] hidden md:table-cell whitespace-nowrap">{product.category?.name || "—"}</td>
+                                            <td className="py-3 px-4 text-sm text-[var(--color-slate)] hidden md:table-cell text-right font-medium text-[var(--color-gold)] whitespace-nowrap">{product.pricePerDay.toLocaleString()} QAR</td>
                                             <td className="py-3 px-4 text-sm text-center text-[var(--color-warm-white)] hidden md:table-cell">
                                                 <HoverCard.Root openDelay={200} closeDelay={100}>
                                                     <HoverCard.Trigger asChild>
@@ -301,11 +301,11 @@ export default function AdminProductsPage() {
                                                 </span>
                                             </td>
                                             <td className="py-3 px-4 text-sm text-center text-[var(--color-slate)] hidden lg:table-cell">{product.media?.length || 0}</td>
-                                            <td className="py-3 px-4 text-sm text-center text-[var(--color-slate)] hidden lg:table-cell">{product.safetyCertificates?.length || 0}</td>
-                                            <td className="py-3 px-4 text-center">
+                                            <td className="py-3 px-4 text-sm text-center text-[var(--color-slate)] hidden lg:table-cell whitespace-nowrap">{product.safetyCertificates?.length || 0}</td>
+                                            <td className="py-3 px-4 text-center whitespace-nowrap">
                                                 <button 
                                                     onClick={() => togglePublished(product.id, product.isPublished)}
-                                                    className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all border ${
+                                                    className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all border ${
                                                         product.isPublished 
                                                             ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20 hover:bg-emerald-500/20" 
                                                             : "bg-slate-500/10 text-slate-400 border-white/5 hover:bg-white/10"
@@ -315,14 +315,14 @@ export default function AdminProductsPage() {
                                                 </button>
                                             </td>
                                             {canManageProducts && (
-                                                <td className="py-3 px-4 text-right">
+                                                <td className="py-3 px-4 text-right whitespace-nowrap">
                                                     <div className="flex items-center justify-end gap-2">
-                                                        <Link href={`/admin/products/edit/${product.id}`} className="text-xs text-[var(--color-slate)] hover:text-[var(--color-gold)] transition-colors px-2 py-1 rounded">
+                                                        <Link href={`/admin/products/edit/${product.id}`} className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-slate)] hover:text-[var(--color-gold)] transition-colors px-2 py-1 rounded border border-white/5 hover:border-[var(--color-gold)]/20">
                                                             Edit
                                                         </Link>
                                                         <button
                                                             onClick={() => deleteProduct(product.id)}
-                                                            className="text-xs text-[var(--color-danger)] hover:text-red-400 transition-colors px-2 py-1 rounded"
+                                                            className="text-[10px] font-bold uppercase tracking-widest text-red-400/70 hover:text-red-400 transition-colors px-2 py-1 rounded border border-white/5 hover:border-red-400/20"
                                                         >
                                                             Delete
                                                         </button>

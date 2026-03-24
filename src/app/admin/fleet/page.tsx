@@ -899,25 +899,25 @@ function AssetRow({
                 <input type="checkbox" className="accent-[var(--color-gold)]"
                     checked={isSelected} onChange={onSelect} />
             </td>
-            <td className="p-3">
+            <td className="p-3 whitespace-nowrap min-w-[100px]">
                 <span className="font-black text-white font-mono text-xs">{unit.assetTagCode}</span>
-                <br/><span className="text-[10px] text-[var(--color-slate)] font-mono">{unit.serialNumber || '—'}</span>
+                <br/><span className="text-[10px] text-[var(--color-slate)] font-mono opacity-50">{unit.serialNumber || '—'}</span>
             </td>
-            <td className="p-3">
-                <span className="text-sm font-bold text-white uppercase tracking-tight">{unit.productName}</span>
-                <br/><span className="text-[10px] text-[var(--color-slate)] capitalize">{unit.categoryName}</span>
+            <td className="p-3 whitespace-nowrap min-w-[200px]">
+                <span className="text-sm font-bold text-white uppercase tracking-tight leading-none block">{unit.productName}</span>
+                <span className="text-[10px] text-[var(--color-slate)] capitalize block mt-1 opacity-70">{unit.categoryName}</span>
             </td>
-            {isAdmin && <td className="p-3"><span className="text-xs font-bold text-[var(--color-slate)]">{unit.vendorName || "E3"}</span></td>}
-            <td className="p-3">
-                <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-wider ${availabilityColors[unit.availabilityStatus] || ''}`}>
+            {isAdmin && <td className="p-3 whitespace-nowrap min-w-[150px]"><span className="text-[10px] font-black text-[var(--color-gold)] bg-[var(--color-gold)]/10 px-2 py-1 rounded-full border border-[var(--color-gold)]/20 uppercase tracking-widest">{unit.vendorName || "Platform"}</span></td>}
+            <td className="p-3 whitespace-nowrap">
+                <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-widest ${availabilityColors[unit.availabilityStatus] || ''}`}>
                     {unit.availabilityStatus.replace(/_/g, ' ')}
                 </span>
             </td>
-            <td className="p-3 font-mono">
-                <span className="text-[10px] text-white font-bold block">{unit.warehouseName || 'Unassigned'}</span>
-                <span className="text-[9px] text-[var(--color-slate)] uppercase tracking-widest">{unit.shelfLocation || '—'}</span>
+            <td className="p-3 font-mono whitespace-nowrap min-w-[150px]">
+                <span className="text-[10px] text-white font-bold block leading-none">{unit.warehouseName || 'Unassigned'}</span>
+                <span className="text-[9px] text-[var(--color-slate)] uppercase tracking-[0.2em] font-black mt-1.5 block opacity-50">{unit.shelfLocation || '—'}</span>
             </td>
-            <td className="p-3">
+            <td className="p-3 whitespace-nowrap">
                 <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-wider ${conditionColors[unit.conditionStatus] || ''}`}>
                     {unit.conditionStatus.replace(/_/g, ' ')}
                 </span>
