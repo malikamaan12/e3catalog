@@ -212,11 +212,18 @@ function PlatformSuperpowers() {
     );
 }
 
-function BentoCard({ title, description, icon: Icon, className = "" }) {
+interface BentoCardProps {
+    title: string;
+    description: string;
+    icon: React.ComponentType<{ className?: string }>;
+    className?: string;
+}
+
+function BentoCard({ title, description, icon: Icon, className = "" }: BentoCardProps) {
     const mouseX = useMotionValue(0);
     const mouseY = useMotionValue(0);
 
-    function handleMouseMove({ currentTarget, clientX, clientY }) {
+    function handleMouseMove({ currentTarget, clientX, clientY }: React.MouseEvent) {
         const { left, top } = currentTarget.getBoundingClientRect();
         mouseX.set(clientX - left);
         mouseY.set(clientY - top);
@@ -290,7 +297,15 @@ function FastCatalog() {
     );
 }
 
-function CategoryCard({ category }) {
+interface CategoryCardProps {
+    category: {
+        name: string;
+        icon: React.ComponentType<{ className?: string }>;
+        price: string;
+    };
+}
+
+function CategoryCard({ category }: CategoryCardProps) {
     return (
         <div className="w-[280px] md:w-[350px] shrink-0 glass rounded-[2.5rem] p-6 border border-white/5 group hover:border-gold/20 transition-all">
             <div className="aspect-[4/3] rounded-[2rem] bg-white/5 mb-6 overflow-hidden flex items-center justify-center relative">
@@ -308,9 +323,16 @@ function CategoryCard({ category }) {
 }
 
 // ── 5. THE "LOGISTICS PIPELINE" TIMELINE ─────────────────────────────────────
+interface TimelineStep {
+    num: string;
+    title: string;
+    desc: string;
+    icon: React.ComponentType<{ className?: string }>;
+}
+
 function LogisticsTimeline() {
-    const timelineRef = useRef(null);
-    const steps = [
+    const timelineRef = useRef<HTMLElement>(null);
+    const steps: TimelineStep[] = [
         { num: "01", title: "Build Cart", desc: "Select assets and configure quantity.", icon: Box },
         { num: "02", title: "Generate Quote", desc: "Instant MOCI-ready commercial proposal.", icon: ClipboardList },
         { num: "03", title: "Bump-In", desc: "White-glove delivery and setup on-site.", icon: Truck },
@@ -382,5 +404,5 @@ function LogisticsTimeline() {
 }
 
 // Fallback Icons (added to ensure build passes if missing in lucide)
-function Armchair({ className }) { return <Box className={className} />; }
-function Mic2({ className }) { return <Box className={className} />; }
+function Armchair({ className }: { className?: string }) { return <Box className={className} />; }
+function Mic2({ className }: { className?: string }) { return <Box className={className} />; }
