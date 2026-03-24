@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { inventoryUnits, products, vendors, users, categories } from "@/lib/db/schema";
+import { inventoryUnits, products, vendors, users, categories, vendorWarehouses } from "@/lib/db/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { getSession } from "@/lib/auth";
@@ -28,6 +28,9 @@ export async function GET(req: NextRequest) {
             availabilityStatus: inventoryUnits.availabilityStatus,
             lastInspectionDate: inventoryUnits.lastInspectionDate,
             warehouseLocation: inventoryUnits.warehouseLocation,
+            warehouseId: inventoryUnits.warehouseId,
+            shelfLocation: inventoryUnits.shelfLocation,
+            warehouseName: vendorWarehouses.name,
             productName: products.name,
             vendorName: vendors.companyName,
             categoryId: products.categoryId,
@@ -38,6 +41,7 @@ export async function GET(req: NextRequest) {
         .leftJoin(products, eq(inventoryUnits.productId, products.id))
         .leftJoin(vendors, eq(inventoryUnits.vendorId, vendors.id))
         .leftJoin(categories, eq(products.categoryId, categories.id))
+        .leftJoin(vendorWarehouses, eq(inventoryUnits.warehouseId, vendorWarehouses.id))
         .execute();
 
         // Multi-Tenant Isolation
@@ -75,7 +79,7 @@ export async function POST(req: NextRequest) {
 
     try {
         const body = await req.json();
-        const { productId, serialNumber, assetTagCode, warehouseLocation, conditionStatus } = body;
+        const { productId, serialNumber, assetTagCode, warehouseLocation, warehouseId, shelfLocation, conditionStatus } = body;
 
         // Determine Vendor ID
         let vendorIdToUse = body.vendorId;
@@ -98,6 +102,8 @@ export async function POST(req: NextRequest) {
             assetTagCode: assetTagCode || `E3-${Math.random().toString(36).substring(2, 7).toUpperCase()}-${String(Date.now()).slice(-3)}`,
             serialNumber: serialNumber || null,
             warehouseLocation: warehouseLocation || null,
+            warehouseId: warehouseId || null,
+            shelfLocation: shelfLocation || null,
             conditionStatus: conditionStatus || "excellent",
             availabilityStatus: "in_warehouse",
             createdAt: new Date(),
@@ -133,6 +139,8 @@ export async function PATCH(req: NextRequest) {
         if (updates.conditionStatus) allowedFields.conditionStatus = updates.conditionStatus;
         if (updates.availabilityStatus) allowedFields.availabilityStatus = updates.availabilityStatus;
         if (updates.warehouseLocation !== undefined) allowedFields.warehouseLocation = updates.warehouseLocation;
+        if (updates.warehouseId !== undefined) allowedFields.warehouseId = updates.warehouseId;
+        if (updates.shelfLocation !== undefined) allowedFields.shelfLocation = updates.shelfLocation;
         if (updates.lastInspectionDate) allowedFields.lastInspectionDate = new Date(updates.lastInspectionDate);
         if (updates.serialNumber !== undefined) allowedFields.serialNumber = updates.serialNumber;
 

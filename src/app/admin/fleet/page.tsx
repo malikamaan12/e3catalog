@@ -4,7 +4,8 @@ import React, { useState, useEffect, Suspense, useCallback, useRef } from "react
 import { 
     QrCode, Plus, Filter, Search, Printer, Wrench, CheckCircle2,
     Package, RefreshCcw, ChevronRight, ChevronDown, FolderOpen,
-    ScanLine, X, Camera, Building2, Tag, Eye, List, History as HistoryIcon
+    ScanLine, X, Camera, Building2, Tag, Eye, List, History as HistoryIcon,
+    MapPin
 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { PDFDownloadLink } from "@react-pdf/renderer";
@@ -23,6 +24,9 @@ interface InventoryUnit {
     availabilityStatus: 'in_warehouse' | 'on_rent' | 'in_maintenance';
     lastInspectionDate: string | null;
     warehouseLocation: string;
+    warehouseId: string | null;
+    shelfLocation: string | null;
+    warehouseName: string | null;
     categoryId: string;
     categoryName: string;
     categorySlug: string;
@@ -140,6 +144,8 @@ function FleetPageContent() {
     const [showScannerModal, setShowScannerModal] = useState(false);
     const [viewLogsUnit, setViewLogsUnit] = useState<InventoryUnit | null>(null);
     const [qrDataUris, setQrDataUris] = useState<Record<string, string>>({});
+    const [warehouses, setWarehouses] = useState<any[]>([]);
+    const [showLocationModal, setShowLocationModal] = useState<InventoryUnit | null>(null);
 
     // Products & categories for add-asset form
     const [productsForAdd, setProductsForAdd] = useState<Array<{ id: string; name: string; categoryName: string; vendorId: string }>>([]);
@@ -177,10 +183,14 @@ function FleetPageContent() {
 
     useEffect(() => { fetchFleet(); }, [fetchFleet]);
 
-    // Fetch products for add-asset form
+    // Fetch products & warehouses for add-asset form
     useEffect(() => {
         fetch("/api/admin/products").then(r => r.ok ? r.json() : []).then(data => {
             setProductsForAdd(data.map((p: any) => ({ id: p.id, name: p.name, categoryName: p.category?.name || "—", vendorId: p.vendorId })));
+        }).catch(() => {});
+
+        fetch("/api/dashboard/warehouses").then(r => r.ok ? r.json() : []).then(data => {
+            setWarehouses(data);
         }).catch(() => {});
     }, []);
 
@@ -370,6 +380,7 @@ function FleetPageContent() {
                                 <th className="p-3 text-[10px] font-black uppercase text-[var(--color-gold)] tracking-widest">Product</th>
                                 {isAdmin && <th className="p-3 text-[10px] font-black uppercase text-[var(--color-gold)] tracking-widest">Vendor</th>}
                                 <th className="p-3 text-[10px] font-black uppercase text-[var(--color-gold)] tracking-widest">Status</th>
+                                <th className="p-3 text-[10px] font-black uppercase text-[var(--color-gold)] tracking-widest">Location</th>
                                 <th className="p-3 text-[10px] font-black uppercase text-[var(--color-gold)] tracking-widest">Condition</th>
                                 <th className="p-3 text-[10px] font-black uppercase text-[var(--color-gold)] tracking-widest text-center">Actions</th>
                             </tr>
@@ -390,6 +401,7 @@ function FleetPageContent() {
                                     onSelect={() => toggleSelect(unit.id)}
                                     onInspect={() => setShowInspectionModal(unit.id)}
                                     onMaintenance={() => handleMaintenanceToggle(unit)}
+                                    onUpdateLocation={() => setShowLocationModal(unit)}
                                     conditionColors={conditionColors}
                                     availabilityColors={availabilityColors}
                                     onViewPassport={handleViewPassport}
@@ -418,6 +430,7 @@ function FleetPageContent() {
                                                 onSelect={() => toggleSelect(unit.id)}
                                                 onInspect={() => setShowInspectionModal(unit.id)}
                                                 onMaintenance={() => handleMaintenanceToggle(unit)}
+                                                onUpdateLocation={() => setShowLocationModal(unit)}
                                                 conditionColors={conditionColors}
                                                 availabilityColors={availabilityColors}
                                                 onViewPassport={handleViewPassport}
@@ -444,12 +457,22 @@ function FleetPageContent() {
 
             {/* ─── Add Asset Modal ─── */}
             {showAddAssetModal && (
-                <AddAssetModal products={productsForAdd} onClose={() => setShowAddAssetModal(false)} onSuccess={fetchFleet} />
+                <AddAssetModal products={productsForAdd} warehouses={warehouses} onClose={() => setShowAddAssetModal(false)} onSuccess={fetchFleet} />
             )}
 
             {/* ─── Log Viewer Modal ─── */}
             {viewLogsUnit && (
                 <LogViewer unit={viewLogsUnit} onClose={() => setViewLogsUnit(null)} />
+            )}
+
+            {/* ─── Location Update Modal ─── */}
+            {showLocationModal && (
+                <LocationModal 
+                    unit={showLocationModal} 
+                    warehouses={warehouses} 
+                    onClose={() => setShowLocationModal(null)} 
+                    onSuccess={() => { fetchFleet(); setShowLocationModal(null); }} 
+                />
             )}
 
             {/* Off-screen QR Generator (Reliable for canvas.toDataURL) */}
@@ -525,6 +548,60 @@ function LogViewer({ unit, onClose }: { unit: InventoryUnit; onClose: () => void
                         ))}
                     </div>
                 )}
+            </div>
+        </div>
+    );
+}
+
+// ─── Location Modal ───
+function LocationModal({ unit, warehouses, onClose, onSuccess }: { unit: InventoryUnit; warehouses: any[]; onClose: () => void; onSuccess: () => void }) {
+    const [warehouseId, setWarehouseId] = useState(unit.warehouseId || "");
+    const [shelfLocation, setShelfLocation] = useState(unit.shelfLocation || "");
+    const [saving, setSaving] = useState(false);
+
+    const submit = async () => {
+        setSaving(true);
+        try {
+            const res = await fetch("/api/admin/fleet", {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ id: unit.id, warehouseId, shelfLocation }),
+            });
+            if (res.ok) onSuccess();
+        } catch (e) { console.error(e); }
+        finally { setSaving(false); }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[60] flex items-center justify-center p-4" onClick={onClose}>
+            <div className="glass border border-white/10 rounded-3xl p-6 w-full max-w-sm space-y-6 shadow-2xl" onClick={e => e.stopPropagation()}>
+                <div className="flex justify-between items-center">
+                    <h3 className="font-black text-lg text-white flex items-center gap-2 tracking-tight">
+                        <MapPin className="w-5 h-5 text-blue-400" /> Update Location
+                    </h3>
+                    <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-all"><X className="w-5 h-5 text-[var(--color-slate)]" /></button>
+                </div>
+
+                <div className="space-y-4">
+                    <div>
+                        <label className="block text-[10px] font-black text-[var(--color-slate)] uppercase tracking-widest mb-2">Target Warehouse</label>
+                        <select value={warehouseId} onChange={e => setWarehouseId(e.target.value)}
+                            className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-[var(--color-gold)]">
+                            <option value="">No Warehouse</option>
+                            {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-[10px] font-black text-[var(--color-slate)] uppercase tracking-widest mb-2">Shelf / Bin Location</label>
+                        <input value={shelfLocation} onChange={e => setShelfLocation(e.target.value)}
+                            className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-[var(--color-gold)]" placeholder="e.g. Rack A - Shelf 2" />
+                    </div>
+                </div>
+
+                <button onClick={submit} disabled={saving}
+                    className="w-full py-3 rounded-xl bg-blue-500 text-white font-black text-sm hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 shadow-lg shadow-blue-500/20">
+                    {saving ? "Updating..." : "Confirm Move"}
+                </button>
             </div>
         </div>
     );
@@ -612,8 +689,8 @@ function InspectionModal({ unitIds, units, onClose, onSuccess }: { unitIds: stri
 }
 
 // ─── Add Asset Modal ───
-function AddAssetModal({ products, onClose, onSuccess }: { products: Array<{ id: string; name: string; categoryName: string; vendorId: string }>; onClose: () => void; onSuccess: () => void }) {
-    const [form, setForm] = useState({ productId: "", serialNumber: "", assetTagCode: "", warehouseLocation: "", conditionStatus: "excellent" });
+function AddAssetModal({ products, warehouses, onClose, onSuccess }: { products: Array<{ id: string; name: string; categoryName: string; vendorId: string }>; warehouses: any[]; onClose: () => void; onSuccess: () => void }) {
+    const [form, setForm] = useState({ productId: "", serialNumber: "", assetTagCode: "", warehouseLocation: "", warehouseId: "", shelfLocation: "", conditionStatus: "excellent" });
     const [saving, setSaving] = useState(false);
     const [catFilter, setCatFilter] = useState("");
 
@@ -677,7 +754,23 @@ function AddAssetModal({ products, onClose, onSuccess }: { products: Array<{ id:
                         </div>
                     </div>
 
-                    <label className="block text-xs font-bold text-[var(--color-slate)] uppercase tracking-widest">Warehouse Location</label>
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="block text-xs font-bold text-[var(--color-slate)] uppercase tracking-widest">Warehouse</label>
+                            <select value={form.warehouseId} onChange={e => setForm(p => ({ ...p, warehouseId: e.target.value }))}
+                                className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-[var(--color-gold)]">
+                                <option value="">No Warehouse</option>
+                                {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-[var(--color-slate)] uppercase tracking-widest">Shelf Location</label>
+                            <input value={form.shelfLocation} onChange={e => setForm(p => ({ ...p, shelfLocation: e.target.value }))}
+                                className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-[var(--color-gold)]" placeholder="e.g. A1-4" />
+                        </div>
+                    </div>
+
+                    <label className="block text-xs font-bold text-[var(--color-slate)] uppercase tracking-widest">Legacy Location Note</label>
                     <input value={form.warehouseLocation} onChange={e => setForm(p => ({ ...p, warehouseLocation: e.target.value }))}
                         className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-[var(--color-gold)]" placeholder="e.g. Warehouse A - Bay 3" />
 
@@ -791,13 +884,14 @@ function ScannerModal({ onClose }: { onClose: () => void }) {
 
 function AssetRow({ 
     unit, isAdmin, isSelected, onSelect, onInspect, onMaintenance, 
-    conditionColors, availabilityColors, onViewPassport, setViewLogsUnit
+    conditionColors, availabilityColors, onViewPassport, setViewLogsUnit, onUpdateLocation
 }: { 
     unit: InventoryUnit, isAdmin: boolean, isSelected: boolean, 
     onSelect: () => void, onInspect: () => void, onMaintenance: () => void,
     conditionColors: Record<string, string>, availabilityColors: Record<string, string>,
     onViewPassport: (tag: string) => void,
-    setViewLogsUnit: (unit: InventoryUnit) => void
+    setViewLogsUnit: (unit: InventoryUnit) => void,
+    onUpdateLocation: () => void
 }) {
     return (
         <tr className="hover:bg-white/5 transition-colors group border-b border-white/5 last:border-0">
@@ -819,6 +913,10 @@ function AssetRow({
                     {unit.availabilityStatus.replace(/_/g, ' ')}
                 </span>
             </td>
+            <td className="p-3 font-mono">
+                <span className="text-[10px] text-white font-bold block">{unit.warehouseName || 'Unassigned'}</span>
+                <span className="text-[9px] text-[var(--color-slate)] uppercase tracking-widest">{unit.shelfLocation || '—'}</span>
+            </td>
             <td className="p-3">
                 <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-wider ${conditionColors[unit.conditionStatus] || ''}`}>
                     {unit.conditionStatus.replace(/_/g, ' ')}
@@ -826,6 +924,9 @@ function AssetRow({
             </td>
             <td className="p-3 text-right">
                 <div className="flex items-center justify-end gap-1 opacity-40 group-hover:opacity-100 transition-opacity">
+                    <button onClick={onUpdateLocation} className="p-1.5 rounded-lg hover:bg-blue-500 hover:text-white transition-all" title="Update Location">
+                        <MapPin className="w-3.5 h-3.5" />
+                    </button>
                     <button onClick={() => setViewLogsUnit(unit)} className="p-1.5 rounded-lg hover:bg-white/10 text-white transition-all" title="View History">
                         <HistoryIcon className="w-3.5 h-3.5" />
                     </button>
