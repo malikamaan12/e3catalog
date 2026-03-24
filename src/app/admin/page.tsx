@@ -139,14 +139,15 @@ export default async function AdminDashboard() {
         const bookingChange = calculatePct(activeBookingCount, prevBookingCount);
 
         const kpiStats = [
-            { label: "Fleet Items", value: productCount.toString(), icon: "PackageOpen", change: "Total Catalog Items", color: "gold" },
+            { label: "Fleet Items", value: productCount.toString(), icon: "PackageOpen", change: "Total Catalog Items", color: "gold", href: "/admin/products" },
             { 
                 label: "Active Pipeline", 
                 value: activeBookingCount.toString(), 
                 icon: "CalendarRange", 
                 change: `${bookingChange} vs last month`, 
                 color: "blue", 
-                trend: calculateTrend(activeBookingCount, prevBookingCount) 
+                trend: calculateTrend(activeBookingCount, prevBookingCount),
+                href: "/admin/bookings"
             },
             { 
                 label: "Monthly Revenue", 
@@ -154,11 +155,12 @@ export default async function AdminDashboard() {
                 icon: "TrendingUp", 
                 change: `${revChange} vs last month`, 
                 color: "emerald", 
-                trend: calculateTrend(Number(monthlyRevenue || 0), Number(prevMonthlyRevenue || 0)) 
+                trend: calculateTrend(Number(monthlyRevenue || 0), Number(prevMonthlyRevenue || 0)),
+                href: "/admin/financials"
             },
-            { label: "Pending Tasks", value: pendingActionCount.toString(), icon: "AlertCircle", change: "Awaiting your action", color: "red", isAlert: pendingActionCount > 0 },
-            { label: "Expiring Certs", value: expiringCerts.length.toString(), icon: "ShieldAlert", change: "Next 30 days", color: "amber", isAlert: expiringCerts.length > 0 },
-            { label: "Offline Units", value: offlineCount.toString(), icon: "Warehouse", change: "Maintenance/Repair", color: "slate", isAlert: offlineCount > 0 },
+            { label: "Pending Tasks", value: pendingActionCount.toString(), icon: "AlertCircle", change: "Awaiting your action", color: "red", isAlert: pendingActionCount > 0, href: "/admin/bookings" },
+            { label: "Expiring Certs", value: expiringCerts.length.toString(), icon: "ShieldAlert", change: "Next 30 days", color: "amber", isAlert: expiringCerts.length > 0, href: "/admin/certificates" },
+            { label: "Offline Units", value: offlineCount.toString(), icon: "Warehouse", change: "Maintenance/Repair", color: "slate", isAlert: offlineCount > 0, href: "/admin/inventory" },
         ];
 
         // Format Compliance Alerts

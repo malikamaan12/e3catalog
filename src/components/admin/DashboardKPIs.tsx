@@ -10,6 +10,7 @@ import {
     ShieldAlert, 
     Warehouse 
 } from "lucide-react";
+import Link from "next/link";
 import gsap from "gsap";
 
 interface Stat {
@@ -18,6 +19,7 @@ interface Stat {
     icon: string;
     change: string;
     color: string;
+    href?: string;
     trend?: "up" | "down" | "neutral";
     isAlert?: boolean;
 }
@@ -97,13 +99,14 @@ function KPICard({ stat, index, variants }: { stat: Stat, index: number, variant
         });
     };
 
-    return (
-        <motion.div
-            variants={variants}
+    const CardContent = (
+        <div 
             ref={cardRef}
             onMouseEnter={onMouseEnter}
             onMouseLeave={onMouseLeave}
-            className={`relative glass rounded-2xl p-5 border transition-all overflow-hidden cursor-default group h-full flex flex-col justify-between ${
+            className={`relative glass rounded-2xl p-5 border transition-all overflow-hidden flex flex-col justify-between h-full group ${
+                stat.href ? "cursor-pointer" : "cursor-default"
+            } ${
                 stat.isAlert 
                     ? "border-red-500/30 bg-red-500/[0.03] hover:border-red-500/50" 
                     : "border-white/10 hover:border-[var(--color-gold)]/30"
@@ -154,6 +157,16 @@ function KPICard({ stat, index, variants }: { stat: Stat, index: number, variant
                     ? "from-red-500 to-transparent w-full" 
                     : "from-[var(--color-gold)] to-transparent w-0 group-hover:w-full"
             }`} />
+        </div>
+    );
+
+    return (
+        <motion.div variants={variants} className="h-full">
+            {stat.href ? (
+                <Link href={stat.href} className="block h-full">
+                    {CardContent}
+                </Link>
+            ) : CardContent}
         </motion.div>
     );
 }

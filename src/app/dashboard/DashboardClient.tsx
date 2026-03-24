@@ -65,15 +65,15 @@ export default function DashboardClient({ user, projects: initialProjects, stats
     const isVendor = user.role === USER_ROLES.VENDOR;
 
     const statItems = isVendor ? [
-        { label: "Gross Earnings", value: `${(stats.grossEarnings || 0).toLocaleString()} QAR`, icon: ShoppingBag, sub: "Total revenue generated" },
-        { label: "E3 Commission", value: `${(stats.amountOwed || 0).toLocaleString()} QAR`, icon: AlertCircle, sub: "Pending platform settlement", urgent: (stats.amountOwed || 0) > 0 },
-        { label: "Reliability Score", value: `${(stats.score || 5.0).toFixed(1)}/5`, icon: CheckCircle2, sub: "Your marketplace standing" },
-        { label: "Request Pipeline", value: stats.total, icon: Layers, sub: "Active quote negotiations" },
+        { label: "Gross Earnings", value: `${(stats.grossEarnings || 0).toLocaleString()} QAR`, icon: ShoppingBag, sub: "Total revenue generated", href: "/dashboard/settlements" },
+        { label: "E3 Commission", value: `${(stats.amountOwed || 0).toLocaleString()} QAR`, icon: AlertCircle, sub: "Pending platform settlement", urgent: (stats.amountOwed || 0) > 0, href: "/dashboard/settlements" },
+        { label: "Reliability Score", value: `${(stats.score || 5.0).toFixed(1)}/5`, icon: CheckCircle2, sub: "Your marketplace standing", href: "/dashboard/profile" },
+        { label: "Request Pipeline", value: stats.total, icon: Layers, sub: "Active quote negotiations", href: "/dashboard/bookings" },
     ] : [
-        { label: "Total Quotes", value: stats.total, icon: Layers, sub: "Historical fleet requests" },
-        { label: "Awaiting Quote", value: stats.awaitingQuote, icon: Clock, sub: "Pending vendor pricing" },
-        { label: "Review Required", value: stats.reviewQuote, icon: MailOpen, sub: "Action needed now", urgent: stats.reviewQuote > 0 },
-        { label: "Confirmed", value: stats.confirmed, icon: CheckCircle2, sub: "Booked & final" },
+        { label: "Total Quotes", value: stats.total, icon: Layers, sub: "Historical fleet requests", href: "/dashboard/bookings" },
+        { label: "Awaiting Quote", value: stats.awaitingQuote, icon: Clock, sub: "Pending vendor pricing", href: "/dashboard/bookings" },
+        { label: "Review Required", value: stats.reviewQuote, icon: MailOpen, sub: "Action needed now", urgent: stats.reviewQuote > 0, href: "/dashboard/bookings" },
+        { label: "Confirmed", value: stats.confirmed, icon: CheckCircle2, sub: "Booked & final", href: "/dashboard/bookings" },
     ];
 
     const quickLinks = isVendor ? [
