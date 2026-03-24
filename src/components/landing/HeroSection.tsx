@@ -9,6 +9,7 @@ import { useInView } from "react-intersection-observer";
 import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 import { Box, FileText, Truck, CheckCircle2 } from "lucide-react";
 import Spline from "@splinetool/react-spline";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -89,6 +90,8 @@ export default function HeroSection() {
         return () => ctx.revert();
     }, []);
 
+    const [splineError, setSplineError] = useState(false);
+
     return (
         <section
             ref={containerRef}
@@ -97,10 +100,29 @@ export default function HeroSection() {
         >
             {/* ── Premium 3D Spline Background ── */}
             <div className="absolute inset-0 z-0 spline-container pointer-events-none md:pointer-events-auto">
-                <Spline 
-                    scene="https://prod.spline.design/6Wq1Q7YGyWf8Zhp5/scene.splinecode" 
-                    className="w-full h-full object-cover scale-110 md:scale-100"
-                />
+                <ErrorBoundary 
+                    name="Hero Spline" 
+                    fallback={
+                        <div className="w-full h-full bg-navy relative overflow-hidden">
+                            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(201,168,76,0.1),transparent_70%)]" />
+                        </div>
+                    }
+                >
+                    {!splineError ? (
+                        <Spline 
+                            scene="https://prod.spline.design/6Wq1Q7YGyWf8Zhp5/scene.splinecode" 
+                            className="w-full h-full object-cover scale-110 md:scale-100"
+                            onError={() => {
+                                console.warn("Spline scene failed to load, switching to fallback.");
+                                setSplineError(true);
+                            }}
+                        />
+                    ) : (
+                        <div className="w-full h-full bg-navy relative overflow-hidden">
+                            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(201,168,76,0.1),transparent_70%)]" />
+                        </div>
+                    )}
+                </ErrorBoundary>
             </div>
 
             <div className="absolute inset-0 z-[1] pointer-events-none">

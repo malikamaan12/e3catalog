@@ -4,9 +4,13 @@ import Link from "next/link";
 import { useSiteSettings } from "./SiteSettingsProvider";
 import { ArrowRight } from "lucide-react";
 import Spline from "@splinetool/react-spline";
+import { ErrorBoundary } from "./ErrorBoundary";
+import { useState, useEffect } from "react";
 
 export function Footer() {
     const { getSetting } = useSiteSettings();
+
+    const [year, setYear] = useState<number | string>("");
 
     const siteName = getSetting("site_name", "E3 Rentals");
     const contactPhone = getSetting("contact_phone", "+974 4000 0000");
@@ -14,16 +18,32 @@ export function Footer() {
     const contactLocation = getSetting("contact_location", "Doha, Qatar");
     const footerTagline = getSetting("footer_tagline", "Setting the standard for premium event logistics in the Middle East.");
 
+    useEffect(() => {
+        setYear(new Date().getFullYear());
+    }, []);
+
+    const [splineError, setSplineError] = useState(false);
+
     return (
         <footer className="bg-[var(--color-surface)] border-t border-[var(--color-border-subtle)]">
             {/* CTA Banner */}
             <div className="max-w-7xl mx-auto px-6 py-16">
                 <div className="glass rounded-2xl p-12 text-center relative overflow-hidden group">
                     <div className="absolute inset-0 opacity-10 md:opacity-20 pointer-events-none">
-                        <Spline 
-                            scene="https://prod.spline.design/6Wq1Q7YGyWf8Zhp5/scene.splinecode" 
-                            className="w-full h-full object-cover scale-150"
-                        />
+                        <ErrorBoundary name="Footer Spline" fallback={<div className="w-full h-full bg-[var(--color-surface)]" />}>
+                            {!splineError ? (
+                                <Spline 
+                                    scene="https://prod.spline.design/6Wq1Q7YGyWf8Zhp5/scene.splinecode" 
+                                    className="w-full h-full object-cover scale-150"
+                                    onError={() => {
+                                        console.warn("Footer Spline scene failed to load.");
+                                        setSplineError(true);
+                                    }}
+                                />
+                            ) : (
+                                <div className="w-full h-full bg-[var(--color-surface)]" />
+                            )}
+                        </ErrorBoundary>
                     </div>
                     <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[var(--color-surface)]/40 to-[var(--color-surface)] pointer-events-none" />
                     <div className="relative z-10">
@@ -93,7 +113,7 @@ export function Footer() {
                 {/* Bottom */}
                 <div className="border-t border-[var(--color-border-subtle)] pt-6 flex flex-col md:flex-row items-center justify-between gap-4">
                     <p className="text-xs text-[var(--color-slate)]">
-                        © {new Date().getFullYear()} {siteName}. All rights reserved.
+                        © {year} {siteName}. All rights reserved.
                     </p>
                     <div className="flex items-center gap-6">
                         <span className="text-xs text-[var(--color-slate)]">MOCI Approved</span>
