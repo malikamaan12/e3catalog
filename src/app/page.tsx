@@ -190,22 +190,26 @@ function PlatformSuperpowers() {
                     title="Sweep-Line Availability Engine"
                     description="Real-time algorithmic booking system that ensures zero double-bookings across your entire fleet."
                     icon={Zap}
+                    image="/images/cinematic/bento_availability.png"
                 />
                 <BentoCard 
                     title="Instant PDF Quoting"
                     description="Generate professional, commercial proposals in under 12 seconds with tax compliance."
                     icon={ClipboardList}
+                    image="/images/cinematic/bento_quotes.png"
                 />
                 <BentoCard 
                     title="Digital Asset Passports"
                     description="Every item has a unique digital identity and QR-tracked physical movement history."
                     icon={QrCode}
+                    image="/images/cinematic/bento_passports.png"
                 />
                 <BentoCard 
                     className="md:col-span-2 md:row-span-1"
                     title="Interactive 3D Catalog"
                     description="Ultra-high fidelity 3D models for every piece of equipment. Try before you buy with web-first AR."
                     icon={Monitor}
+                    image="/images/cinematic/bento_3d_catalog.png"
                 />
             </div>
         </section>
@@ -217,9 +221,10 @@ interface BentoCardProps {
     description: string;
     icon: React.ComponentType<{ className?: string }>;
     className?: string;
+    image: string;
 }
 
-function BentoCard({ title, description, icon: Icon, className = "" }: BentoCardProps) {
+function BentoCard({ title, description, icon: Icon, className = "", image }: BentoCardProps) {
     const mouseX = useMotionValue(0);
     const mouseY = useMotionValue(0);
 
@@ -245,13 +250,25 @@ function BentoCard({ title, description, icon: Icon, className = "" }: BentoCard
             />
             
             <div className="relative z-10 h-full flex flex-col justify-between">
-                <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center text-gold border border-white/10 group-hover:scale-110 transition-transform">
-                    <Icon className="w-6 h-6" />
+                <div className="flex justify-between items-start">
+                    <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center text-gold border border-white/10 group-hover:scale-110 transition-transform">
+                        <Icon className="w-6 h-6" />
+                    </div>
                 </div>
-                <div>
+                <div className="relative">
                     <h3 className="text-xl font-bold mb-3 font-[family-name:var(--font-heading)] italic uppercase">{title}</h3>
-                    <p className="text-sm text-[var(--color-slate)] leading-relaxed">{description}</p>
+                    <p className="text-sm text-[var(--color-slate)] leading-relaxed max-w-[70%]">{description}</p>
                 </div>
+            </div>
+
+            {/* Background Illustration */}
+            <div className="absolute right-0 bottom-0 top-0 w-1/2 overflow-hidden pointer-events-none opacity-40 group-hover:opacity-60 transition-opacity">
+                <img 
+                    src={image} 
+                    alt={title} 
+                    className="w-full h-full object-cover object-left md:object-center transform group-hover:scale-110 transition-transform duration-700" 
+                />
+                <div className="absolute inset-0 bg-gradient-to-r from-[#0A0F1C] via-[#0A0F1C]/40 to-transparent" />
             </div>
         </div>
     );
@@ -260,12 +277,12 @@ function BentoCard({ title, description, icon: Icon, className = "" }: BentoCard
 // ── 4. THE "FAST CATALOG" DRAGGABLE CAROUSEL ─────────────────────────────────
 function FastCatalog() {
     const categories = [
-        { name: "Heavy Trussing", icon: Layers, price: "450" },
-        { name: "VIP Seating", icon: Armchair, price: "120" },
-        { name: "LED Screens", icon: Monitor, price: "1,500" },
-        { name: "Marquees", icon: Building2, price: "3,200" },
-        { name: "Lighting Design", icon: Zap, price: "350" },
-        { name: "Audio Systems", icon: Mic2, price: "800" },
+        { name: "Heavy Trussing", icon: Layers, price: "450", image: "/images/cinematic/cat_trussing.png" },
+        { name: "VIP Seating", icon: Armchair, price: "120", image: "/images/cinematic/cat_seating.png" },
+        { name: "LED Screens", icon: Monitor, price: "1,500", image: "/images/cinematic/cat_led.png" },
+        { name: "Marquees", icon: Building2, price: "3,200", image: "/images/cinematic/cat_marquee.png" },
+        { name: "Lighting Design", icon: Zap, price: "350", image: "/images/cinematic/cat_led.png" }, // Reused led for now
+        { name: "Audio Systems", icon: Mic2, price: "800", image: "/images/cinematic/cat_trussing.png" }, // Reused truss for now
     ];
 
     const constraintsRef = useRef(null);
@@ -302,14 +319,20 @@ interface CategoryCardProps {
         name: string;
         icon: React.ComponentType<{ className?: string }>;
         price: string;
+        image: string;
     };
 }
 
 function CategoryCard({ category }: CategoryCardProps) {
     return (
         <div className="w-[280px] md:w-[350px] shrink-0 glass rounded-[2.5rem] p-6 border border-white/5 group hover:border-gold/20 transition-all">
-            <div className="aspect-[4/3] rounded-[2rem] bg-white/5 mb-6 overflow-hidden flex items-center justify-center relative">
-                <category.icon className="w-16 h-16 text-white/10 group-hover:scale-125 group-hover:text-gold/20 transition-all duration-500" />
+            <div className="aspect-[4/3] rounded-[2rem] bg-white/5 mb-6 overflow-hidden relative">
+                <img 
+                    src={category.image} 
+                    alt={category.name} 
+                    className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700 opacity-60 group-hover:opacity-100" 
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-navy/60 to-transparent" />
                 <div className="absolute top-4 right-4 bg-navy/60 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/5 text-[9px] font-bold tracking-widest uppercase">
                     From QAR {category.price}
                 </div>
