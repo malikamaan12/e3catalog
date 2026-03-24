@@ -555,6 +555,7 @@ export default function InventoryAdminPage() {
                                         {overrides.length === 0 ? "No inventory blocks currently active." : "No overrides match your search."}
                                     </div>
                                 ) : (
+                                    <>
                                         <div className="hidden md:block overflow-x-auto custom-scrollbar">
                                             <table className="w-full text-left text-sm">
                                                 <thead className="bg-[var(--color-navy-lighter)] text-[var(--color-slate)] uppercase text-xs font-semibold">
@@ -619,6 +620,7 @@ export default function InventoryAdminPage() {
                                                 />
                                             ))}
                                         </div>
+                                    </>
                                 )}
                             </div>
                         </div>
