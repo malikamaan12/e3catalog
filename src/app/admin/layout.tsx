@@ -54,6 +54,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const superAdminItems = [
         { href: "/admin/super", label: "Super Admin", icon: Lock, roles: [USER_ROLES.SUPER_ADMIN] },
         { href: "/admin/super/vendors", label: "Vendors", icon: ShieldCheck, roles: [USER_ROLES.SUPER_ADMIN] },
+        { href: "/admin/super/sitemap", label: "Sitemap", icon: Package, roles: [USER_ROLES.SUPER_ADMIN] },
     ];
 
     const [isCollapsed, setIsCollapsed] = useState(false);
