@@ -69,20 +69,7 @@ export const ProductCard = memo(function ProductCard({
                     </div>
                 )}
                 
-                {/* Status Badges Overlay */}
-                <div className="absolute top-5 left-5 right-5 flex justify-between items-start pointer-events-none z-10">
-                    {category && (
-                        <span className="bg-white/10 backdrop-blur-md border border-white/10 text-[10px] font-black uppercase tracking-[0.2em] px-4 py-2 rounded-full text-white/90">
-                            {category.name}
-                        </span>
-                    )}
-                    <div className="bg-navy/40 backdrop-blur-md border border-white/5 px-4 py-2 rounded-full flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full dot-${availabilityStatus} shadow-[0_0_10px_rgba(201,168,76,0.3)] animate-pulse`} />
-                        <span className="text-[10px] font-black uppercase tracking-widest text-white/90">
-                            {availabilityStatus}
-                        </span>
-                    </div>
-                </div>
+
 
                 {/* Scrim Overlay */}
                 <div className="absolute inset-0 bg-gradient-to-t from-[#0d152a] via-transparent to-transparent opacity-60" />
@@ -90,12 +77,27 @@ export const ProductCard = memo(function ProductCard({
 
             {/* Product Meta */}
             <div className="p-6 flex flex-col flex-1">
+                {/* Meta Tags (Category & Availability) */}
+                <div className="flex justify-between items-center mb-4">
+                    {category && (
+                        <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gold/80 bg-gold/5 border border-gold/10 px-2 py-1 rounded">
+                            {category.name}
+                        </span>
+                    )}
+                    <div className="flex items-center gap-2">
+                        <div className={`w-1.5 h-1.5 rounded-full dot-${availabilityStatus} animate-pulse shadow-[0_0_10px_currentColor] opacity-80`} />
+                        <span className="text-[9px] font-black uppercase tracking-widest text-slate">
+                            {availabilityStatus}
+                        </span>
+                    </div>
+                </div>
+
                 <div className="mb-4">
                     <h3 className="font-bold text-lg text-white leading-tight line-clamp-2 min-h-[3.5rem] group-hover:text-gold transition-colors">
                         {name}
                     </h3>
                     {itemCode && (
-                        <p className="text-[10px] font-black text-gold/40 mt-1 uppercase tracking-[0.2em]">
+                        <p className="text-[10px] font-black text-white/30 mt-2 uppercase tracking-[0.2em]">
                             REF: {itemCode}
                         </p>
                     )}
