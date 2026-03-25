@@ -62,7 +62,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-gold)] mb-3">Client Portal</p>
 
                     {/* Nav */}
-                    <nav className="space-y-0.5 flex-1">
+                    <nav className="space-y-0.5 flex-1 overflow-y-auto custom-scrollbar overscroll-contain min-h-0 pb-4">
                         {NAV_ITEMS.map((item, i) => {
                             if (item.divider) return <hr key={`div-${i}`} className="border-white/5 my-2" />;
                             const active = isActive(item.href!, item.exact);

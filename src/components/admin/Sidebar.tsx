@@ -142,7 +142,7 @@ export default function Sidebar({
             </div>
 
             {/* Nav Items */}
-            <div className="flex-1 overflow-y-auto custom-scrollbar -mx-2 px-2 space-y-1">
+            <div className="flex-1 overflow-y-auto custom-scrollbar overscroll-contain min-h-0 -mx-2 px-2 space-y-1">
                 {items.map(item => renderLink(item))}
 
                 {user?.role === "super_admin" && (
