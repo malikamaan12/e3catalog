@@ -132,27 +132,32 @@ export default function PassportPage() {
             {/* Print Styles */}
             <style jsx global>{`
                 @media print {
-                    .nav-fixed, .operator-controls, .detailed-records, .background-texture, .mrz-zone, .passport-actions {
+                    @page { margin: 1cm; }
+                    .nav-fixed, .operator-controls, .detailed-records, .background-texture, .passport-actions {
                         display: none !important;
                     }
                     body {
                         background: white !important;
                         color: black !important;
-                    }
-                    .passport-card {
-                        position: absolute !important;
-                        top: 0 !important;
-                        left: 0 !important;
-                        width: 100% !important;
-                        border: none !important;
-                        box-shadow: none !important;
-                        background: #0b1221 !important; /* Keep original dark look for card even in print */
-                        -webkit-print-color-adjust: exact;
-                        print-color-adjust: exact;
+                        padding: 0 !important;
+                        margin: 0 !important;
                     }
                     .min-h-screen {
                         padding: 0 !important;
                         background: white !important;
+                        min-height: auto !important;
+                    }
+                    .passport-card {
+                        position: relative !important;
+                        width: 100% !important;
+                        max-width: 100% !important;
+                        margin: 0 auto !important;
+                        page-break-inside: avoid;
+                        border: 2px solid #e5e7eb !important;
+                        box-shadow: none !important;
+                        background: #0b1221 !important; /* Keep original dark look for card even in print */
+                        -webkit-print-color-adjust: exact;
+                        print-color-adjust: exact;
                     }
                 }
             `}</style>
@@ -185,65 +190,73 @@ export default function PassportPage() {
                     </div>
 
                     {/* Card Body */}
-                    <div className="p-6 md:p-10 flex flex-col md:flex-row gap-8">
+                    <div className="p-6 md:p-10 flex flex-col lg:flex-row gap-8">
                         {/* Photo Area */}
-                        <div className="mx-auto md:mx-0 shrink-0 flex flex-col items-center">
-                            <div className="w-56 aspect-video rounded-xl border-2 border-white/10 p-1 bg-white/5 relative overflow-hidden shadow-inner">
+                        <div className="mx-auto lg:mx-0 shrink-0 flex flex-col items-center lg:items-start self-center">
+                            <div className="w-72 md:w-80 aspect-video rounded-xl border-2 border-white/10 p-1 bg-white/5 relative overflow-hidden shadow-inner">
                                 {/* Passport style overlay pattern */}
                                 <div className="absolute inset-0 z-10 opacity-20 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiPgo8cmVjdCB3aWR0aD0iOCIgaGVpZ2h0PSI4IiBmaWxsPSIjZmZmIiBmaWxsLW9wYWNpdHk9IjAuMSIvPgo8cGF0aCBkPSJNMCAwbDhfOFpNOCAwTDBfOCIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjAuNSIgc3Ryb2tlLW9wYWNpdHk9IjAuMSIvPgo8L3N2Zz4=')]" />
                                 <img src={data.productThumbnail || "/placeholder.jpg"} alt={data.productName} className="w-full h-full object-cover grayscale opacity-90 contrast-125" />
                             </div>
-                            <div className="mt-4 text-center bg-white p-2 rounded-lg">
-                                <QRCodeSVG 
-                                    value={typeof window !== 'undefined' ? `${window.location.origin}/passport/${data.assetTagCode}` : `https://e3rentals.com/passport/${data.assetTagCode}`} 
-                                    size={64}
-                                    level="H"
-                                    includeMargin={false}
-                                />
-                                <p className="mt-1 text-[8px] font-mono text-black font-bold uppercase">{data.assetTagCode}</p>
-                            </div>
                         </div>
 
-                        {/* Data Attributes */}
-                        <div className="flex-1 grid grid-cols-2 gap-x-4 gap-y-6 self-center">
-                            <div className="col-span-2">
-                                <p className="text-[9px] uppercase tracking-widest text-white/40 mb-1">Make / Model / Description</p>
-                                <p className="font-bold text-xl text-white uppercase tracking-tight leading-none">{data.productName}</p>
+                        {/* Data Attributes & QR */}
+                        <div className="flex-1 flex flex-col md:flex-row gap-8 self-center">
+                            {/* Properties Grid */}
+                            <div className="flex-1 grid grid-cols-2 gap-x-4 gap-y-6">
+                                <div className="col-span-2">
+                                    <p className="text-[9px] uppercase tracking-widest text-white/40 mb-1">Make / Model / Description</p>
+                                    <p className="font-bold text-xl text-white uppercase tracking-tight leading-none">{data.productName}</p>
+                                </div>
+
+                                <div>
+                                    <p className="text-[9px] uppercase tracking-widest text-white/40 mb-1">Type / Category</p>
+                                    <p className="font-bold text-sm text-white uppercase">Equipment</p>
+                                </div>
+
+                                <div>
+                                    <p className="text-[9px] uppercase tracking-widest text-white/40 mb-1">Serial Number</p>
+                                    <p className="font-mono text-sm text-[var(--color-gold)] font-bold">{data.serialNumber || 'N/A'}</p>
+                                </div>
+
+                                <div className="col-span-2 md:col-span-1">
+                                    <p className="text-[9px] uppercase tracking-widest text-white/40 mb-1">Proprietary Owner</p>
+                                    <p className="font-bold text-sm text-white uppercase truncate">{data.vendorName}</p>
+                                </div>
+
+                                <div>
+                                    <p className="text-[9px] uppercase tracking-widest text-white/40 mb-1">Verification Date</p>
+                                    <p className="font-bold text-sm text-white uppercase">
+                                        {data.lastInspectionDate ? new Date(data.lastInspectionDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A'}
+                                    </p>
+                                </div>
+
+                                <div>
+                                    <p className="text-[9px] uppercase tracking-widest text-white/40 mb-1">Condition Status</p>
+                                    <p className={`font-black text-sm uppercase tracking-tight ${
+                                        data.conditionStatus === 'excellent' ? 'text-emerald-400' : 
+                                        data.conditionStatus === 'good' ? 'text-blue-400' : 'text-orange-400'
+                                    }`}>{data.conditionStatus.replace('_', ' ')}</p>
+                                </div>
+
+                                <div>
+                                    <p className="text-[9px] uppercase tracking-widest text-white/40 mb-1">Availability</p>
+                                    <p className="font-black text-sm text-blue-400 uppercase tracking-tight">{data.availabilityStatus.replace('_', ' ')}</p>
+                                </div>
                             </div>
 
-                            <div>
-                                <p className="text-[9px] uppercase tracking-widest text-white/40 mb-1">Type / Category</p>
-                                <p className="font-bold text-sm text-white uppercase">Equipment</p>
-                            </div>
-
-                            <div>
-                                <p className="text-[9px] uppercase tracking-widest text-white/40 mb-1">Serial Number</p>
-                                <p className="font-mono text-sm text-[var(--color-gold)] font-bold">{data.serialNumber || 'N/A'}</p>
-                            </div>
-
-                            <div className="col-span-2 md:col-span-1">
-                                <p className="text-[9px] uppercase tracking-widest text-white/40 mb-1">Proprietary Owner</p>
-                                <p className="font-bold text-sm text-white uppercase truncate">{data.vendorName}</p>
-                            </div>
-
-                            <div>
-                                <p className="text-[9px] uppercase tracking-widest text-white/40 mb-1">Verification Date</p>
-                                <p className="font-bold text-sm text-white uppercase">
-                                    {data.lastInspectionDate ? new Date(data.lastInspectionDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A'}
-                                </p>
-                            </div>
-
-                            <div>
-                                <p className="text-[9px] uppercase tracking-widest text-white/40 mb-1">Condition Status</p>
-                                <p className={`font-black text-sm uppercase tracking-tight ${
-                                    data.conditionStatus === 'excellent' ? 'text-emerald-400' : 
-                                    data.conditionStatus === 'good' ? 'text-blue-400' : 'text-orange-400'
-                                }`}>{data.conditionStatus.replace('_', ' ')}</p>
-                            </div>
-
-                            <div>
-                                <p className="text-[9px] uppercase tracking-widest text-white/40 mb-1">Availability</p>
-                                <p className="font-black text-sm text-blue-400 uppercase tracking-tight">{data.availabilityStatus.replace('_', ' ')}</p>
+                            {/* QR Segment */}
+                            <div className="shrink-0 flex items-center justify-center md:items-start md:justify-end">
+                                <div className="bg-white p-3 rounded-xl border-[4px] border-white/10 shadow-2xl">
+                                    <QRCodeSVG 
+                                        value={typeof window !== 'undefined' ? `${window.location.origin}/passport/${data.assetTagCode}` : `https://e3rentals.com/passport/${data.assetTagCode}`} 
+                                        size={72}
+                                        level="H"
+                                        includeMargin={false}
+                                        className="transition-transform hover:scale-105 duration-300 mx-auto"
+                                    />
+                                    <p className="mt-2 text-[10px] font-mono text-black font-black uppercase text-center tracking-[0.1em]">{data.assetTagCode}</p>
+                                </div>
                             </div>
                         </div>
                     </div>
