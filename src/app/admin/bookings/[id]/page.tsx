@@ -933,9 +933,9 @@ export default function BookingDetailsPage({ params }: { params: Promise<{ id: s
                         <div className="space-y-4">
                             <h4 className="text-xs font-bold text-[var(--color-slate)] uppercase tracking-widest border-b border-white/10 pb-3">Pipeline Workflow</h4>
                             <div className="flex flex-col gap-3 pt-2">
-                                {[BOOKING_STATUS.REQUEST, BOOKING_STATUS.BOOKING_REQUESTED, BOOKING_STATUS.PENDING_QUOTE, BOOKING_STATUS.QUOTE_SENT, BOOKING_STATUS.CHANGES_REQUESTED].includes(booking.status as any) && (
+                                {["draft", "pending", BOOKING_STATUS.REQUEST, BOOKING_STATUS.BOOKING_REQUESTED, BOOKING_STATUS.PENDING_QUOTE, BOOKING_STATUS.QUOTE_SENT, BOOKING_STATUS.CHANGES_REQUESTED].includes(booking.status as any) && (
                                     <button onClick={() => handleSave(BOOKING_STATUS.QUOTE_SENT)} disabled={saving} className="btn-primary text-sm px-5 py-3.5 w-full justify-center shadow-lg shadow-[var(--color-gold)]/20 transition-transform hover:-translate-y-0.5 font-bold tracking-wide rounded-xl">
-                                        {[BOOKING_STATUS.QUOTE_SENT, BOOKING_STATUS.CHANGES_REQUESTED].includes(booking.status as any) ? "Update Sent Quote" : "Submit Quote"}
+                                        {[BOOKING_STATUS.QUOTE_SENT, BOOKING_STATUS.CHANGES_REQUESTED].includes(booking.status as any) ? "Update Sent Quote" : "Send Quote to Client"}
                                     </button>
                                 )}
 
