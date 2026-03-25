@@ -18,9 +18,11 @@ import {
     X,
     LogOut,
     Warehouse,
-    QrCode
+    QrCode,
+    Download
 } from "lucide-react";
 import Link from "next/link";
+import { QRCodeSVG } from "qrcode.react";
 
 interface AssetPassportData {
     id: string;
@@ -126,7 +128,34 @@ export default function PassportPage() {
     const mrzLabel = generateMRZ(data.productName, data.assetTagCode, data.serialNumber || 'UNKNOWN');
 
     return (
-        <div className="min-h-screen bg-[#0A0F1C] text-white font-sans selection:bg-[var(--color-gold)] selection:text-black py-12 px-4 md:px-8 relative z-0">
+        <div className="min-h-screen bg-[#0A0F1C] text-white font-sans selection:bg-[var(--color-gold)] selection:text-black pt-32 pb-12 px-4 md:px-8 relative z-0">
+            {/* Print Styles */}
+            <style jsx global>{`
+                @media print {
+                    .nav-fixed, .operator-controls, .detailed-records, .background-texture, .mrz-zone, .passport-actions {
+                        display: none !important;
+                    }
+                    body {
+                        background: white !important;
+                        color: black !important;
+                    }
+                    .passport-card {
+                        position: absolute !important;
+                        top: 0 !important;
+                        left: 0 !important;
+                        width: 100% !important;
+                        border: none !important;
+                        box-shadow: none !important;
+                        background: #0b1221 !important; /* Keep original dark look for card even in print */
+                        -webkit-print-color-adjust: exact;
+                        print-color-adjust: exact;
+                    }
+                    .min-h-screen {
+                        padding: 0 !important;
+                        background: white !important;
+                    }
+                }
+            `}</style>
             {/* Background Texture for official document look */}
             <div className="fixed inset-0 pointer-events-none opacity-5 mix-blend-screen" 
                  style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23ffffff\' fill-opacity=\'1\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")' }} 
@@ -135,7 +164,7 @@ export default function PassportPage() {
             <div className="max-w-4xl mx-auto space-y-8 relative z-10">
                 
                 {/* ─── PASSPORT ID CARD ─── */}
-                <div className="bg-[#0b1221]/90 backdrop-blur-xl border border-white/10 rounded-3xl overflow-hidden shadow-2xl relative">
+                <div className="bg-[#0b1221]/90 backdrop-blur-xl border border-white/10 rounded-3xl overflow-hidden shadow-2xl relative passport-card">
                     {/* Watermark Logo */}
                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-[0.03] pointer-events-none">
                         <ShieldCheck className="w-[400px] h-[400px]" />
@@ -159,14 +188,19 @@ export default function PassportPage() {
                     <div className="p-6 md:p-10 flex flex-col md:flex-row gap-8">
                         {/* Photo Area */}
                         <div className="mx-auto md:mx-0 shrink-0 flex flex-col items-center">
-                            <div className="w-40 h-48 md:w-48 md:h-56 rounded-xl border-2 border-white/10 p-1 bg-white/5 relative overflow-hidden shadow-inner">
+                            <div className="w-56 aspect-video rounded-xl border-2 border-white/10 p-1 bg-white/5 relative overflow-hidden shadow-inner">
                                 {/* Passport style overlay pattern */}
                                 <div className="absolute inset-0 z-10 opacity-20 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiPgo8cmVjdCB3aWR0aD0iOCIgaGVpZ2h0PSI4IiBmaWxsPSIjZmZmIiBmaWxsLW9wYWNpdHk9IjAuMSIvPgo8cGF0aCBkPSJNMCAwbDhfOFpNOCAwTDBfOCIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjAuNSIgc3Ryb2tlLW9wYWNpdHk9IjAuMSIvPgo8L3N2Zz4=')]" />
                                 <img src={data.productThumbnail || "/placeholder.jpg"} alt={data.productName} className="w-full h-full object-cover grayscale opacity-90 contrast-125" />
                             </div>
-                            <div className="mt-3 text-center">
-                                <QrCode className="w-8 h-8 opacity-50 mx-auto mb-1" />
-                                <p className="text-[10px] font-mono text-white/50">{data.assetTagCode}</p>
+                            <div className="mt-4 text-center bg-white p-2 rounded-lg">
+                                <QRCodeSVG 
+                                    value={typeof window !== 'undefined' ? `${window.location.origin}/passport/${data.assetTagCode}` : `https://e3rentals.com/passport/${data.assetTagCode}`} 
+                                    size={64}
+                                    level="H"
+                                    includeMargin={false}
+                                />
+                                <p className="mt-1 text-[8px] font-mono text-black font-bold uppercase">{data.assetTagCode}</p>
                             </div>
                         </div>
 
@@ -215,16 +249,27 @@ export default function PassportPage() {
                     </div>
 
                     {/* Machine Readable Zone (MRZ) */}
-                    <div className="bg-[#050810] border-t border-white/10 p-4 md:px-8 overflow-hidden select-all">
+                    <div className="bg-[#050810] border-t border-white/10 p-4 md:px-8 overflow-hidden select-all mrz-zone">
                         <p className="font-mono text-sm md:text-base text-white/60 tracking-[0.2em] break-all whitespace-pre-wrap leading-relaxed font-bold">
                             {mrzLabel}
                         </p>
                     </div>
                 </div>
 
+                {/* ─── PASSPORT ACTIONS ─── */}
+                <div className="flex justify-center passport-actions">
+                    <button 
+                        onClick={() => window.print()}
+                        className="flex items-center gap-2 px-6 py-3 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 hover:border-gold/30 transition-all text-xs font-black uppercase tracking-widest text-gold"
+                    >
+                        <Download className="w-4 h-4" />
+                        Export Digital Passport (PDF)
+                    </button>
+                </div>
+
                 {/* ─── INLINE OPERATOR ACTIONS ─── */}
                 {data.isAuthorized && (
-                    <div className="bg-white/5 border border-white/10 rounded-3xl p-6 relative overflow-hidden">
+                    <div className="bg-white/5 border border-white/10 rounded-3xl p-6 relative overflow-hidden operator-controls">
                         <div className="absolute inset-0 bg-gradient-to-r from-[var(--color-gold)]/5 to-transparent pointer-events-none" />
                         <div className="flex items-center gap-3 mb-6 relative z-10">
                             <Unlock className="w-5 h-5 text-[var(--color-gold)]" />
@@ -279,7 +324,7 @@ export default function PassportPage() {
                 )}
 
                 {/* ─── DETAILED RECORDS (VISA PAGES) ─── */}
-                <div className="bg-[#0b1221]/60 border border-white/10 rounded-3xl p-6">
+                <div className="bg-[#0b1221]/60 border border-white/10 rounded-3xl p-6 detailed-records">
                     {/* Tabs */}
                     <div className="flex gap-4 border-b border-white/10 pb-4 mb-6">
                         {(['status', 'compliance', 'history'] as const).map((t) => (
