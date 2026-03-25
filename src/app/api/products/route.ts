@@ -155,6 +155,7 @@ export async function GET(req: NextRequest) {
     const categorySlug = searchParams.get("category") || "";
     const search = searchParams.get("search") || "";
     const cursor = searchParams.get("cursor") || "";
+    const featured = searchParams.get("featured") === "true";
     const rawLimit = parseInt(searchParams.get("limit") || String(PAGE_LIMIT), 10);
     const limit = Math.min(Math.max(1, rawLimit), 50);
 
@@ -221,13 +222,16 @@ export async function GET(req: NextRequest) {
         }
 
         // Combine all where clauses
-        const whereClause = and(
+        const filters = [
             vendorFilter,
             categoryFilter,
             searchFilter,
             cursorFilter,
+            featured ? eq(products.featured, true) : undefined,
             eq(products.isPublished, true),
-        );
+        ].filter(Boolean);
+
+        const whereClause = filters.length > 0 ? and(...(filters as any)) : undefined;
 
         // ── 5. Fetch limit+1 items (micro-payload columns only) ────────────
         const rows = await db

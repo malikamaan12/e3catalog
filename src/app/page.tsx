@@ -13,6 +13,7 @@ import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Footer } from "@/components/Footer";
+import { useSiteSettings } from "@/components/SiteSettingsProvider";
 
 // Register ScrollTrigger
 if (typeof window !== "undefined") {
@@ -109,24 +110,7 @@ function HeroSection() {
 
             {/* Content Overlay */}
             <div ref={contentRef} className="relative z-10 text-center max-w-5xl px-6 pointer-events-none">
-                <motion.div
-                    initial={{ opacity: 0, y: 30 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 1.2, ease: "easeOut" }}
-                >
-                    <span className="inline-block px-4 py-1.5 rounded-full border border-white/10 bg-white/5 backdrop-blur-md text-[10px] font-black uppercase tracking-[0.4em] text-gold mb-8">
-                        The Next Generation of Events
-                    </span>
-                    <h1 className="text-5xl md:text-8xl font-black font-[family-name:var(--font-heading)] italic tracking-tighter leading-[0.9] mb-8">
-                        THE DIGITAL <br />
-                        <span className="gradient-text-gold">OPERATING SYSTEM</span> <br />
-                        FOR PREMIUM EVENTS
-                    </h1>
-                    <p className="text-[var(--color-slate)] text-lg md:text-xl max-w-2xl mx-auto font-medium leading-relaxed">
-                        Setting the standard for enterprise-grade logistics and ultra-premium 
-                        storefronts in the Middle East. Build, quote, and deploy at scale.
-                    </p>
-                </motion.div>
+                <HeroContent />
             </div>
 
             {/* Scroll Indicator */}
@@ -141,6 +125,43 @@ function HeroSection() {
                 }
             `}</style>
         </section>
+    );
+}
+
+function HeroContent() {
+    const { getSetting } = useSiteSettings();
+    const topTitle = getSetting("hero_top_title", "The Next Generation of Events");
+    const mainTitle = getSetting("hero_main_title", "THE DIGITAL\nOPERATING SYSTEM\nFOR PREMIUM EVENTS");
+    const description = getSetting("hero_description", "Setting the standard for enterprise-grade logistics and ultra-premium storefronts in the Middle East. Build, quote, and deploy at scale.");
+
+    return (
+        <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 1.2, ease: "easeOut" }}
+        >
+            <span className="inline-block px-4 py-1.5 rounded-full border border-white/10 bg-white/5 backdrop-blur-md text-[10px] font-black uppercase tracking-[0.4em] text-gold mb-8">
+                {topTitle}
+            </span>
+            <h1 className="text-5xl md:text-8xl font-black font-[family-name:var(--font-heading)] italic tracking-tighter leading-[0.9] mb-8 whitespace-pre-line">
+                {mainTitle.includes('\n') ? (
+                    mainTitle.split('\n').map((line, i) => (
+                        <React.Fragment key={i}>
+                            {line.includes('OPERATING SYSTEM') ? (
+                                <><span className="gradient-text-gold">{line}</span><br /></>
+                            ) : (
+                                <>{line}<br /></>
+                            )}
+                        </React.Fragment>
+                    ))
+                ) : (
+                    mainTitle
+                )}
+            </h1>
+            <p className="text-[var(--color-slate)] text-lg md:text-xl max-w-2xl mx-auto font-medium leading-relaxed">
+                {description}
+            </p>
+        </motion.div>
     );
 }
 
@@ -177,37 +198,40 @@ function TrustMarquee() {
 
 // ── 3. THE "PLATFORM SUPERPOWERS" BENTO BOX ─────────────────────────────────
 function PlatformSuperpowers() {
+    const { getSetting } = useSiteSettings();
     return (
         <section className="py-24 px-6 md:px-12 max-w-7xl mx-auto z-20 relative">
             <div className="mb-16 text-center">
-                <h2 className="text-3xl md:text-5xl font-black italic tracking-tighter mb-4">PLATFORM SUPERPOWERS</h2>
+                <h2 className="text-3xl md:text-5xl font-black italic tracking-tighter mb-4">
+                    {getSetting("bento_section_title", "PLATFORM SUPERPOWERS")}
+                </h2>
                 <div className="h-1 w-24 bg-gold mx-auto rounded-full" />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 auto-rows-[250px] md:auto-rows-[300px]">
                 <BentoCard 
                     className="md:col-span-2 md:row-span-1"
-                    title="Sweep-Line Availability Engine"
-                    description="Real-time algorithmic booking system that ensures zero double-bookings across your entire fleet."
+                    title={getSetting("bento_card1_title", "Sweep-Line Availability Engine")}
+                    description={getSetting("bento_card1_desc", "Real-time algorithmic booking system that ensures zero double-bookings across your entire fleet.")}
                     icon={Zap}
                     image="/images/cinematic/bento_availability.png"
                 />
                 <BentoCard 
-                    title="Instant PDF Quoting"
-                    description="Generate professional, commercial proposals in under 12 seconds with tax compliance."
+                    title={getSetting("bento_card2_title", "Instant PDF Quoting")}
+                    description={getSetting("bento_card2_desc", "Generate professional, commercial proposals in under 12 seconds with tax compliance.")}
                     icon={ClipboardList}
                     image="/images/cinematic/bento_quotes.png"
                 />
                 <BentoCard 
-                    title="Digital Asset Passports"
-                    description="Every item has a unique digital identity and QR-tracked physical movement history."
+                    title={getSetting("bento_card3_title", "Digital Asset Passports")}
+                    description={getSetting("bento_card3_desc", "Every item has a unique digital identity and QR-tracked physical movement history.")}
                     icon={QrCode}
                     image="/images/cinematic/bento_passports.png"
                 />
                 <BentoCard 
                     className="md:col-span-2 md:row-span-1"
-                    title="Interactive 3D Catalog"
-                    description="Ultra-high fidelity 3D models for every piece of equipment. Try before you buy with web-first AR."
+                    title={getSetting("bento_card4_title", "Interactive 3D Catalog")}
+                    description={getSetting("bento_card4_desc", "Ultra-high fidelity 3D models for every piece of equipment. Try before you buy with web-first AR.")}
                     icon={Monitor}
                     image="/images/cinematic/bento_3d_catalog.png"
                 />
@@ -276,14 +300,26 @@ function BentoCard({ title, description, icon: Icon, className = "", image }: Be
 
 // ── 4. THE "FAST CATALOG" DRAGGABLE CAROUSEL ─────────────────────────────────
 function FastCatalog() {
-    const categories = [
-        { name: "Heavy Trussing", icon: Layers, price: "450", image: "/images/cinematic/cat_trussing.png" },
-        { name: "VIP Seating", icon: Armchair, price: "120", image: "/images/cinematic/cat_seating.png" },
-        { name: "LED Screens", icon: Monitor, price: "1,500", image: "/images/cinematic/cat_led.png" },
-        { name: "Marquees", icon: Building2, price: "3,200", image: "/images/cinematic/cat_marquee.png" },
-        { name: "Lighting Design", icon: Zap, price: "350", image: "/images/cinematic/cat_led.png" }, // Reused led for now
-        { name: "Audio Systems", icon: Mic2, price: "800", image: "/images/cinematic/cat_trussing.png" }, // Reused truss for now
-    ];
+    const { getSetting } = useSiteSettings();
+    const [products, setProducts] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        async function fetchFeatured() {
+            try {
+                const res = await fetch("/api/products?featured=true&limit=8");
+                if (res.ok) {
+                    const data = await res.json();
+                    setProducts(data.products || []);
+                }
+            } catch (err) {
+                console.error("Failed to fetch featured products", err);
+            } finally {
+                setLoading(false);
+            }
+        }
+        fetchFeatured();
+    }, []);
 
     const constraintsRef = useRef(null);
 
@@ -300,50 +336,70 @@ function FastCatalog() {
             </div>
 
             <div ref={constraintsRef} className="px-6 md:px-12">
-                <motion.div 
-                    drag="x"
-                    dragConstraints={constraintsRef}
-                    className="flex gap-6 cursor-grab active:cursor-grabbing"
-                >
-                    {categories.map((cat, i) => (
-                        <CategoryCard key={i} category={cat} />
-                    ))}
-                </motion.div>
+                {loading ? (
+                    <div className="flex gap-6 overflow-hidden">
+                        {[1, 2, 3, 4].map((i) => (
+                            <div key={i} className="w-[280px] md:w-[350px] shrink-0 aspect-[4/5] glass rounded-[2.5rem] animate-pulse bg-white/5" />
+                        ))}
+                    </div>
+                ) : products.length > 0 ? (
+                    <motion.div 
+                        drag="x"
+                        dragConstraints={constraintsRef}
+                        className="flex gap-6 cursor-grab active:cursor-grabbing"
+                    >
+                        {products.map((product) => (
+                            <ProductCard key={product.id} product={product} />
+                        ))}
+                    </motion.div>
+                ) : (
+                    <div className="text-center py-20 bg-white/5 rounded-[2.5rem] border border-white/5">
+                        <p className="text-[var(--color-slate)] uppercase tracking-widest text-xs font-bold">No featured products found.</p>
+                    </div>
+                )}
             </div>
         </section>
     );
 }
 
-interface CategoryCardProps {
-    category: {
-        name: string;
-        icon: React.ComponentType<{ className?: string }>;
-        price: string;
-        image: string;
-    };
-}
-
-function CategoryCard({ category }: CategoryCardProps) {
+function ProductCard({ product }: { product: any }) {
     return (
-        <div className="w-[280px] md:w-[350px] shrink-0 glass rounded-[2.5rem] p-6 border border-white/5 group hover:border-gold/20 transition-all">
+        <div className="w-[280px] md:w-[350px] shrink-0 glass rounded-[2.5rem] p-6 border border-white/5 group hover:border-gold/20 transition-all flex flex-col h-full">
             <div className="aspect-[4/3] rounded-[2rem] bg-white/5 mb-6 overflow-hidden relative">
-                <img 
-                    src={category.image} 
-                    alt={category.name} 
-                    className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700 opacity-60 group-hover:opacity-100" 
-                />
+                {product.thumbnailUrl ? (
+                    <img 
+                        src={product.thumbnailUrl} 
+                        alt={product.name} 
+                        className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700 opacity-60 group-hover:opacity-100" 
+                    />
+                ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-navy/20">
+                        <Box className="w-12 h-12 text-white/10" />
+                    </div>
+                )}
                 <div className="absolute inset-0 bg-gradient-to-t from-navy/60 to-transparent" />
-                <div className="absolute top-4 right-4 bg-navy/60 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/5 text-[9px] font-bold tracking-widest uppercase">
-                    From QAR {category.price}
+                {product.showPrice && product.pricePerDay && (
+                    <div className="absolute top-4 right-4 bg-navy/60 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/5 text-[9px] font-bold tracking-widest uppercase text-gold">
+                        From QAR {product.pricePerDay.toLocaleString()} /Day
+                    </div>
+                )}
+            </div>
+            <div className="flex-1 flex flex-col">
+                <p className="text-[9px] font-black uppercase tracking-[0.3em] text-white/30 mb-2">
+                    {product.category?.name || "Equipment"}
+                </p>
+                <h4 className="text-lg md:text-xl font-bold font-[family-name:var(--font-heading)] uppercase tracking-tighter mb-4 line-clamp-2">
+                    {product.name}
+                </h4>
+                <div className="mt-auto flex items-center justify-between text-gold">
+                    <span className="text-[9px] font-bold tracking-widest uppercase">View Details</span>
+                    <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-all" />
                 </div>
             </div>
-            <h4 className="text-xl font-bold font-[family-name:var(--font-heading)] uppercase tracking-tighter flex items-center justify-between">
-                {category.name}
-                <ChevronRight className="w-5 h-5 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
-            </h4>
         </div>
     );
 }
+
 
 // ── 5. THE "LOGISTICS PIPELINE" TIMELINE ─────────────────────────────────────
 interface TimelineStep {
@@ -354,12 +410,34 @@ interface TimelineStep {
 }
 
 function LogisticsTimeline() {
+    const { getSetting } = useSiteSettings();
     const timelineRef = useRef<HTMLElement>(null);
+    
     const steps: TimelineStep[] = [
-        { num: "01", title: "Build Cart", desc: "Select assets and configure quantity.", icon: Box },
-        { num: "02", title: "Generate Quote", desc: "Instant MOCI-ready commercial proposal.", icon: ClipboardList },
-        { num: "03", title: "Bump-In", desc: "White-glove delivery and setup on-site.", icon: Truck },
-        { num: "04", title: "Bump-Out", desc: "Asset recovery and fleet reintegration.", icon: CheckCircle2 },
+        { 
+            num: "01", 
+            title: getSetting("timeline_step1_title", "Build Cart"), 
+            desc: getSetting("timeline_step1_desc", "Select assets and configure quantity."), 
+            icon: Box 
+        },
+        { 
+            num: "02", 
+            title: getSetting("timeline_step2_title", "Generate Quote"), 
+            desc: getSetting("timeline_step2_desc", "Instant MOCI-ready commercial proposal."), 
+            icon: ClipboardList 
+        },
+        { 
+            num: "03", 
+            title: getSetting("timeline_step3_title", "Bump-In"), 
+            desc: getSetting("timeline_step3_desc", "White-glove delivery and setup on-site."), 
+            icon: Truck 
+        },
+        { 
+            num: "04", 
+            title: getSetting("timeline_step4_title", "Bump-Out"), 
+            desc: getSetting("timeline_step4_desc", "Asset recovery and fleet reintegration."), 
+            icon: CheckCircle2 
+        },
     ];
 
     useEffect(() => {
