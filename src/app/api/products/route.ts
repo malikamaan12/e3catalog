@@ -22,10 +22,15 @@ interface AvailabilityResult {
 }
 
 /**
- * Compute an availability map for today.
+ * Compute an availability map for today or a custom date range.
  * Handles both full-fleet precomputation and partial cold-start queries.
  */
-async function getAvailabilityMap(productIds: string[]): Promise<AvailabilityResult> {
+async function getAvailabilityMap(productIds: string[], startDate?: string | null, endDate?: string | null): Promise<AvailabilityResult> {
+    // If a custom date range is provided, skip the "today" cache entirely
+    if (startDate && endDate) {
+        return computeAndCacheAvailability(productIds, startDate, endDate);
+    }
+
     const cached = getCache<Record<string, number>>(CACHE_KEYS.AVAILABILITY_MAP);
     
     // If we have a warm cache, we still need totalUnits (which isn't in this specific cache key)
@@ -62,12 +67,21 @@ async function computeTotalsOnly(productIds: string[]): Promise<Record<string, n
  * Actually query the DB and write to cache.
  */
 export async function computeAndCacheAvailability(
-    productIds?: string[]
+    productIds?: string[],
+    startStr?: string | null,
+    endStr?: string | null
 ): Promise<AvailabilityResult> {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(today.getDate() + 1);
+    let checkStart = new Date();
+    checkStart.setHours(0, 0, 0, 0);
+    let checkEnd = new Date(checkStart);
+    checkEnd.setDate(checkStart.getDate() + 1);
+
+    const isCustomDate = !!(startStr && endStr);
+    if (isCustomDate) {
+        checkStart = new Date(startStr);
+        checkEnd = new Date(endStr);
+        checkEnd.setHours(23, 59, 59, 999);
+    }
 
     // 1. Count total inventory units
     const unitCounts = await db
@@ -99,8 +113,8 @@ export async function computeAndCacheAvailability(
                 ? inArray(bookings.productId, productIds)
                 : undefined,
             inArray(bookings.status, ["approved", "booked"]),
-            lte(bookings.startDate, tomorrow),
-            gte(bookings.endDate, today),
+            lte(bookings.startDate, checkEnd),
+            gte(bookings.endDate, checkStart),
         ))
         .groupBy(bookings.productId);
 
@@ -114,8 +128,8 @@ export async function computeAndCacheAvailability(
             productIds && productIds.length > 0
                 ? inArray(inventoryOverrides.productId, productIds)
                 : undefined,
-            lte(inventoryOverrides.startDate, tomorrow),
-            gte(inventoryOverrides.endDate, today),
+            lte(inventoryOverrides.startDate, checkEnd),
+            gte(inventoryOverrides.endDate, checkStart),
         ))
         .groupBy(inventoryOverrides.productId);
 
@@ -132,9 +146,11 @@ export async function computeAndCacheAvailability(
         availabilityMap[productId] = Math.max(0, total - (bookedMap[productId] || 0));
     }
 
-    // Capture FULL fleet cache ONLY if no productIds filter supplied
+    // Capture FULL fleet cache ONLY if no productIds filter supplied AND no custom dates applied
     if (!productIds || productIds.length === 0) {
-        setCache(CACHE_KEYS.AVAILABILITY_MAP, availabilityMap, TTL.AVAILABILITY);
+        if (!isCustomDate) {
+            setCache(CACHE_KEYS.AVAILABILITY_MAP, availabilityMap, TTL.AVAILABILITY);
+        }
     }
 
     return { totalMap, availabilityMap };
@@ -145,6 +161,9 @@ export async function computeAndCacheAvailability(
 //  Query params:
 //    category  — category slug to filter by
 //    search    — full-text ilike search on name + shortDescription
+//    vendorId  — specific vendor ID to filter by
+//    startDate — string to trigger custom availability check
+//    endDate   — string to trigger custom availability check
 //    cursor    — last product id from previous page (for cursor pagination)
 //    limit     — items per page (default 20, max 50)
 //
@@ -154,31 +173,43 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const categorySlug = searchParams.get("category") || "";
     const search = searchParams.get("search") || "";
+    const vendorId = searchParams.get("vendorId") || "";
+    const startDate = searchParams.get("startDate") || "";
+    const endDate = searchParams.get("endDate") || "";
     const cursor = searchParams.get("cursor") || "";
     const featured = searchParams.get("featured") === "true";
     const rawLimit = parseInt(searchParams.get("limit") || String(PAGE_LIMIT), 10);
     const limit = Math.min(Math.max(1, rawLimit), 50);
 
-    // Check page cache (skip cache when using cursor to keep memory cost low)
-    const pageKey = CACHE_KEYS.productPage(categorySlug, search, cursor);
-    const cachedPage = getCache<object>(pageKey);
-    if (cachedPage) {
-        return NextResponse.json(cachedPage, {
-            headers: { "Cache-Control": "private, s-maxage=30" },
-        });
+    // Check page cache (skip cache when using cursor, custom dates, or specific vendor to keep memory cost low)
+    const isCustomFilter = !!(cursor || startDate || endDate || vendorId);
+    const pageKey = CACHE_KEYS.productPage(categorySlug, search, isCustomFilter ? `custom-${Date.now()}` : "");
+    if (!isCustomFilter) {
+        const cachedPage = getCache<object>(pageKey);
+        if (cachedPage) {
+            return NextResponse.json(cachedPage, {
+                headers: { "Cache-Control": "private, s-maxage=30" },
+            });
+        }
     }
 
     try {
         // ── 1. Resolve active vendors ──────────────────────────────────────
-        const activeVendorsList = await db
-            .select({ id: vendors.id })
-            .from(vendors)
-            .where(eq(vendors.storeStatus, "active"));
-        const activeVendorIds = activeVendorsList.map((v) => v.id);
+        let vendorFilter: ReturnType<typeof eq> | ReturnType<typeof or> | undefined;
 
-        const vendorFilter = activeVendorIds.length > 0
-            ? or(isNull(products.vendorId), inArray(products.vendorId, activeVendorIds))
-            : isNull(products.vendorId);
+        if (vendorId) {
+            vendorFilter = eq(products.vendorId, vendorId);
+        } else {
+            const activeVendorsList = await db
+                .select({ id: vendors.id })
+                .from(vendors)
+                .where(eq(vendors.storeStatus, "active"));
+            const activeVendorIds = activeVendorsList.map((v) => v.id);
+
+            vendorFilter = activeVendorIds.length > 0
+                ? or(isNull(products.vendorId), inArray(products.vendorId, activeVendorIds))
+                : isNull(products.vendorId);
+        }
 
         // ── 2. Resolve category filter ─────────────────────────────────────
         let categoryFilter: ReturnType<typeof eq> | undefined;
@@ -273,7 +304,7 @@ export async function GET(req: NextRequest) {
         // ── 6. Availability (from cache or computed) ───────────────────────
         const productIds = pageRows.map((r) => r.id);
         const { totalMap, availabilityMap } = productIds.length > 0
-            ? await getAvailabilityMap(productIds)
+            ? await getAvailabilityMap(productIds, startDate, endDate)
             : { totalMap: {}, availabilityMap: {} };
 
         // ── 7. Shape the response ──────────────────────────────────────────
@@ -306,8 +337,8 @@ export async function GET(req: NextRequest) {
 
         const responseBody = { products: result, nextCursor, hasMore };
 
-        // Cache this page for 30 seconds (skip caching search queries — too variable)
-        if (!search) {
+        // Cache this page for 30 seconds (skip caching search queries or custom filters)
+        if (!search && !isCustomFilter) {
             setCache(pageKey, responseBody, TTL.PRODUCT_PAGE);
         }
 

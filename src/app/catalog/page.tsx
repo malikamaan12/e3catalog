@@ -10,7 +10,8 @@ import { Suspense } from "react";
 import {
     LayoutGrid, Layers, Building2, Frame, Link2, Lightbulb, Mic2,
     Monitor, Zap, Wind, Armchair, Palette, Flag, Navigation,
-    Shield, Gamepad2, Trophy, Laptop2, Truck, ShieldCheck, HardHat
+    Shield, Gamepad2, Trophy, Laptop2, Truck, ShieldCheck, HardHat, 
+    Calendar as CalendarIcon
 } from "lucide-react";
 
 interface Product {
@@ -89,6 +90,11 @@ function CatalogContent() {
     const [selectedCategory, setSelectedCategory] = useState(initialCategory);
     const [searchQuery, setSearchQuery] = useState("");
     const [debouncedSearch, setDebouncedSearch] = useState("");
+    const [selectedVendor, setSelectedVendor] = useState("");
+    const [startDate, setStartDate] = useState("");
+    const [endDate, setEndDate] = useState("");
+    const [vendorsList, setVendorsList] = useState<{id: string, companyName: string}[]>([]);
+    
     const [loading, setLoading] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
     const [hasMore, setHasMore] = useState(false);
@@ -106,11 +112,16 @@ function CatalogContent() {
         return () => clearTimeout(timer);
     }, [searchQuery]);
 
-    // ── Load categories (cached by HTTP) ──────────────────────────────────
+    // ── Load categories & vendors (cached by HTTP) ────────────────────────
     useEffect(() => {
         fetch("/api/categories")
             .then((r) => r.json())
             .then((data) => { if (data.tree) setCategoryTree(data.tree); })
+            .catch(console.error);
+            
+        fetch("/api/vendors/active")
+            .then((r) => r.json())
+            .then((data) => { if (Array.isArray(data)) setVendorsList(data); })
             .catch(console.error);
     }, []);
 
@@ -118,6 +129,9 @@ function CatalogContent() {
     const fetchProducts = useCallback(async (
         category: string,
         search: string,
+        vendorId: string,
+        start: string,
+        end: string,
         cursor: string | null,
         replace: boolean
     ) => {
@@ -127,6 +141,9 @@ function CatalogContent() {
             const params = new URLSearchParams({ limit: "20" });
             if (category) params.set("category", category);
             if (search) params.set("search", search);
+            if (vendorId) params.set("vendorId", vendorId);
+            if (start) params.set("startDate", start);
+            if (end) params.set("endDate", end);
             if (cursor) params.set("cursor", cursor);
 
             const res = await fetch(`/api/products?${params.toString()}`);
@@ -156,11 +173,11 @@ function CatalogContent() {
         }
     }, []);
 
-    // ── Re-fetch from scratch when category or search changes ─────────────
+    // ── Re-fetch from scratch when category, search, or filters change ─────────────
     useEffect(() => {
         setNextCursor(null);
-        fetchProducts(selectedCategory, debouncedSearch, null, true);
-    }, [selectedCategory, debouncedSearch, fetchProducts]);
+        fetchProducts(selectedCategory, debouncedSearch, selectedVendor, startDate, endDate, null, true);
+    }, [selectedCategory, debouncedSearch, selectedVendor, startDate, endDate, fetchProducts]);
 
     // ── IntersectionObserver — load next page when sentinel is visible ─────
     useEffect(() => {
@@ -169,7 +186,7 @@ function CatalogContent() {
         const observer = new IntersectionObserver(
             (entries) => {
                 if (entries[0].isIntersecting && hasMore && !loadingMore && !loading) {
-                    fetchProducts(selectedCategory, debouncedSearch, nextCursor, false);
+                    fetchProducts(selectedCategory, debouncedSearch, selectedVendor, startDate, endDate, nextCursor, false);
                 }
             },
             { rootMargin: "200px" } // trigger 200px before the bottom
@@ -177,7 +194,7 @@ function CatalogContent() {
 
         observer.observe(sentinelRef.current);
         return () => observer.disconnect();
-    }, [hasMore, loadingMore, loading, nextCursor, selectedCategory, debouncedSearch, fetchProducts]);
+    }, [hasMore, loadingMore, loading, nextCursor, selectedCategory, debouncedSearch, selectedVendor, startDate, endDate, fetchProducts]);
 
     const handleCategorySelect = (slug: string) => {
         setSelectedCategory(slug);
@@ -199,7 +216,7 @@ function CatalogContent() {
                     </div>
 
                     {/* Search Bar */}
-                    <div className="relative mb-8">
+                    <div className="relative mb-4">
                         <svg className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--color-slate)]" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                             <circle cx="11" cy="11" r="8" />
                             <line x1="21" y1="21" x2="16.65" y2="16.65" />
@@ -218,6 +235,56 @@ function CatalogContent() {
                                 aria-label="Clear search"
                             >
                                 <span className="text-lg">✕</span>
+                            </button>
+                        )}
+                    </div>
+
+                    {/* Advanced Filters */}
+                    <div className="flex flex-col md:flex-row gap-4 mb-10 pb-6 border-b border-white/5">
+                        <select
+                            value={selectedVendor}
+                            onChange={(e) => setSelectedVendor(e.target.value)}
+                            className="bg-[var(--color-surface)] border border-[var(--color-border-subtle)] text-[var(--color-warm-white)] rounded-xl px-4 py-3 focus:border-[var(--color-gold)] focus:outline-none transition-colors"
+                        >
+                            <option value="">All Vendors</option>
+                            {vendorsList.map(v => (
+                                <option key={v.id} value={v.id}>{v.companyName}</option>
+                            ))}
+                        </select>
+                        
+                        <div className="flex items-center gap-3 bg-[var(--color-surface)] border border-[var(--color-border-subtle)] rounded-xl px-4 py-1 flex-1 md:flex-none focus-within:border-[var(--color-gold)] transition-colors">
+                            <CalendarIcon className="w-4 h-4 text-slate" />
+                            <div className="flex flex-col flex-1 pl-1 border-l border-white/10">
+                                <span className="text-[10px] uppercase tracking-widest text-[var(--color-gold)] font-bold mb-0.5">Start Date</span>
+                                <input
+                                    type="date"
+                                    value={startDate}
+                                    onChange={(e) => setStartDate(e.target.value)}
+                                    className="bg-transparent text-[var(--color-warm-white)] focus:outline-none text-sm w-full color-scheme-dark"
+                                />
+                            </div>
+                        </div>
+                        
+                        <div className="flex items-center gap-3 bg-[var(--color-surface)] border border-[var(--color-border-subtle)] rounded-xl px-4 py-1 flex-1 md:flex-none focus-within:border-[var(--color-gold)] transition-colors">
+                            <CalendarIcon className="w-4 h-4 text-slate opacity-50" />
+                            <div className="flex flex-col flex-1 pl-1 border-l border-white/10">
+                                <span className="text-[10px] uppercase tracking-widest text-[var(--color-gold)] font-bold mb-0.5 opacity-50">End Date</span>
+                                <input
+                                    type="date"
+                                    value={endDate}
+                                    min={startDate || undefined}
+                                    onChange={(e) => setEndDate(e.target.value)}
+                                    className="bg-transparent text-[var(--color-warm-white)] focus:outline-none text-sm w-full color-scheme-dark"
+                                />
+                            </div>
+                        </div>
+
+                        {(startDate || endDate || selectedVendor) && (
+                            <button 
+                                onClick={() => { setStartDate(""); setEndDate(""); setSelectedVendor(""); }}
+                                className="text-xs font-black text-slate uppercase tracking-widest hover:text-white transition-colors self-center px-4"
+                            >
+                                Reset Filters
                             </button>
                         )}
                     </div>
