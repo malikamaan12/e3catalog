@@ -365,7 +365,7 @@ function FastCatalog() {
 function ProductCard({ product }: { product: any }) {
     return (
         <div className="w-[280px] md:w-[350px] shrink-0 glass rounded-[2.5rem] p-6 border border-white/5 group hover:border-gold/20 transition-all flex flex-col h-full">
-            <div className="aspect-[4/3] rounded-[2rem] bg-white/5 mb-6 overflow-hidden relative">
+            <div className="aspect-video rounded-[2rem] bg-white/5 mb-6 overflow-hidden relative">
                 {product.thumbnailUrl ? (
                     <img 
                         src={product.thumbnailUrl} 
