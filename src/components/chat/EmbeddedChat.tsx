@@ -117,29 +117,57 @@ export default function EmbeddedChat({ currentUser, projectId, receiverId, recei
         const file = e.target.files?.[0];
         if (!file) return;
 
+        // Basic validation
+        if (file.size > 10 * 1024 * 1024) { // 10MB limit for chat
+            alert("File size must be under 10MB.");
+            return;
+        }
+
         setUploading(true);
-        const formData = new FormData();
-        formData.append("file", file);
 
         try {
-            const uploadRes = await fetch("/api/chat/upload", {
+            // 1. Get Presigned URL
+            const res = await fetch("/api/upload", {
                 method: "POST",
-                body: formData,
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    filename: file.name,
+                    contentType: file.type,
+                    folder: "chat"
+                })
             });
 
-            if (!uploadRes.ok) throw new Error("Upload failed");
-            const fileData = await uploadRes.json();
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => ({}));
+                throw new Error(errorData.error || `Upload failed with status ${res.status}`);
+            }
+            
+            const data = await res.json();
+
+            // 2. Upload file directly to S3
+            const uploadRes = await fetch(data.url, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": file.type,
+                },
+                body: file
+            });
+
+            if (!uploadRes.ok) throw new Error("Failed to upload to storage");
+
+            // 3. Send message with attachment
+            const fileType = file.type.startsWith("image/") ? "image" : file.type.startsWith("video/") ? "video" : "document";
 
             const msgRes = await fetch("/api/chat/messages", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    content: `Sent an attachment: ${fileData.name}`,
+                    content: `Sent an attachment: ${file.name}`,
                     projectId: projectId,
                     receiverId: receiverId,
-                    attachmentUrl: fileData.url,
-                    attachmentType: fileData.type,
-                    attachmentName: fileData.name
+                    attachmentUrl: data.publicUrl,
+                    attachmentType: fileType,
+                    attachmentName: file.name
                 }),
             });
 
@@ -149,6 +177,7 @@ export default function EmbeddedChat({ currentUser, projectId, receiverId, recei
             }
         } catch (error) {
             console.error("File upload failed:", error);
+            alert("File upload failed. Please try again.");
         } finally {
             setUploading(false);
             if (fileInputRef.current) fileInputRef.current.value = "";

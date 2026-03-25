@@ -141,29 +141,56 @@ export default function ClientChatWindow({ currentUser, projects }: ClientChatWi
         const file = e.target.files?.[0];
         if (!file) return;
 
+        // Basic validation
+        if (file.size > 10 * 1024 * 1024) { // 10MB limit for chat
+            alert("File size must be under 10MB.");
+            return;
+        }
+
         setUploading(true);
-        const formData = new FormData();
-        formData.append("file", file);
 
         try {
-            const uploadRes = await fetch("/api/chat/upload", {
+            // 1. Get Presigned URL
+            const res = await fetch("/api/upload", {
                 method: "POST",
-                body: formData,
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    filename: file.name,
+                    contentType: file.type,
+                    folder: "chat"
+                })
             });
 
-            if (!uploadRes.ok) throw new Error("Upload failed");
-            const fileData = await uploadRes.json();
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => ({}));
+                throw new Error(errorData.error || `Upload failed with status ${res.status}`);
+            }
+            
+            const data = await res.json();
 
-            // Send message with attachment
+            // 2. Upload file directly to S3
+            const uploadRes = await fetch(data.url, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": file.type,
+                },
+                body: file
+            });
+
+            if (!uploadRes.ok) throw new Error("Failed to upload to storage");
+
+            // 3. Send message with attachment
+            const fileType = file.type.startsWith("image/") ? "image" : file.type.startsWith("video/") ? "video" : "document";
+
             const msgRes = await fetch("/api/chat/messages", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    content: `Sent an attachment: ${fileData.name}`,
+                    content: `Sent an attachment: ${file.name}`,
                     projectId: selectedProjectId,
-                    attachmentUrl: fileData.url,
-                    attachmentType: fileData.type,
-                    attachmentName: fileData.name
+                    attachmentUrl: data.publicUrl,
+                    attachmentType: fileType,
+                    attachmentName: file.name
                 }),
             });
 
@@ -199,9 +226,9 @@ export default function ClientChatWindow({ currentUser, projects }: ClientChatWi
 
             {/* Chat Window */}
             {isOpen && (
-                <div className="fixed inset-4 sm:inset-auto sm:right-6 sm:bottom-6 sm:w-96 sm:h-[500px] bg-[var(--color-surface)] border border-white/10 rounded-2xl shadow-2xl flex flex-col glass animate-in slide-in-from-bottom-5 z-[100]">
+                <div className="fixed inset-4 sm:inset-auto sm:right-6 sm:bottom-6 sm:w-96 sm:h-[500px] bg-[var(--color-navy-dark)] border border-white/10 rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.8)] flex flex-col animate-in slide-in-from-bottom-5 z-[100] overflow-hidden">
                     {/* Header */}
-                    <div className="p-4 border-b border-white/10 flex items-center justify-between bg-white/5 rounded-t-2xl">
+                    <div className="p-4 flex items-center justify-between bg-[var(--color-navy)] border-b border-white/10 z-10">
                         <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-full bg-[var(--color-gold)]/20 flex items-center justify-center border border-[var(--color-gold)]/30">
                                 <User className="w-5 h-5 text-[var(--color-gold)]" />
@@ -237,7 +264,7 @@ export default function ClientChatWindow({ currentUser, projects }: ClientChatWi
                     </div>
 
                     {/* Messages Area */}
-                    <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
+                    <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar bg-[var(--color-navy)] relative z-0">
                         {messages.length === 0 ? (
                             <div className="h-full flex flex-col items-center justify-center text-center p-6">
                                 <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mb-3">
@@ -314,7 +341,7 @@ export default function ClientChatWindow({ currentUser, projects }: ClientChatWi
                     </div>
 
                     {/* Input Area */}
-                    <form onSubmit={(e) => handleSendMessage(e)} className="p-4 border-t border-white/10 bg-black/20 rounded-b-2xl relative">
+                    <form onSubmit={(e) => handleSendMessage(e)} className="p-4 border-t border-white/10 bg-[var(--color-navy-dark)] relative z-10">
                         {/* Stickers Menu */}
                         {showStickers && (
                             <div className="absolute bottom-[100%] left-2 right-2 sm:left-4 sm:right-4 bg-[var(--color-surface)] border border-white/10 rounded-xl p-2 shadow-2xl animate-in slide-in-from-bottom-2 grid grid-cols-4 gap-1 mb-2 glass z-[110]">
