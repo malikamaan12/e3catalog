@@ -16,9 +16,9 @@ import {
     History,
     Unlock,
     X,
-    ChevronRight,
     LogOut,
-    Warehouse
+    Warehouse,
+    QrCode
 } from "lucide-react";
 import Link from "next/link";
 
@@ -58,6 +58,19 @@ interface AssetPassportData {
         customerName?: string;
         status?: string;
     }>;
+}
+
+function generateMRZ(productName: string, assetTag: string, serial: string) {
+    const formatLine = (str: string, len: number) => {
+        const cleaned = str.toUpperCase().replace(/[^A-Z0-9]/g, '<');
+        if (cleaned.length > len) return cleaned.substring(0, len);
+        return cleaned.padEnd(len, '<');
+    };
+    
+    // MRZ standard is typically 44 chars per line for passports (Type P)
+    const line1 = `P<E3<${formatLine(productName, 39)}`;
+    const line2 = `${formatLine(serial, 15)}<${formatLine(assetTag, 28)}`;
+    return `${line1}\n${line2}`;
 }
 
 export default function PassportPage() {
@@ -110,311 +123,319 @@ export default function PassportPage() {
         );
     }
 
+    const mrzLabel = generateMRZ(data.productName, data.assetTagCode, data.serialNumber || 'UNKNOWN');
+
     return (
-        <div className="min-h-screen bg-[#050810] text-white overflow-x-hidden pb-32 font-sans selection:bg-[var(--color-gold)] selection:text-black">
-            {/* Mesh Gradient Background */}
-            <div className="fixed inset-0 pointer-events-none overflow-hidden">
-                <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-blue-600/10 blur-[120px] rounded-full animate-pulse" />
-                <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-[var(--color-gold)]/5 blur-[120px] rounded-full" />
-            </div>
+        <div className="min-h-screen bg-[#0A0F1C] text-white font-sans selection:bg-[var(--color-gold)] selection:text-black py-12 px-4 md:px-8 relative z-0">
+            {/* Background Texture for official document look */}
+            <div className="fixed inset-0 pointer-events-none opacity-5 mix-blend-screen" 
+                 style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23ffffff\' fill-opacity=\'1\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")' }} 
+            />
+            
+            <div className="max-w-4xl mx-auto space-y-8 relative z-10">
+                
+                {/* ─── PASSPORT ID CARD ─── */}
+                <div className="bg-[#0b1221]/90 backdrop-blur-xl border border-white/10 rounded-3xl overflow-hidden shadow-2xl relative">
+                    {/* Watermark Logo */}
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-[0.03] pointer-events-none">
+                        <ShieldCheck className="w-[400px] h-[400px]" />
+                    </div>
 
-            {/* Hero Section */}
-            <div className="relative h-64 md:h-72 w-full overflow-hidden flex items-end p-6 md:p-8 bg-gradient-to-b from-blue-950/40 via-blue-900/10 to-transparent">
-                <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-5" />
-                <motion.div 
-                    initial={{ opacity: 0, y: 30 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="flex flex-col md:flex-row gap-4 md:gap-6 items-start md:items-end w-full max-w-5xl mx-auto z-10"
-                >
-                    <div className="w-24 h-24 md:w-28 md:h-28 rounded-[2rem] border-2 border-white/10 overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)] bg-black/40 backdrop-blur-xl p-1 shrink-0">
-                        <div className="w-full h-full rounded-[1.8rem] overflow-hidden border border-white/5">
-                            <img src={data.productThumbnail || "/placeholder.jpg"} alt={data.productName} className="w-full h-full object-cover transform hover:scale-110 transition-transform duration-700" />
+                    {/* Card Header */}
+                    <div className="bg-gradient-to-r from-blue-900/40 to-indigo-900/40 px-6 py-4 border-b border-white/10 flex justify-between items-center">
+                        <div className="flex items-center gap-3">
+                            <ShieldCheck className="text-[var(--color-gold)] w-6 h-6" />
+                            <div>
+                                <h2 className="text-[10px] md:text-xs font-black tracking-[0.2em] uppercase text-white/90">E3 Rentals Digital Passport</h2>
+                                <p className="text-[8px] tracking-widest text-white/50 uppercase">Official Asset Identification</p>
+                            </div>
+                        </div>
+                        <div className="text-right">
+                            <p className="text-[10px] uppercase tracking-widest text-[#4ade80] font-bold border border-[#4ade80]/30 bg-[#4ade80]/10 px-2 py-0.5 rounded-full">Active Record</p>
                         </div>
                     </div>
-                    <div className="flex-1 space-y-1">
-                        <div className="flex items-center gap-2 mb-1 md:mb-2">
-                            <span className="px-2 py-0.5 rounded-full bg-[var(--color-gold)]/10 border border-[var(--color-gold)]/20 text-[var(--color-gold)] text-[9px] md:text-[10px] font-black uppercase tracking-widest">Digital Passport</span>
-                            <span className="w-1 h-1 rounded-full bg-white/20" />
-                            <span className="text-[9px] md:text-[10px] font-bold text-white/40 uppercase tracking-widest">v2.0 Verified</span>
-                        </div>
-                        <h1 className="text-2xl md:text-4xl font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-white to-white/60 leading-tight">{data.productName}</h1>
-                        <p className="text-[var(--color-gold)] font-mono font-black tracking-[0.2em] text-xs md:text-sm opacity-80">{data.assetTagCode}</p>
-                    </div>
-                </motion.div>
-            </div>
 
-            {/* Quick Stats Grid */}
-            <div className="max-w-5xl mx-auto px-6 -mt-8 relative z-20">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-2 glass border border-white/10 rounded-[2.5rem] shadow-2xl">
-                    <div className="p-4 flex flex-col items-center justify-center text-center bg-white/5 rounded-[2rem] border border-white/5">
-                        <span className="text-[10px] uppercase font-black text-[var(--color-slate)] tracking-[0.2em] mb-1 opacity-50">Condition</span>
-                        <span className={`text-sm font-black uppercase tracking-tight ${
-                            data.conditionStatus === 'excellent' ? 'text-emerald-400' : 
-                            data.conditionStatus === 'good' ? 'text-blue-400' : 'text-orange-400'
-                        }`}>{data.conditionStatus}</span>
+                    {/* Card Body */}
+                    <div className="p-6 md:p-10 flex flex-col md:flex-row gap-8">
+                        {/* Photo Area */}
+                        <div className="mx-auto md:mx-0 shrink-0 flex flex-col items-center">
+                            <div className="w-40 h-48 md:w-48 md:h-56 rounded-xl border-2 border-white/10 p-1 bg-white/5 relative overflow-hidden shadow-inner">
+                                {/* Passport style overlay pattern */}
+                                <div className="absolute inset-0 z-10 opacity-20 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiPgo8cmVjdCB3aWR0aD0iOCIgaGVpZ2h0PSI4IiBmaWxsPSIjZmZmIiBmaWxsLW9wYWNpdHk9IjAuMSIvPgo8cGF0aCBkPSJNMCAwbDhfOFpNOCAwTDBfOCIgc3Ryb2tlPSIjMDAwIiBzdHJva2Utd2lkdGg9IjAuNSIgc3Ryb2tlLW9wYWNpdHk9IjAuMSIvPgo8L3N2Zz4=')]" />
+                                <img src={data.productThumbnail || "/placeholder.jpg"} alt={data.productName} className="w-full h-full object-cover grayscale opacity-90 contrast-125" />
+                            </div>
+                            <div className="mt-3 text-center">
+                                <QrCode className="w-8 h-8 opacity-50 mx-auto mb-1" />
+                                <p className="text-[10px] font-mono text-white/50">{data.assetTagCode}</p>
+                            </div>
+                        </div>
+
+                        {/* Data Attributes */}
+                        <div className="flex-1 grid grid-cols-2 gap-x-4 gap-y-6 self-center">
+                            <div className="col-span-2">
+                                <p className="text-[9px] uppercase tracking-widest text-white/40 mb-1">Make / Model / Description</p>
+                                <p className="font-bold text-xl text-white uppercase tracking-tight leading-none">{data.productName}</p>
+                            </div>
+
+                            <div>
+                                <p className="text-[9px] uppercase tracking-widest text-white/40 mb-1">Type / Category</p>
+                                <p className="font-bold text-sm text-white uppercase">Equipment</p>
+                            </div>
+
+                            <div>
+                                <p className="text-[9px] uppercase tracking-widest text-white/40 mb-1">Serial Number</p>
+                                <p className="font-mono text-sm text-[var(--color-gold)] font-bold">{data.serialNumber || 'N/A'}</p>
+                            </div>
+
+                            <div className="col-span-2 md:col-span-1">
+                                <p className="text-[9px] uppercase tracking-widest text-white/40 mb-1">Proprietary Owner</p>
+                                <p className="font-bold text-sm text-white uppercase truncate">{data.vendorName}</p>
+                            </div>
+
+                            <div>
+                                <p className="text-[9px] uppercase tracking-widest text-white/40 mb-1">Verification Date</p>
+                                <p className="font-bold text-sm text-white uppercase">
+                                    {data.lastInspectionDate ? new Date(data.lastInspectionDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A'}
+                                </p>
+                            </div>
+
+                            <div>
+                                <p className="text-[9px] uppercase tracking-widest text-white/40 mb-1">Condition Status</p>
+                                <p className={`font-black text-sm uppercase tracking-tight ${
+                                    data.conditionStatus === 'excellent' ? 'text-emerald-400' : 
+                                    data.conditionStatus === 'good' ? 'text-blue-400' : 'text-orange-400'
+                                }`}>{data.conditionStatus.replace('_', ' ')}</p>
+                            </div>
+
+                            <div>
+                                <p className="text-[9px] uppercase tracking-widest text-white/40 mb-1">Availability</p>
+                                <p className="font-black text-sm text-blue-400 uppercase tracking-tight">{data.availabilityStatus.replace('_', ' ')}</p>
+                            </div>
+                        </div>
                     </div>
-                    <div className="p-4 flex flex-col items-center justify-center text-center bg-white/5 rounded-[2rem] border border-white/5">
-                        <span className="text-[10px] uppercase font-black text-[var(--color-slate)] tracking-[0.2em] mb-1 opacity-50">Status</span>
-                        <span className="text-sm font-black text-blue-400 uppercase tracking-tight">{data.availabilityStatus.replace('_', ' ')}</span>
-                    </div>
-                    <div className="p-4 flex flex-col items-center justify-center text-center bg-white/5 rounded-[2rem] border border-white/5">
-                        <span className="text-[10px] uppercase font-black text-[var(--color-slate)] tracking-[0.2em] mb-1 opacity-50">Identity</span>
-                        <span className="text-sm font-bold text-white/80 font-mono tracking-tighter truncate w-full">{data.serialNumber || 'E3-8829-X'}</span>
-                    </div>
-                    <div className="p-4 flex flex-col items-center justify-center text-center bg-white/5 rounded-[2rem] border border-white/5">
-                        <span className="text-[10px] uppercase font-black text-[var(--color-slate)] tracking-[0.2em] mb-1 opacity-50">Ownership</span>
-                        <span className="text-sm font-black text-[var(--color-gold)] uppercase tracking-tighter truncate w-full">{data.vendorName}</span>
+
+                    {/* Machine Readable Zone (MRZ) */}
+                    <div className="bg-[#050810] border-t border-white/10 p-4 md:px-8 overflow-hidden select-all">
+                        <p className="font-mono text-sm md:text-base text-white/60 tracking-[0.2em] break-all whitespace-pre-wrap leading-relaxed font-bold">
+                            {mrzLabel}
+                        </p>
                     </div>
                 </div>
-            </div>
 
-            {/* Tabs Navigation */}
-            <div className="flex p-1.5 bg-black/40 max-w-5xl mx-auto rounded-[1.8rem] mt-12 border border-white/10 backdrop-blur-md sticky top-6 z-40 mx-6 md:mx-auto">
-                {(['status', 'compliance', 'history'] as const).map((t) => (
-                    <button
-                        key={t}
-                        onClick={() => setTab(t)}
-                        className={`flex-1 py-3 text-[10px] font-black uppercase tracking-[0.2em] rounded-[1.4rem] transition-all duration-300
-                            ${tab === t ? 'bg-[var(--color-gold)] text-[var(--color-navy)] shadow-[0_10px_20px_rgba(255,191,0,0.2)]' : 'text-[var(--color-slate)] hover:text-white hover:bg-white/5'}`}
-                    >
-                        {t}
-                    </button>
-                ))}
-            </div>
+                {/* ─── INLINE OPERATOR ACTIONS ─── */}
+                {data.isAuthorized && (
+                    <div className="bg-white/5 border border-white/10 rounded-3xl p-6 relative overflow-hidden">
+                        <div className="absolute inset-0 bg-gradient-to-r from-[var(--color-gold)]/5 to-transparent pointer-events-none" />
+                        <div className="flex items-center gap-3 mb-6 relative z-10">
+                            <Unlock className="w-5 h-5 text-[var(--color-gold)]" />
+                            <h3 className="text-xs font-black uppercase tracking-[0.2em] text-[var(--color-gold)]">Operator Controls</h3>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 relative z-10">
+                            <button 
+                                onClick={() => setShowAssignModal(true)}
+                                disabled={!!data.currentAssignment}
+                                className="group flex flex-col items-center justify-center p-4 rounded-2xl bg-black/40 border border-white/10 hover:border-blue-500/50 hover:bg-blue-500/10 active:scale-95 transition-all outline-none focus:ring-2 ring-blue-500 disabled:opacity-30 disabled:grayscale disabled:cursor-not-allowed"
+                            >
+                                <MapPin className="w-6 h-6 text-blue-400 mb-2 group-hover:scale-110 transition-transform" />
+                                <span className="text-[10px] font-black uppercase tracking-widest text-center text-white/80 group-hover:text-white">Assign to Project</span>
+                            </button>
 
-            {/* Tab Content Area */}
-            <div className="max-w-5xl mx-auto px-6 mt-10">
-                <AnimatePresence mode="wait">
-                    {tab === "status" && (
-                        <motion.div 
-                            key="status"
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.95 }}
-                            className="space-y-6"
-                        >
-                            {/* Current Assignment Card */}
-                            <div className={`p-6 rounded-3xl border transition-all duration-500 ${data.currentAssignment ? 'bg-blue-500/10 border-blue-500/20' : 'bg-white/5 border-white/10 opacity-60'}`}>
-                                <div className="flex justify-between items-start mb-4">
-                                    <h3 className="text-xs font-black text-blue-400 uppercase tracking-widest flex items-center gap-2">
-                                        <Calendar className="w-4 h-4" /> Current Deployment
-                                    </h3>
-                                    {data.currentAssignment && (
-                                        <span className="px-2 py-1 rounded-full bg-blue-500/20 text-[8px] font-black text-blue-300 uppercase tracking-widest animate-pulse">Live on Project</span>
-                                    )}
-                                </div>
+                            {data.currentAssignment ? (
+                                <button 
+                                    onClick={() => setShowBumpOutModal(true)}
+                                    className="group flex flex-col items-center justify-center p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 hover:bg-emerald-500/20 active:scale-95 transition-all outline-none focus:ring-2 ring-emerald-500"
+                                >
+                                    <LogOut className="w-6 h-6 text-emerald-400 mb-2 group-hover:scale-110 transition-transform" />
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-center text-emerald-400">Process Bump-Out</span>
+                                </button>
+                            ) : (
+                                <button 
+                                    onClick={() => setShowInspectModal({ type: 'pre_rental', label: 'Check-In' })}
+                                    className="group flex flex-col items-center justify-center p-4 rounded-2xl bg-black/40 border border-white/10 hover:border-orange-500/50 hover:bg-orange-500/10 active:scale-95 transition-all outline-none focus:ring-2 ring-orange-500"
+                                >
+                                    <ArrowRightLeft className="w-6 h-6 text-orange-400 mb-2 group-hover:scale-110 transition-transform" />
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-center text-white/80 group-hover:text-white">Log Bump-In</span>
+                                </button>
+                            )}
+
+                            <button 
+                                onClick={() => setShowInspectModal({ type: 'routine', label: 'Inspect' })}
+                                className="group flex flex-col items-center justify-center p-4 rounded-2xl bg-black/40 border border-white/10 hover:border-purple-500/50 hover:bg-purple-500/10 active:scale-95 transition-all outline-none focus:ring-2 ring-purple-500"
+                            >
+                                <ShieldCheck className="w-6 h-6 text-purple-400 mb-2 group-hover:scale-110 transition-transform" />
+                                <span className="text-[10px] font-black uppercase tracking-widest text-center text-white/80 group-hover:text-white">Routine Inspection</span>
+                            </button>
+
+                            <button 
+                                onClick={() => setShowInspectModal({ type: 'damage', label: 'Log Damage' })}
+                                className="group flex flex-col items-center justify-center p-4 rounded-2xl bg-[var(--color-gold)] border border-[var(--color-gold)] hover:bg-[var(--color-gold)]/90 active:scale-95 transition-all shadow-[0_10px_20px_rgba(201,168,76,0.2)] outline-none"
+                            >
+                                <Wrench className="w-6 h-6 text-[#0A0F1C] mb-2 group-hover:scale-110 transition-transform" />
+                                <span className="text-[10px] font-black uppercase tracking-widest text-[#0A0F1C] text-center">Log Damage</span>
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* ─── DETAILED RECORDS (VISA PAGES) ─── */}
+                <div className="bg-[#0b1221]/60 border border-white/10 rounded-3xl p-6">
+                    {/* Tabs */}
+                    <div className="flex gap-4 border-b border-white/10 pb-4 mb-6">
+                        {(['status', 'compliance', 'history'] as const).map((t) => (
+                            <button
+                                key={t}
+                                onClick={() => setTab(t)}
+                                className={`px-4 py-2 text-[10px] md:text-xs font-black uppercase tracking-[0.2em] rounded-full transition-all duration-300 border
+                                    ${tab === t ? 'bg-[var(--color-gold)] text-[#0A0F1C] border-[var(--color-gold)]' : 'bg-transparent text-white/50 border-white/10 hover:border-white/30 hover:text-white'}`}
+                            >
+                                {t}
+                            </button>
+                        ))}
+                    </div>
+
+                    <AnimatePresence mode="wait">
+                        {tab === "status" && (
+                            <motion.div key="status" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6">
+                                {/* Current Assignment Document */}
                                 {data.currentAssignment ? (
-                                    <div className="space-y-4">
-                                        <div>
-                                            <p className="text-[10px] text-blue-300/60 uppercase font-black tracking-widest mb-1">Active Project</p>
-                                            <p className="text-lg font-black text-white leading-tight">{data.currentAssignment.projectName}</p>
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-4">
+                                    <div className="relative border-l-4 border-blue-500 bg-blue-500/5 p-6 rounded-r-2xl">
+                                        <div className="absolute top-4 right-4 text-xs font-mono text-blue-500/40">REF: {data.currentAssignment.bookingId.split('-')[0]}</div>
+                                        <h3 className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-1 flex items-center gap-2">
+                                            <Calendar className="w-4 h-4" /> Active Deployment
+                                        </h3>
+                                        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-6">
                                             <div>
-                                                <p className="text-[10px] text-blue-300/60 uppercase font-black tracking-widest">Client</p>
-                                                <p className="text-xs font-bold text-white/80">{data.currentAssignment.customerName}</p>
+                                                <p className="text-[10px] text-white/40 uppercase tracking-widest mb-1">Project Name</p>
+                                                <p className="font-black text-lg text-white">{data.currentAssignment.projectName}</p>
                                             </div>
                                             <div>
-                                                <p className="text-[10px] text-blue-300/60 uppercase font-black tracking-widest">Returns By</p>
-                                                <p className="text-xs font-bold text-white/80">{new Date(data.currentAssignment.endDate).toLocaleDateString()}</p>
+                                                <p className="text-[10px] text-white/40 uppercase tracking-widest mb-1">Assigned Client</p>
+                                                <p className="font-bold text-sm text-white">{data.currentAssignment.customerName}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] text-white/40 uppercase tracking-widest mb-1">Deployed Date</p>
+                                                <p className="font-mono text-sm text-white">{new Date(data.currentAssignment.startDate).toLocaleDateString()}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] text-white/40 uppercase tracking-widest mb-1">Expected Return</p>
+                                                <p className="font-mono text-sm text-gold">{new Date(data.currentAssignment.endDate).toLocaleDateString()}</p>
                                             </div>
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="py-2">
-                                        <p className="text-sm font-bold text-white/40 italic">Available in Warehouse</p>
-                                        <p className="text-[10px] text-white/20 uppercase font-black tracking-widest mt-1">No active project assignments</p>
+                                    <div className="border border-white/10 border-dashed rounded-2xl p-8 text-center bg-white/5">
+                                        <Warehouse className="w-8 h-8 text-white/20 mx-auto mb-3" />
+                                        <p className="text-sm font-bold text-white/60">Asset is currently unassigned.</p>
+                                        <p className="text-[10px] text-white/40 uppercase tracking-widest mt-1">Available in inventory warehouse.</p>
                                     </div>
                                 )}
-                            </div>
 
-                            <div className="glass p-5 border border-white/10 rounded-2xl space-y-4">
-                                <h3 className="text-xs font-black text-[var(--color-gold)] uppercase tracking-widest flex items-center gap-2">
-                                    <Info className="w-4 h-4" /> Operational Details
-                                </h3>
-                                <div className="space-y-4">
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2 rounded-lg bg-white/5"><Warehouse className="w-4 h-4 text-orange-400" /></div>
+                                {/* Location Logs */}
+                                <div className="p-6 border border-white/10 rounded-2xl bg-black/20">
+                                    <h3 className="text-[10px] font-black text-[var(--color-gold)] uppercase tracking-widest mb-4 flex items-center gap-2">
+                                        <MapPin className="w-4 h-4" /> Storage Details
+                                    </h3>
+                                    <div className="grid grid-cols-2 gap-4">
                                         <div>
-                                            <p className="text-[10px] text-[var(--color-slate)] uppercase font-black tracking-widest">Warehouse</p>
-                                            <p className="text-sm font-bold">{data.warehouseName || data.warehouseLocation || 'Not assigned'}</p>
-                                            {data.warehouseAddress && <p className="text-[10px] text-white/30">{data.warehouseAddress}</p>}
+                                            <p className="text-[10px] text-white/40 uppercase tracking-widest mb-1">Registered Warehouse</p>
+                                            <p className="font-bold text-sm text-white">{data.warehouseName || data.warehouseLocation || 'Not assigned'}</p>
                                         </div>
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2 rounded-lg bg-white/5"><MapPin className="w-4 h-4 text-cyan-400" /></div>
                                         <div>
-                                            <p className="text-[10px] text-[var(--color-slate)] uppercase font-black tracking-widest">Shelf Location</p>
-                                            <p className="text-sm font-bold">{data.shelfLocation || 'Not specified'}</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2 rounded-lg bg-white/5"><ShieldCheck className="w-4 h-4 text-blue-400" /></div>
-                                        <div>
-                                            <p className="text-[10px] text-[var(--color-slate)] uppercase font-black tracking-widest">Proprietary Owner</p>
-                                            <p className="text-sm font-bold">{data.vendorName}</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2 rounded-lg bg-white/5"><FileText className="w-4 h-4 text-purple-400" /></div>
-                                        <div>
-                                            <p className="text-[10px] text-[var(--color-slate)] uppercase font-black tracking-widest">Serial Identification</p>
-                                            <p className="text-sm font-bold">{data.serialNumber || 'OEM-8892-Z'}</p>
+                                            <p className="text-[10px] text-white/40 uppercase tracking-widest mb-1">Precise Shelf/Bin</p>
+                                            <p className="font-mono text-sm text-white">{data.shelfLocation || '---'}</p>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        </motion.div>
-                    )}
+                            </motion.div>
+                        )}
 
-                    {tab === "compliance" && (
-                        <motion.div 
-                            key="compliance"
-                            initial={{ opacity: 0, x: -10 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: 10 }}
-                            className="space-y-4"
-                        >
-                            <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-2xl flex items-center gap-4">
-                                <CheckCircle2 className="w-8 h-8 text-green-400 shrink-0" />
-                                <div>
-                                    <p className="text-sm font-black text-green-400">Safety Compliant</p>
-                                    <p className="text-xs text-green-400/70">Last detailed inspection: {data.lastInspectionDate ? new Date(data.lastInspectionDate).toLocaleDateString() : 'Mar 15, 2026'}</p>
+                        {tab === "compliance" && (
+                            <motion.div key="compliance" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-4">
+                                <div className="border-2 border-emerald-500/20 bg-emerald-500/5 p-6 rounded-2xl flex items-center gap-6">
+                                    {/* Simulated "Stamp" */}
+                                    <div className="w-16 h-16 rounded-full border-4 border-emerald-500/40 flex items-center justify-center shrink-0 rotate-12 opacity-80 mix-blend-screen">
+                                        <span className="text-[10px] font-black tracking-tighter uppercase text-emerald-400">PASSED</span>
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-black text-emerald-400 uppercase tracking-widest">Operational Safety Compliant</p>
+                                        <p className="text-xs text-white/60 mt-1">Last inspected and cleared on {data.lastInspectionDate ? new Date(data.lastInspectionDate).toLocaleDateString() : 'N/A'}</p>
+                                    </div>
                                 </div>
-                            </div>
-                            
-                            <div className="space-y-2">
-                                <p className="text-[10px] font-black text-[var(--color-gold)] uppercase tracking-widest ml-1">Regulatory Approvals</p>
-                                <div className="space-y-3">
-                                    {['Civil Defence Approval', 'Manufacturer Load Test', 'Safety Compliance Certificate'].map((doc, i) => (
-                                        <div key={i} className="glass p-4 border border-white/5 rounded-2xl flex items-center justify-between">
-                                            <span className="text-sm font-bold">{doc}</span>
-                                            <LinkIcon className="w-4 h-4 text-[var(--color-gold)]" />
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </motion.div>
-                    )}
-
-                    {tab === "history" && (
-                        <motion.div 
-                            key="history"
-                            initial={{ opacity: 0, x: -10 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: 10 }}
-                            className="space-y-4"
-                        >
-                             <div className="relative pl-8 space-y-8 before:absolute before:left-3 before:top-2 before:bottom-0 before:w-px before:bg-white/10">
-                                {data.history.length > 0 ? data.history.map((h, i) => {
-                                    if (h.historyType === 'condition') {
-                                        const iconMap: any = {
-                                            routine: CheckCircle2,
-                                            pre_rental: ShieldCheck,
-                                            return: ArrowRightLeft,
-                                            damage: AlertTriangle,
-                                        };
-                                        const Icon = iconMap[h.type || ''] || History;
-                                        return (
-                                            <div key={h.id} className="relative">
-                                                <div className="absolute -left-8 top-1 w-6 h-6 rounded-full bg-[#070b14] border border-white/10 flex items-center justify-center">
-                                                    <Icon className={`w-3 h-3 ${h.type === 'damage' ? 'text-red-400' : 'text-[var(--color-gold)]'}`} />
+                                <div className="space-y-2 mt-6">
+                                    <p className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-3">Official Certificates & Approvals</p>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                        {['Civil Defence Approval', 'Manufacturer Load Test', 'Maintenance Logbook ISO9001'].map((doc, i) => (
+                                            <div key={i} className="bg-black/40 border border-white/5 px-4 py-3 rounded-xl flex items-center justify-between group cursor-pointer hover:border-[var(--color-gold)]/50 transition-colors">
+                                                <div className="flex items-center gap-3">
+                                                    <FileText className="w-4 h-4 text-white/30 group-hover:text-[var(--color-gold)] transition-colors" />
+                                                    <span className="text-xs font-bold text-white/80">{doc}</span>
                                                 </div>
-                                                <p className="text-[10px] font-black text-[var(--color-slate)] uppercase tracking-widest">{new Date(h.date).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</p>
-                                                <p className="text-sm font-bold text-white uppercase tracking-tight">Condition Update: {h.type?.replace('_', ' ')}</p>
-                                                <p className="text-[10px] text-[var(--color-slate)] uppercase font-bold">
-                                                    {h.conditionBefore} → <span className="text-white">{h.conditionAfter}</span>
-                                                </p>
-                                                {h.notes && <p className="text-xs text-[var(--color-slate)] mt-1 italic">"{h.notes}"</p>}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </motion.div>
+                        )}
+
+                        {tab === "history" && (
+                            <motion.div key="history" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+                                <div className="relative border-l border-white/10 ml-4 py-4 space-y-8">
+                                    {data.history.length > 0 ? data.history.map((h, i) => {
+                                        const isCond = h.historyType === 'condition';
+                                        
+                                        // Generate an official-looking "stamp" for the history event
+                                        return (
+                                            <div key={h.id} className="relative pl-8 pr-4">
+                                                {/* Timeline Node */}
+                                                <div className={`absolute -left-[5px] top-1 w-2.5 h-2.5 rounded-full ring-4 ring-[#0b1221] ${isCond ? (h.type === 'damage' ? 'bg-red-400' : 'bg-orange-400') : 'bg-blue-400'}`} />
+                                                
+                                                <div className="bg-white/5 border border-white/10 p-4 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                                    <div>
+                                                        <p className="text-[9px] font-black text-white/40 uppercase tracking-[0.2em] mb-1">
+                                                            {new Date(h.date).toLocaleDateString()} · {new Date(h.date).toLocaleTimeString([], {timeStyle: 'short'})}
+                                                        </p>
+                                                        
+                                                        {isCond ? (
+                                                            <>
+                                                                <p className="text-sm font-bold text-white uppercase tracking-tight">Inspection: {h.type?.replace('_', ' ')}</p>
+                                                                <div className="flex items-center gap-2 mt-2">
+                                                                    <span className="text-[10px] px-2 py-0.5 rounded bg-black/50 text-white/50">{h.conditionBefore}</span>
+                                                                    <ArrowRightLeft className="w-3 h-3 text-white/20" />
+                                                                    <span className="text-[10px] px-2 py-0.5 rounded bg-black/50 text-white font-bold">{h.conditionAfter}</span>
+                                                                </div>
+                                                                {h.notes && <p className="text-xs text-[var(--color-gold)] mt-2 italic border-l-2 border-[var(--color-gold)] pl-2">"{h.notes}"</p>}
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <p className="text-sm font-bold text-white uppercase tracking-tight">Logistics: {h.projectName}</p>
+                                                                <p className="text-xs text-white/60 mt-1">Authorized for: {h.customerName}</p>
+                                                            </>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Official Stamp Look */}
+                                                    <div className="shrink-0">
+                                                        <div className={`border-2 px-3 py-1 rounded inline-block rotate-[-5deg] ${isCond ? (h.type === 'damage' ? 'border-red-500/30 text-red-400/80' : 'border-orange-500/30 text-orange-400/80') : 'border-blue-500/30 text-blue-400/80'}`}>
+                                                            <span className="text-[10px] font-black uppercase tracking-widest">
+                                                                {isCond ? 'LOGGED' : h.status}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             </div>
                                         );
-                                    } else {
-                                        return (
-                                            <div key={h.id} className="relative">
-                                                <div className="absolute -left-8 top-1 w-6 h-6 rounded-full bg-[#070b14] border border-white/10 flex items-center justify-center">
-                                                    <MapPin className="w-3 h-3 text-blue-400" />
-                                                </div>
-                                                <p className="text-[10px] font-black text-[var(--color-slate)] uppercase tracking-widest">{new Date(h.date).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</p>
-                                                <p className="text-sm font-bold text-white uppercase tracking-tight">Deployed: {h.projectName}</p>
-                                                <p className="text-[10px] text-[var(--color-slate)] uppercase font-bold">
-                                                    Client: <span className="text-white">{h.customerName}</span>
-                                                </p>
-                                                <span className={`inline-block mt-2 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest ${h.status === 'dispatched' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'}`}>
-                                                    {h.status}
-                                                </span>
-                                            </div>
-                                        );
-                                    }
-                                }) : (
-                                    <div className="text-center py-10 opacity-30 italic text-sm">No recorded history for this asset.</div>
-                                )}
-                            </div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
+                                    }) : (
+                                        <div className="text-center py-10 opacity-30 italic text-sm">No recorded history elements for this ledger.</div>
+                                    )}
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </div>
             </div>
 
-            {/* Sticky Operations Panel (Authorized Only) */}
-            {data.isAuthorized && (
-                <div className="fixed bottom-6 md:bottom-10 left-1/2 -translate-x-1/2 w-[calc(100%-32px)] md:w-[calc(100%-48px)] max-w-md p-5 md:p-6 glass border border-white/20 rounded-[2.5rem] md:rounded-[3rem] shadow-[0_30px_60px_rgba(0,0,0,0.8)] z-50">
-                    <div className="flex items-center justify-center gap-3 mb-4 md:mb-6 text-[var(--color-gold)]">
-                        <Unlock className="w-3.5 h-3.5 animate-pulse" />
-                        <span className="text-[9px] font-black uppercase tracking-[0.3em]">Operator Control Panel</span>
-                    </div>
-                    <div className="grid grid-cols-4 gap-2 md:gap-3">
-                        <button 
-                            onClick={() => setShowAssignModal(true)}
-                            disabled={!!data.currentAssignment}
-                            className="group flex flex-col items-center justify-center p-3 md:p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 active:scale-95 transition-all outline-none focus:ring-2 ring-blue-500 disabled:opacity-30 disabled:grayscale"
-                        >
-                            <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-blue-500/10 flex items-center justify-center mb-1.5 group-hover:scale-110 transition-transform">
-                                <MapPin className="w-4 h-4 md:w-5 md:h-5 text-blue-400" />
-                            </div>
-                            <span className="text-[7px] md:text-[8px] font-black uppercase tracking-tight text-center">Assign</span>
-                        </button>
-                        {data.currentAssignment ? (
-                            <button 
-                                onClick={() => setShowBumpOutModal(true)}
-                                className="group flex flex-col items-center justify-center p-3 md:p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 hover:bg-emerald-500/20 active:scale-95 transition-all outline-none focus:ring-2 ring-emerald-500"
-                            >
-                                <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center mb-1.5 group-hover:scale-110 transition-transform">
-                                    <LogOut className="w-4 h-4 md:w-5 md:h-5 text-emerald-400" />
-                                </div>
-                                <span className="text-[7px] md:text-[8px] font-black uppercase tracking-tight text-center text-emerald-400">Return</span>
-                            </button>
-                        ) : (
-                            <button 
-                                onClick={() => setShowInspectModal({ type: 'pre_rental', label: 'Check-In' })}
-                                className="group flex flex-col items-center justify-center p-3 md:p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 active:scale-95 transition-all outline-none focus:ring-2 ring-[var(--color-gold)]"
-                            >
-                                <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-orange-500/10 flex items-center justify-center mb-1.5 group-hover:scale-110 transition-transform">
-                                    <ArrowRightLeft className="w-4 h-4 md:w-5 md:h-5 text-orange-400" />
-                                </div>
-                                <span className="text-[7px] md:text-[8px] font-black uppercase tracking-tight text-center">Bump-In</span>
-                            </button>
-                        )}
-                        <button 
-                            onClick={() => setShowInspectModal({ type: 'routine', label: 'Inspect' })}
-                            className="group flex flex-col items-center justify-center p-3 md:p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 active:scale-95 transition-all outline-none focus:ring-2 ring-[var(--color-gold)]"
-                        >
-                            <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-purple-500/10 flex items-center justify-center mb-1.5 group-hover:scale-110 transition-transform">
-                                <ShieldCheck className="w-4 h-4 md:w-5 md:h-5 text-purple-400" />
-                            </div>
-                            <span className="text-[7px] md:text-[8px] font-black uppercase tracking-tight text-center">Inspect</span>
-                        </button>
-                        <button 
-                            onClick={() => setShowInspectModal({ type: 'damage', label: 'Log Damage' })}
-                            className="group flex flex-col items-center justify-center p-3 md:p-4 rounded-2xl bg-[var(--color-gold)] hover:bg-[var(--color-gold)]/90 active:scale-95 transition-all shadow-[0_10px_25px_rgba(255,191,0,0.3)] outline-none"
-                        >
-                            <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-black/10 flex items-center justify-center mb-1.5 group-hover:scale-110 transition-transform">
-                                <Wrench className="w-4 h-4 md:w-5 md:h-5 text-black" />
-                            </div>
-                            <span className="text-[7px] md:text-[8px] font-black uppercase tracking-tight text-black text-center">Damage</span>
-                        </button>
-                    </div>
-                </div>
-            )}
-
+            {/* Modals remain structurally the same, just keeping them in the DOM */}
             {/* Inspection Modal */}
             {showInspectModal && (
                 <MobileInspectModal 
@@ -447,23 +468,6 @@ export default function PassportPage() {
                     onSuccess={() => { setShowBumpOutModal(false); fetchPassport(); setTab('status'); }}
                 />
             )}
-
-            {/* Share Passport */}
-            <div className="max-w-5xl mx-auto px-6 py-20 text-center opacity-40">
-                <div className="w-24 h-24 bg-white mx-auto mb-4 rounded-xl p-2">
-                    <img src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(window.location.href)}`} alt="Share QR" className="w-full h-full" />
-                </div>
-                <p className="text-[10px] font-black uppercase tracking-widest">Share Digital Passport</p>
-                <button 
-                    onClick={() => {
-                        navigator.clipboard.writeText(window.location.href);
-                        alert("Passport Link Copied!");
-                    }}
-                    className="mt-2 text-xs text-[var(--color-gold)] font-bold decoration-[var(--color-gold)] underline underline-offset-4"
-                >
-                    Copy Secure Link
-                </button>
-            </div>
         </div>
     );
 }
@@ -491,7 +495,7 @@ function MobileInspectModal({ assetId, assetTag, currentCondition, type, label, 
         <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[100] flex items-end md:items-center justify-center p-0 md:p-4" onClick={onClose}>
             <motion.div 
                 initial={{ y: "100%" }} animate={{ y: 0 }}
-                className="w-full max-w-lg bg-[#0a0f1e] border-t md:border border-white/10 rounded-t-[2.5rem] md:rounded-[2.5rem] p-8 space-y-6 shadow-2xl"
+                className="w-full max-w-lg bg-[#0a0f1e] border-t md:border border-white/10 rounded-t-[2.5rem] md:rounded-[2.5rem] p-8 space-y-6 shadow-2xl relative"
                 onClick={e => e.stopPropagation()}
             >
                 <div className="flex justify-between items-center">
@@ -719,22 +723,3 @@ function BumpOutModal({ assetTag, currentCondition, projectName, onClose, onSucc
     );
 }
 
-function LinkIcon(props: any) {
-    return (
-        <svg
-            {...props}
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-        >
-            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-        </svg>
-    )
-}
