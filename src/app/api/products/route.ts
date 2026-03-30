@@ -298,6 +298,14 @@ export async function GET(req: NextRequest) {
             .orderBy(sql`${vendors.scoreRating} DESC NULLS LAST, ${products.averageRating} DESC NULLS LAST, ${products.createdAt} ASC`)
             .limit(limit + 1); // fetch one extra to determine hasMore
 
+        const totalRowsQueryResult = await db
+            .select({ count: sql<number>`count(*)` })
+            .from(products)
+            .leftJoin(vendors, eq(products.vendorId, vendors.id))
+            .leftJoin(categories, eq(products.categoryId, categories.id))
+            .where(whereClause);
+        const totalMatchingFound = Number(totalRowsQueryResult[0]?.count || 0);
+
         const hasMore = rows.length > limit;
         const pageRows = hasMore ? rows.slice(0, limit) : rows;
 
@@ -335,7 +343,7 @@ export async function GET(req: NextRequest) {
 
         const nextCursor = hasMore ? pageRows[pageRows.length - 1].id : null;
 
-        const responseBody = { products: result, nextCursor, hasMore };
+        const responseBody = { products: result, nextCursor, hasMore, totalMatchingFound };
 
         // Cache this page for 30 seconds (skip caching search queries or custom filters)
         if (!search && !isCustomFilter) {

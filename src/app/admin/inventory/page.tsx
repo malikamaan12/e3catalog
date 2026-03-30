@@ -72,7 +72,7 @@ export default function InventoryAdminPage() {
         setLoading(true);
         Promise.all([
             fetch("/api/admin/inventory").then((res) => res.ok ? res.json().catch(() => []) : []).catch(() => []),
-            fetch("/api/products").then((res) => res.ok ? res.json().catch(() => []) : []).catch(() => []),
+            fetch("/api/admin/products").then((res) => res.ok ? res.json().catch(() => []) : []).catch(() => []),
             fetch(`/api/admin/inventory/matrix?from=${fromDate}&to=${tillDate}`).then((res) => res.ok ? res.json().catch(() => ({ error: "Failed to load matrix" })) : { error: "Failed to load matrix" }).catch(() => ({ error: "Failed to load matrix" })),
         ]).then(([overridesData, productsData, matrixRes]) => {
             setOverrides(Array.isArray(overridesData) ? overridesData : []);

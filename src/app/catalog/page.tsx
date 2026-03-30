@@ -138,7 +138,7 @@ function CatalogContent() {
         if (replace) setLoading(true); else setLoadingMore(true);
 
         try {
-            const params = new URLSearchParams({ limit: "20" });
+            const params = new URLSearchParams({ limit: "50" });
             if (category) params.set("category", category);
             if (search) params.set("search", search);
             if (vendorId) params.set("vendorId", vendorId);
@@ -153,7 +153,7 @@ function CatalogContent() {
                 setProducts((prev) => replace ? data.products : [...prev, ...data.products]);
                 setHasMore(data.hasMore ?? false);
                 setNextCursor(data.nextCursor ?? null);
-                setTotalCount((prev) => replace ? data.products.length : prev + data.products.length);
+                setTotalCount(data.totalMatchingFound ?? 0);
             }
         } catch (err) {
             console.error("Fetch error:", err);
