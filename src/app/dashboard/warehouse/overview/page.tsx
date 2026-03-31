@@ -1,9 +1,9 @@
 import { db } from "@/lib/db";
-import { bookings, inventoryUnits, safetyCertificates } from "@/lib/db/schema";
+import { bookings, inventoryUnits, safetyCertificates, stagingInventory } from "@/lib/db/schema";
 import { eq, and, gte, lte, inArray } from "drizzle-orm";
 import { 
     Truck, RotateCcw, Wrench, AlertTriangle,
-    Scan, LayoutGrid, Printer, Package, ShieldAlert
+    Scan, LayoutGrid, Printer, ShieldAlert, BoxesIcon
 } from "lucide-react";
 import Link from "next/link";
 import { format, addDays, startOfDay, endOfDay } from "date-fns";
@@ -49,11 +49,18 @@ export default async function WarehouseOverviewPage() {
             lte(safetyCertificates.expiryDate, thirtyDaysFromNow)
         ));
 
+    // 5. Staging items still being counted
+    const stagingItems = await db
+        .select({ id: stagingInventory.id })
+        .from(stagingInventory)
+        .where(eq(stagingInventory.migrationStatus, "counting"));
+
     const stats = [
-        { label: "Dispatches Today",  value: dispatches.length,   icon: Truck,          color: "text-amber-500",  bg: "bg-amber-500/10",  href: "/dashboard/warehouse/dispatch" },
-        { label: "Returns Today",     value: returns.length,      icon: RotateCcw,       color: "text-sky-500",    bg: "bg-sky-500/10",    href: "/dashboard/warehouse/dispatch" },
-        { label: "In Maintenance",    value: maintenance.length,  icon: Wrench,          color: "text-red-500",    bg: "bg-red-500/10",    href: "/dashboard/warehouse/fleet" },
-        { label: "Expiring Certs",    value: certificates.length, icon: AlertTriangle,   color: "text-amber-400",  bg: "bg-amber-400/10",  href: "/dashboard/warehouse/fleet" },
+        { label: "Dispatches Today",  value: dispatches.length,   icon: Truck,          color: "text-amber-500",   bg: "bg-amber-500/10",   href: "/dashboard/warehouse/dispatch" },
+        { label: "Returns Today",     value: returns.length,      icon: RotateCcw,       color: "text-sky-500",     bg: "bg-sky-500/10",     href: "/dashboard/warehouse/dispatch" },
+        { label: "In Maintenance",    value: maintenance.length,  icon: Wrench,          color: "text-red-500",     bg: "bg-red-500/10",     href: "/dashboard/warehouse/fleet" },
+        { label: "Staging Items",     value: stagingItems.length, icon: BoxesIcon,       color: "text-violet-400",  bg: "bg-violet-500/10",  href: "/dashboard/warehouse/onboarding" },
+        { label: "Expiring Certs",    value: certificates.length, icon: AlertTriangle,   color: "text-amber-400",   bg: "bg-amber-400/10",   href: "/dashboard/warehouse/fleet" },
     ];
 
     const QUICK_ACTIONS = [
@@ -72,6 +79,14 @@ export default async function WarehouseOverviewPage() {
             sub: "Browse · Update",
             accent: "from-sky-500/20 to-sky-600/5 border-sky-500/25 hover:border-sky-500/60",
             iconColor: "text-sky-500",
+        },
+        {
+            href: "/dashboard/warehouse/onboarding",
+            icon: BoxesIcon,
+            label: "Bulk Onboarding",
+            sub: "Count · Convert",
+            accent: "from-violet-500/20 to-violet-600/5 border-violet-500/25 hover:border-violet-500/60",
+            iconColor: "text-violet-400",
         },
         {
             href: "/dashboard/warehouse/inspections",
@@ -105,7 +120,7 @@ export default async function WarehouseOverviewPage() {
             </header>
 
             {/* Quick Stat Cards */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
                 {stats.map((stat, idx) => (
                     <Link
                         key={idx}
@@ -125,7 +140,7 @@ export default async function WarehouseOverviewPage() {
             </div>
 
             {/* Quick Action Buttons */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                 {QUICK_ACTIONS.map((action) => (
                     <Link
                         key={action.href}

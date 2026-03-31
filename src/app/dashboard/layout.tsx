@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import {
     LayoutDashboard, FileText, CalendarDays, ShoppingBag,
     ShoppingCart, Sparkles, User, Globe, LogOut, Menu, X,
-    Truck, Archive, AlertTriangle
+    Truck, Archive, AlertTriangle, PackagePlus
 } from "lucide-react";
 
 const CLIENT_NAV_ITEMS = [
@@ -24,6 +24,7 @@ const CLIENT_NAV_ITEMS = [
 const WAREHOUSE_NAV_ITEMS = [
     { href: "/dashboard/warehouse/overview", label: "Warehouse Hub", icon: LayoutDashboard, exact: true },
     { href: "/dashboard/warehouse/dispatch", label: "Dispatch Pipeline", icon: Truck, exact: false },
+    { href: "/dashboard/warehouse/onboarding", label: "Bulk Onboarding", icon: PackagePlus, exact: false },
     { href: "/admin/inventory", label: "Inventory Fleet", icon: Archive, exact: false },
     { divider: true },
     { href: "/dashboard/warehouse/inspections", label: "Damage Logs", icon: AlertTriangle },

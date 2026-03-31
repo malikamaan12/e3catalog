@@ -762,3 +762,45 @@ export const reviewsRelations = relations(reviews, ({ one }) => ({
         references: [users.id],
     }),
 }));
+
+// ─── Staging Inventory (Warehouse Migration Tool) ───
+// Isolated table — never mixed with live products.
+// Used during physical warehouse transfers to count unknown assets
+// before converting them to live Products + Digital Passports (inventory_units).
+export const stagingInventory = pgTable("staging_inventory", {
+    id: varchar("id", { length: 255 }).primaryKey(),
+    // The vendor who owns this staging batch (nullable — platform-managed items allowed)
+    vendorId: varchar("vendor_id", { length: 255 }).references(() => vendors.id),
+    // Rough product identity captured on the warehouse floor
+    roughName: varchar("rough_name", { length: 255 }).notNull().default(""),
+    roughImageUrl: varchar("rough_image_url", { length: 500 }),
+    roughCategory: varchar("rough_category", { length: 255 }), // free-text hint, e.g. "Chairs"
+    // Physical specs (free-text, filled quickly on tablet)
+    dimensions: varchar("dimensions", { length: 255 }), // e.g. "50×50×100 cm"
+    weight: varchar("weight", { length: 100 }),          // e.g. "12 kg"
+    technicalNotes: text("technical_notes"),
+    // Counting
+    countedQuantity: integer("counted_quantity").notNull().default(0),
+    // Lifecycle
+    migrationStatus: varchar("migration_status", { length: 50 }).notNull().default("counting"), // counting | migrated
+    // If migrated, track the resulting product
+    migratedProductId: varchar("migrated_product_id", { length: 255 }).references(() => products.id),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => {
+    return {
+        vendorIdIdx: index("staging_inventory_vendor_id_idx").on(table.vendorId),
+        statusIdx: index("staging_inventory_status_idx").on(table.migrationStatus),
+    };
+});
+
+export const stagingInventoryRelations = relations(stagingInventory, ({ one }) => ({
+    vendor: one(vendors, {
+        fields: [stagingInventory.vendorId],
+        references: [vendors.id],
+    }),
+    migratedProduct: one(products, {
+        fields: [stagingInventory.migratedProductId],
+        references: [products.id],
+    }),
+}));
