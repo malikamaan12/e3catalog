@@ -107,50 +107,52 @@ export default async function WarehouseOverviewPage() {
     ];
 
     return (
-        <div className="flex flex-col gap-6 p-4 md:p-8 max-w-5xl mx-auto w-full">
+        <div className="flex flex-col gap-8 p-4 md:p-8 max-w-6xl mx-auto w-full">
             {/* Header */}
             <header className="flex flex-col gap-1 pt-2">
                 <div className="flex items-center gap-3">
-                    <h1 className="text-3xl font-black tracking-tight text-slate-100 italic uppercase">
-                        Warehouse <span className="text-amber-500">Hub</span>
+                    <h1 className="text-3xl font-[family-name:var(--font-heading)] font-black tracking-tight text-[var(--color-warm-white)] uppercase italic">
+                        Warehouse <span className="text-[var(--color-gold)]">Hub</span>
                     </h1>
-                    <span className="text-[9px] font-black px-2 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-500 uppercase tracking-widest animate-pulse">Live</span>
+                    <span className="text-[10px] font-black px-3 py-1 rounded-full bg-[var(--color-gold)]/10 border border-[var(--color-gold)]/20 text-[var(--color-gold)] uppercase tracking-widest animate-pulse">Live</span>
                 </div>
-                <p className="text-slate-500 text-sm font-medium">{format(today, "EEEE, MMMM do yyyy")}</p>
+                <p className="text-[var(--color-slate)] text-sm font-medium">{format(today, "EEEE, MMMM do yyyy")}</p>
             </header>
 
             {/* Quick Stat Cards */}
-            <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
                 {stats.map((stat, idx) => (
                     <Link
                         key={idx}
                         href={stat.href}
-                        className="glass rounded-2xl p-5 border border-white/5 flex flex-col gap-4 relative overflow-hidden transition-all hover:scale-[1.02] hover:border-white/10 active:scale-[0.98]"
+                        className="glass rounded-xl p-5 border border-white/10 flex flex-col gap-4 relative overflow-hidden transition-all hover:translate-y-[-2px] hover:border-[var(--color-gold)]/30 active:scale-[0.98] group"
                     >
-                        <div className={`p-2.5 rounded-xl ${stat.bg} w-fit`}>
+                        <div className={`p-2.5 rounded-lg ${stat.bg} w-fit transition-transform group-hover:scale-110`}>
                             <stat.icon className={`h-5 w-5 ${stat.color}`} />
                         </div>
                         <div className="flex flex-col">
-                            <span className="text-3xl font-black text-slate-100 leading-none">{stat.value}</span>
-                            <span className="text-[9px] uppercase tracking-widest font-black text-slate-600 mt-2 leading-tight">{stat.label}</span>
+                            <span className="text-3xl font-[family-name:var(--font-heading)] font-bold text-[var(--color-warm-white)] leading-none">{stat.value}</span>
+                            <span className="text-[10px] uppercase tracking-widest font-bold text-[var(--color-slate)] mt-3 leading-tight">{stat.label}</span>
                         </div>
-                        {stat.value > 0 && <div className={`absolute top-0 right-0 h-full w-0.5 ${stat.bg.replace("/10", "/40")}`} />}
                     </Link>
                 ))}
             </div>
 
             {/* Quick Action Buttons */}
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
                 {QUICK_ACTIONS.map((action) => (
                     <Link
                         key={action.href}
                         href={action.href}
-                        className={`flex flex-col items-center justify-center gap-4 py-8 px-4 rounded-3xl bg-gradient-to-b ${action.accent} border-2 transition-all hover:scale-[1.03] active:scale-[0.97] group shadow-lg`}
+                        className="flex flex-col items-center justify-center gap-5 py-10 px-4 rounded-xl glass border border-white/10 transition-all hover:translate-y-[-4px] hover:border-[var(--color-gold)]/50 active:scale-[0.97] group shadow-2xl relative overflow-hidden"
                     >
-                        <action.icon className={`h-10 w-10 ${action.iconColor} transition-transform group-hover:scale-110`} />
-                        <div className="text-center">
-                            <p className="text-sm font-black uppercase tracking-widest text-slate-100">{action.label}</p>
-                            <p className="text-[9px] font-bold text-slate-600 mt-0.5 uppercase tracking-widest">{action.sub}</p>
+                        {/* Subtle Background Glow */}
+                        <div className={`absolute inset-0 bg-gradient-to-br ${action.accent} opacity-20 group-hover:opacity-40 transition-opacity`} />
+                        
+                        <action.icon className={`h-12 w-12 ${action.iconColor} transition-transform group-hover:scale-110 relative z-10`} />
+                        <div className="text-center relative z-10">
+                            <p className="text-sm font-[family-name:var(--font-heading)] font-bold uppercase tracking-widest text-[var(--color-warm-white)]">{action.label}</p>
+                            <p className="text-[10px] font-bold text-[var(--color-slate)] mt-1 uppercase tracking-widest opacity-60">{action.sub}</p>
                         </div>
                     </Link>
                 ))}

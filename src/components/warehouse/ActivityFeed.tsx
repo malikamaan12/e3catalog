@@ -53,75 +53,90 @@ export default function WarehouseActivityFeed() {
     }, [tick]);
 
     return (
-        <div className="glass rounded-[2rem] border border-white/[0.06] overflow-hidden">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.06]">
-                <h2 className="text-xs font-black text-slate-400 uppercase tracking-[0.3em]">Operational Stream</h2>
-                <div className="flex items-center gap-2">
-                    <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
-                    <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest">Live</span>
+        <div className="glass rounded-3xl border border-white/5 overflow-hidden shadow-2xl">
+            <div className="flex items-center justify-between px-8 py-5 bg-[var(--color-navy)]/40 border-b border-white/5">
+                <div className="flex flex-col">
+                    <h2 className="text-[10px] font-black text-[var(--color-gold)] uppercase tracking-[0.3em]">Operational Stream</h2>
+                    <span className="text-[8px] font-black text-[var(--color-slate)] uppercase tracking-widest opacity-40">Real-time Telemetry</span>
+                </div>
+                <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-white/5 border border-white/10">
+                    <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-gold)] animate-pulse shadow-[0_0_8px_var(--color-gold)]" />
+                    <span className="text-[9px] font-black text-[var(--color-gold)] uppercase tracking-widest">Active Connection</span>
                 </div>
             </div>
 
             {loading && (
-                <div className="flex flex-col gap-3 p-4">
-                    {[...Array(4)].map((_, i) => (
-                        <div key={i} className="h-12 bg-white/[0.03] rounded-xl animate-pulse" />
+                <div className="flex flex-col gap-1 p-2">
+                    {[...Array(5)].map((_, i) => (
+                        <div key={i} className="h-16 bg-white/[0.02] rounded-xl animate-pulse" />
                     ))}
                 </div>
             )}
 
             {!loading && events.length === 0 && (
-                <div className="py-12 text-center text-slate-600 text-sm italic">
-                    No recent activity. Start scanning to see events here.
+                <div className="py-24 flex flex-col items-center justify-center gap-4">
+                    <div className="p-4 rounded-full bg-white/5 border border-white/5">
+                        <Scan className="h-8 w-8 text-[var(--color-slate)] opacity-20" />
+                    </div>
+                    <p className="text-[10px] font-black text-[var(--color-slate)] uppercase tracking-[0.2em] opacity-40">Zero Events Detected</p>
                 </div>
             )}
 
             {!loading && events.length > 0 && (
-                <div className="divide-y divide-white/[0.04]">
+                <div className="flex flex-col p-1.5 gap-1 max-h-[600px] overflow-y-auto custom-scrollbar">
                     {events.map((event) => (
-                        <div key={event.id} className="flex items-start gap-4 px-6 py-4 hover:bg-white/[0.02] transition-colors">
-                            <div className={`mt-0.5 p-2 rounded-lg shrink-0 ${
+                        <div 
+                            key={event.id} 
+                            className="flex items-center gap-5 px-5 py-4 rounded-2xl hover:bg-white/[0.03] transition-all group border border-transparent hover:border-white/5"
+                        >
+                            <div className={`p-3 rounded-xl shrink-0 transition-all group-hover:scale-110 ${
                                 event.eventType === "scan"
-                                    ? event.detail === "dispatched" ? "bg-amber-500/10" : "bg-sky-500/10"
+                                    ? event.detail === "dispatched" ? "bg-[var(--color-gold)]/10" : "bg-sky-500/10"
                                     : "bg-red-500/10"
                             }`}>
                                 {event.eventType === "scan"
-                                    ? <Scan className={`h-3.5 w-3.5 ${SCAN_COLOR[event.detail] || "text-slate-400"}`} />
-                                    : <ShieldAlert className="h-3.5 w-3.5 text-red-400" />
+                                    ? <Scan className={`h-4 w-4 ${SCAN_COLOR[event.detail] || "text-[var(--color-slate)]"}`} />
+                                    : <ShieldAlert className="h-4 w-4 text-red-500" />
                                 }
                             </div>
 
-                            <div className="flex-1 min-w-0">
-                                <div className="flex items-baseline gap-2 flex-wrap">
-                                    <span className="font-black text-xs text-slate-200 tracking-widest">{event.assetTag || "—"}</span>
-                                    <span className={`text-[10px] font-bold uppercase ${
+                            <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+                                <div className="flex items-center gap-2">
+                                    <span className="font-[family-name:var(--font-heading)] font-black text-sm text-[var(--color-warm-white)] tracking-[0.1em]">{event.assetTag || "PROTOCOL—X"}</span>
+                                    <div className="h-1 w-1 rounded-full bg-white/10" />
+                                    <span className={`text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded border transition-colors ${
                                         event.eventType === "scan"
-                                            ? SCAN_COLOR[event.detail] || "text-slate-400"
-                                            : "text-red-400"
+                                            ? SCAN_COLOR[event.detail] ? `${SCAN_COLOR[event.detail]} bg-current/10 border-current/20` : "text-[var(--color-slate)] bg-white/5 border-white/10"
+                                            : "text-red-500 bg-red-500/10 border-red-500/20"
                                     }`}>
                                         {event.eventType === "scan"
                                             ? event.detail
-                                            : `${event.detail?.replace("_", " ")} check`
+                                            : `${event.detail?.replace("_", " ")} audit`
                                         }
                                     </span>
                                 </div>
 
                                 {event.eventType === "scan" && event.projectName && (
-                                    <p className="text-[10px] text-slate-600 mt-0.5 truncate">→ {event.projectName}</p>
+                                    <div className="flex items-center gap-1.5">
+                                        <ChevronRight className="h-2.5 w-2.5 text-[var(--color-gold)]" />
+                                        <p className="text-[10px] font-bold text-[var(--color-slate)] uppercase tracking-tight truncate max-w-[140px]">{event.projectName}</p>
+                                    </div>
                                 )}
                                 {event.eventType === "inspection" && event.conditionBefore && (
-                                    <p className="text-[10px] mt-0.5">
-                                        <span className={CONDITION_COLOR[event.conditionBefore] || "text-slate-500"}>{event.conditionBefore}</span>
-                                        <span className="text-slate-700"> → </span>
-                                        <span className={CONDITION_COLOR[event.conditionAfter || ""] || "text-slate-500"}>{event.conditionAfter}</span>
-                                    </p>
+                                    <div className="flex items-center gap-1.5 mt-0.5">
+                                        <span className={`text-[9px] font-black uppercase ${CONDITION_COLOR[event.conditionBefore] || "text-[var(--color-slate)]"}`}>{event.conditionBefore}</span>
+                                        <div className="w-2 h-px bg-white/10" />
+                                        <span className={`text-[9px] font-black uppercase ${CONDITION_COLOR[event.conditionAfter || ""] || "text-[var(--color-slate)]"}`}>{event.conditionAfter}</span>
+                                    </div>
                                 )}
                             </div>
 
-                            <span className="flex items-center gap-1 text-[9px] text-slate-700 shrink-0 whitespace-nowrap">
-                                <Clock className="h-3 w-3" />
-                                {formatDistanceToNow(new Date(event.timestamp), { addSuffix: true })}
-                            </span>
+                            <div className="flex flex-col items-end gap-1 shrink-0">
+                                <span className="flex items-center gap-1 text-[9px] font-black text-[var(--color-slate)] uppercase tracking-tight opacity-40">
+                                    <Clock className="h-3 w-3" />
+                                    {formatDistanceToNow(new Date(event.timestamp), { addSuffix: false })}
+                                </span>
+                            </div>
                         </div>
                     ))}
                 </div>

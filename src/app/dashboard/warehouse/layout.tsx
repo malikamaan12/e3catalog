@@ -36,15 +36,15 @@ export default function WarehouseLayout({ children }: { children: React.ReactNod
                             key={tab.href}
                             href={tab.href}
                             className={`
-                                flex flex-col items-center gap-1 px-5 py-3 text-[10px] font-black uppercase tracking-widest 
+                                flex flex-col items-center gap-1 px-5 py-3 text-[10px] font-bold uppercase tracking-widest 
                                 whitespace-nowrap shrink-0 border-b-2 transition-all
                                 ${active
-                                    ? "border-amber-500 text-amber-500"
+                                    ? "border-[var(--color-gold)] text-[var(--color-gold)]"
                                     : "border-transparent text-slate-500 hover:text-slate-300"
                                 }
                             `}
                         >
-                            <Icon className="h-4 w-4" />
+                            <Icon className={`h-4 w-4 ${active ? 'text-[var(--color-gold)]' : ''}`} />
                             {tab.label}
                         </Link>
                     );

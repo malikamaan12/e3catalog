@@ -23,11 +23,13 @@ const CLIENT_NAV_ITEMS = [
 
 const WAREHOUSE_NAV_ITEMS = [
     { href: "/dashboard/warehouse/overview", label: "Warehouse Hub", icon: LayoutDashboard, exact: true },
+    { href: "/dashboard/warehouse/fleet", label: "Inventory Fleet", icon: Archive, exact: false },
     { href: "/dashboard/warehouse/dispatch", label: "Dispatch Pipeline", icon: Truck, exact: false },
     { href: "/dashboard/warehouse/onboarding", label: "Bulk Onboarding", icon: PackagePlus, exact: false },
-    { href: "/admin/inventory", label: "Inventory Fleet", icon: Archive, exact: false },
     { divider: true },
-    { href: "/dashboard/warehouse/inspections", label: "Damage Logs", icon: AlertTriangle },
+    { href: "/dashboard/warehouse/fulfillment", label: "Scan to Fulfill", icon: Sparkles, exact: false },
+    { href: "/dashboard/warehouse/labels", label: "Asset Labels", icon: FileText, exact: false },
+    { href: "/dashboard/warehouse/inspections", label: "Damage Audits", icon: AlertTriangle },
     { divider: true },
     { href: "/dashboard/profile", label: "My Profile", icon: User },
 ];

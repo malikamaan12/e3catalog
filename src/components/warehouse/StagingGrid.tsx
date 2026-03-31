@@ -39,21 +39,22 @@ type Toast = { id: string; message: string; type: "success" | "error" | "info" }
 
 function ToastContainer({ toasts, dismiss }: { toasts: Toast[]; dismiss: (id: string) => void }) {
     return (
-        <div className="fixed bottom-6 right-6 z-[100] flex flex-col gap-2 pointer-events-none">
+        <div className="fixed bottom-10 right-10 z-[100] flex flex-col gap-3 pointer-events-none">
             {toasts.map((t) => (
                 <div
                     key={t.id}
-                    className={`pointer-events-auto flex items-start gap-3 px-4 py-3 rounded-2xl shadow-2xl border backdrop-blur-xl text-sm font-medium max-w-sm animate-[slideUp_0.3s_ease-out]
-                        ${t.type === "success" ? "bg-emerald-950/90 border-emerald-500/30 text-emerald-300" : ""}
-                        ${t.type === "error" ? "bg-red-950/90 border-red-500/30 text-red-300" : ""}
-                        ${t.type === "info" ? "bg-slate-900/90 border-white/10 text-slate-300" : ""}
+                    className={`pointer-events-auto flex items-start gap-4 px-6 py-4 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] border backdrop-blur-2xl text-[10px] font-black uppercase tracking-widest max-w-sm animate-in slide-in-from-right-10 duration-500
+                        ${t.type === "success" ? "bg-emerald-950/80 border-emerald-500/30 text-emerald-400" : ""}
+                        ${t.type === "error" ? "bg-red-950/80 border-red-500/30 text-red-400" : ""}
+                        ${t.type === "info" ? "bg-[var(--color-navy)]/90 border-[var(--color-gold)]/20 text-[var(--color-gold)]" : ""}
                     `}
                 >
-                    {t.type === "success" && <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0 text-emerald-400" />}
-                    {t.type === "error" && <AlertCircle className="h-4 w-4 mt-0.5 shrink-0 text-red-400" />}
-                    <span className="flex-1">{t.message}</span>
-                    <button onClick={() => dismiss(t.id)} className="opacity-50 hover:opacity-100 transition-opacity">
-                        <X className="h-3.5 w-3.5" />
+                    {t.type === "success" && <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0" />}
+                    {t.type === "error" && <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />}
+                    {t.type === "info" && <Zap className="h-4 w-4 mt-0.5 shrink-0" />}
+                    <span className="flex-1 leading-relaxed">{t.message}</span>
+                    <button onClick={() => dismiss(t.id)} className="opacity-40 hover:opacity-100 transition-opacity p-1">
+                        <X className="h-4 w-4" />
                     </button>
                 </div>
             ))}
@@ -75,49 +76,65 @@ function MigrateDialog({
     loading: boolean;
 }) {
     return (
-        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center">
-            <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onCancel} />
-            <div className="relative bg-[#0D1526] border border-white/10 rounded-t-3xl md:rounded-3xl p-6 md:p-8 w-full max-w-md mx-4 shadow-2xl">
-                <div className="flex items-center gap-3 mb-4">
-                    <div className="p-2.5 rounded-xl bg-amber-500/10">
-                        <Zap className="h-5 w-5 text-amber-500" />
+        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={onCancel} />
+            <div className="relative bg-[var(--color-navy)] border border-[var(--color-gold)]/20 rounded-3xl p-8 md:p-10 w-full max-w-lg shadow-[0_0_100px_rgba(212,175,55,0.15)] animate-in zoom-in-95 duration-500">
+                <div className="flex items-center gap-4 mb-8">
+                    <div className="p-4 rounded-2xl bg-[var(--color-gold)]/10 border border-[var(--color-gold)]/20 shadow-inner">
+                        <Zap className="h-6 w-6 text-[var(--color-gold)]" />
                     </div>
-                    <h2 className="text-lg font-black text-slate-100 uppercase tracking-tight">
-                        Convert to Live Catalog?
-                    </h2>
-                </div>
-
-                <div className="bg-white/5 rounded-2xl p-4 mb-6 space-y-2">
-                    <p className="text-slate-300 font-semibold text-sm">{item.roughName || "Unnamed Item"}</p>
-                    <div className="flex items-center gap-4 text-xs text-slate-500">
-                        <span>Qty: <span className="text-amber-400 font-black">{item.countedQuantity}</span></span>
-                        {item.dimensions && <span>Dims: {item.dimensions}</span>}
-                        {item.weight && <span>Weight: {item.weight}</span>}
+                    <div>
+                        <h2 className="text-xl font-[family-name:var(--font-heading)] font-black text-[var(--color-warm-white)] uppercase tracking-tight italic">
+                            Commit to <span className="text-[var(--color-gold)]">Fleet</span>
+                        </h2>
+                        <p className="text-[10px] font-black text-[var(--color-slate)] uppercase tracking-[0.2em] opacity-40">Operational catalog promotion</p>
                     </div>
                 </div>
 
-                <p className="text-slate-400 text-sm mb-2 leading-relaxed">
-                    This will create <span className="text-amber-400 font-black">1 Product</span> and{" "}
-                    <span className="text-sky-400 font-black">{item.countedQuantity} Digital Passports</span>{" "}
-                    (inventory units) with auto-generated QR asset tags.
-                </p>
-                <p className="text-slate-600 text-xs mb-6">Product will be unpublished (shadow inventory). The vendor can set price & publish from their catalog.</p>
+                <div className="glass rounded-[2rem] p-6 mb-8 border border-white/5 bg-white/[0.02]">
+                    <p className="text-[var(--color-warm-white)] font-black text-lg font-[family-name:var(--font-heading)] uppercase tracking-widest mb-4">{item.roughName || "UNDEFINED PROTOCOL"}</p>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="flex flex-col gap-1">
+                            <span className="text-[8px] font-black text-[var(--color-slate)] uppercase tracking-widest opacity-40">Target Volume</span>
+                            <span className="text-xl font-[family-name:var(--font-heading)] font-black text-[var(--color-gold)]">{item.countedQuantity} Units</span>
+                        </div>
+                        <div className="flex flex-col gap-1">
+                            <span className="text-[8px] font-black text-[var(--color-slate)] uppercase tracking-widest opacity-40">Form Factor</span>
+                            <span className="text-[10px] font-bold text-[var(--color-warm-white)] uppercase">{item.dimensions || "—"} / {item.weight || "—"}</span>
+                        </div>
+                    </div>
+                </div>
 
-                <div className="flex gap-3">
+                <div className="flex flex-col gap-4 mb-10">
+                    <div className="flex items-start gap-3">
+                        <div className="mt-1 w-1.5 h-1.5 rounded-full bg-[var(--color-gold)] shadow-[0_0_8px_var(--color-gold)]" />
+                        <p className="text-[10px] text-[var(--color-slate)] font-bold uppercase tracking-wide leading-relaxed">
+                            Generating <span className="text-[var(--color-warm-white)]">1 Master Product Entry</span> in centralized catalog.
+                        </p>
+                    </div>
+                    <div className="flex items-start gap-3">
+                        <div className="mt-1 w-1.5 h-1.5 rounded-full bg-sky-400 shadow-[0_0_8px_rgb(56,189,248)]" />
+                        <p className="text-[10px] text-[var(--color-slate)] font-bold uppercase tracking-wide leading-relaxed">
+                            Initialising <span className="text-sky-400">{item.countedQuantity} Digital Passports</span> with unique QR telemetry.
+                        </p>
+                    </div>
+                </div>
+
+                <div className="flex gap-4">
                     <button
                         onClick={onCancel}
                         disabled={loading}
-                        className="flex-1 py-3 rounded-2xl border border-white/10 text-slate-400 font-bold text-sm hover:bg-white/5 transition-all disabled:opacity-50"
+                        className="flex-1 h-16 rounded-2xl glass border border-white/10 text-[var(--color-slate)] font-black text-[10px] uppercase tracking-[0.2em] hover:text-white transition-all disabled:opacity-50"
                     >
-                        Cancel
+                        Abort
                     </button>
                     <button
                         onClick={onConfirm}
                         disabled={loading}
-                        className="flex-1 py-3 rounded-2xl bg-amber-500 text-[#0A0F1C] font-black text-sm hover:bg-amber-400 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                        className="flex-[1.5] h-16 rounded-2xl bg-[var(--color-gold)] text-[var(--color-navy)] font-black text-[10px] uppercase tracking-[0.3em] hover:scale-105 active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-3 shadow-[0_0_30px_rgba(212,175,55,0.3)]"
                     >
-                        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
-                        {loading ? "Converting..." : "Convert Now"}
+                        {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Zap className="h-5 w-5" />}
+                        {loading ? "PROMOTING..." : "COMMIT TO FLEET"}
                     </button>
                 </div>
             </div>
@@ -181,12 +198,12 @@ function QuantityStepper({
     }, [localVal, itemId, syncWithServer]);
 
     return (
-        <div className={`flex items-center gap-1 ${migrated ? "opacity-50 pointer-events-none" : ""}`}>
+        <div className={`flex items-center gap-1.5 ${migrated ? "opacity-50 pointer-events-none" : ""}`}>
             <button
                 type="button"
                 onClick={() => step(-1)}
                 disabled={localVal === 0 || pending}
-                className="h-10 w-10 flex items-center justify-center rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 border border-white/10 transition-all disabled:opacity-30 text-slate-300"
+                className="h-10 w-10 flex items-center justify-center rounded-xl glass hover:bg-white/5 active:scale-95 border border-white/10 transition-all disabled:opacity-20 text-[var(--color-slate)] hover:text-white shadow-xl"
                 aria-label="Decrease quantity"
             >
                 <Minus className="h-4 w-4" />
@@ -197,7 +214,7 @@ function QuantityStepper({
                 min={0}
                 value={localVal}
                 onChange={handleInputChange}
-                className="w-16 text-center bg-slate-900 border border-white/10 rounded-xl py-2 text-slate-100 font-black text-base focus:outline-none focus:border-amber-500/50 transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                className="w-16 text-center bg-black/40 border border-white/10 rounded-xl py-2.5 text-[var(--color-warm-white)] font-bold text-sm font-[family-name:var(--font-heading)] focus:outline-none focus:border-[var(--color-gold)]/50 transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 aria-label="Quantity"
             />
 
@@ -205,7 +222,7 @@ function QuantityStepper({
                 type="button"
                 onClick={() => step(1)}
                 disabled={pending}
-                className="h-10 w-10 flex items-center justify-center rounded-xl bg-amber-500/20 hover:bg-amber-500/30 active:scale-95 border border-amber-500/30 hover:border-amber-500/60 transition-all disabled:opacity-50 text-amber-400"
+                className="h-10 w-10 flex items-center justify-center rounded-xl bg-[var(--color-gold)]/10 hover:bg-[var(--color-gold)]/20 active:scale-95 border border-[var(--color-gold)]/30 hover:border-[var(--color-gold)]/60 transition-all disabled:opacity-20 text-[var(--color-gold)] shadow-lg shadow-[var(--color-gold)]/5"
                 aria-label="Increase quantity"
             >
                 <Plus className="h-4 w-4" />
@@ -279,85 +296,85 @@ function StagingRow({
         <>
             {/* ── Desktop row (lg+) ── */}
             <tr
-                className={`border-b border-white/5 group transition-colors
-                    ${isMigrated ? "opacity-60" : "hover:bg-white/[0.02]"}
+                className={`border-b border-white/5 group transition-all duration-300
+                    ${isMigrated ? "bg-emerald-500/[0.01] opacity-60" : "hover:bg-[var(--color-gold)]/[0.02]"}
                 `}
             >
                 {/* Index */}
-                <td className="hidden lg:table-cell px-4 py-3 text-slate-600 text-xs font-bold w-10 text-center">
+                <td className="hidden lg:table-cell px-4 py-3 text-[var(--color-slate)] text-[10px] font-black uppercase tracking-widest w-12 text-center opacity-40">
                     {String(rowIndex + 1).padStart(2, "0")}
                 </td>
 
                 {/* Name */}
-                <td className="hidden lg:table-cell px-3 py-2">
+                <td className="hidden lg:table-cell px-3 py-4">
                     <input
                         defaultValue={item.roughName}
                         disabled={isMigrated}
-                        placeholder="e.g. Black VIP Chair"
+                        placeholder="PROTOCOL IDENTITY"
                         onChange={(e) => debouncedSave("roughName", e.target.value)}
-                        className="w-full bg-transparent border-b border-white/10 focus:border-amber-500/50 outline-none text-slate-100 text-sm py-1.5 placeholder:text-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full bg-transparent border-b border-white/5 focus:border-[var(--color-gold)]/50 outline-none text-[var(--color-warm-white)] font-bold text-sm py-2 placeholder:text-white/5 transition-all disabled:opacity-50 font-[family-name:var(--font-heading)] tracking-wider uppercase"
                     />
                 </td>
 
                 {/* Image/Photo */}
-                <td className="hidden lg:table-cell px-3 py-2 w-14">
+                <td className="hidden lg:table-cell px-3 py-4 w-16">
                     <button
                         onClick={() => onImageClick(item)}
                         disabled={isMigrated}
-                        className="h-10 w-10 shrink-0 bg-slate-800 rounded-xl border border-white/10 flex items-center justify-center text-slate-400 hover:text-amber-400 hover:border-amber-400/50 transition-all overflow-hidden relative group"
+                        className="h-12 w-12 shrink-0 glass rounded-xl border border-white/10 flex items-center justify-center text-[var(--color-slate)] hover:text-[var(--color-gold)] hover:border-[var(--color-gold)]/40 transition-all overflow-hidden relative group shadow-lg"
                     >
                         {item.roughImageUrl ? (
                             <>
                                 <Image src={item.roughImageUrl} alt="Thumb" fill className="object-cover" />
-                                <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <ImagePlus className="w-4 h-4 text-white" />
+                                <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <ImagePlus className="w-5 h-5 text-white" />
                                 </div>
                             </>
                         ) : (
-                            <ImagePlus className="w-4 h-4" />
+                            <ImagePlus className="w-5 h-5 opacity-40 group-hover:opacity-100" />
                         )}
                     </button>
                 </td>
 
                 {/* Category hint */}
-                <td className="hidden lg:table-cell px-3 py-2 w-40">
+                <td className="hidden lg:table-cell px-3 py-4 w-44">
                     <select
                         defaultValue={item.roughCategory || ""}
                         disabled={isMigrated}
                         onChange={(e) => debouncedSave("roughCategory", e.target.value)}
-                        className="w-full bg-slate-900 border-b border-white/10 focus:border-amber-500/50 outline-none text-slate-300 text-xs py-1.5 focus:bg-[#0A0F1C] transition-colors disabled:opacity-50"
+                        className="w-full bg-transparent border-b border-white/5 focus:border-[var(--color-gold)]/50 outline-none text-[var(--color-slate)] text-[10px] font-black uppercase tracking-widest py-2 focus:text-white transition-all disabled:opacity-50"
                     >
-                        <option value="" disabled className="text-slate-500">Select Category...</option>
+                        <option value="" disabled className="text-slate-500">CATEGORY...</option>
                         {categories.map((c) => (
-                            <option key={c.id} value={c.id}>{c.name}</option>
+                            <option key={c.id} value={c.id} className="bg-[var(--color-navy)]">{c.name.toUpperCase()}</option>
                         ))}
                     </select>
                 </td>
 
                 {/* Dimensions */}
-                <td className="hidden lg:table-cell px-3 py-2 w-36">
+                <td className="hidden lg:table-cell px-3 py-4 w-36">
                     <input
                         defaultValue={item.dimensions ?? ""}
                         disabled={isMigrated}
-                        placeholder="e.g. 50×50×100"
+                        placeholder="SPEC—DIMS"
                         onChange={(e) => debouncedSave("dimensions", e.target.value)}
-                        className="w-full bg-transparent border-b border-white/10 focus:border-amber-500/50 outline-none text-slate-400 text-xs py-1.5 placeholder:text-slate-700 transition-colors disabled:opacity-50"
+                        className="w-full bg-transparent border-b border-white/5 focus:border-[var(--color-gold)]/50 outline-none text-[var(--color-slate)] text-[10px] font-black uppercase tracking-tighter py-2 placeholder:text-white/5 transition-all disabled:opacity-50"
                     />
                 </td>
 
                 {/* Notes */}
-                <td className="hidden lg:table-cell px-3 py-2">
+                <td className="hidden lg:table-cell px-3 py-4">
                     <input
                         defaultValue={item.technicalNotes ?? ""}
                         disabled={isMigrated}
-                        placeholder="Any notes..."
+                        placeholder="TECHNICAL—STREAM"
                         onChange={(e) => debouncedSave("technicalNotes", e.target.value)}
-                        className="w-full bg-transparent border-b border-white/10 focus:border-amber-500/50 outline-none text-slate-400 text-xs py-1.5 placeholder:text-slate-700 transition-colors disabled:opacity-50"
+                        className="w-full bg-transparent border-b border-white/5 focus:border-[var(--color-gold)]/50 outline-none text-[var(--color-slate)] text-[10px] font-medium py-2 placeholder:text-white/5 transition-all disabled:opacity-50 italic"
                     />
                 </td>
 
                 {/* Quantity stepper */}
-                <td className="hidden lg:table-cell px-3 py-2 w-44">
+                <td className="hidden lg:table-cell px-3 py-4 w-48">
                     <QuantityStepper
                         itemId={item.id}
                         value={item.countedQuantity}
@@ -367,28 +384,27 @@ function StagingRow({
                 </td>
 
                 {/* Status + Actions */}
-                <td className="hidden lg:table-cell px-3 py-2 w-44">
+                <td className="hidden lg:table-cell px-3 py-4 w-44">
                     <div className="flex items-center gap-2">
                         {isMigrated ? (
-                            <span className="flex items-center gap-1.5 text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-full px-3 py-1">
-                                <PackageCheck className="h-3 w-3" /> Migrated
-                            </span>
+                            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-black text-[9px] uppercase tracking-[0.2em] shadow-lg shadow-emerald-500/5">
+                                <PackageCheck className="h-3.5 w-3.5" /> LIVESTREAM
+                            </div>
                         ) : (
                             <>
                                 <button
                                     onClick={() => onConvertClick(item)}
                                     disabled={item.countedQuantity === 0}
-                                    title={item.countedQuantity === 0 ? "Set quantity > 0 first" : "Convert to Live Catalog"}
-                                    className="flex items-center gap-1.5 text-xs font-black text-amber-500 bg-amber-500/10 border border-amber-500/20 hover:border-amber-500/60 hover:bg-amber-500/20 rounded-full px-3 py-1 transition-all active:scale-95 disabled:opacity-30 disabled:pointer-events-none"
+                                    className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-[var(--color-gold)] text-[var(--color-navy)] font-black text-[10px] uppercase tracking-[0.2em] hover:scale-105 active:scale-95 transition-all disabled:opacity-20 shadow-lg shadow-[var(--color-gold)]/10"
                                 >
-                                    <Zap className="h-3 w-3" /> Convert
+                                    <Zap className="h-3.5 w-3.5" /> PROMOTE
                                 </button>
                                 <button
                                     onClick={handleDelete}
                                     disabled={deleting}
-                                    className="h-7 w-7 flex items-center justify-center rounded-lg text-slate-600 hover:text-red-400 hover:bg-red-500/10 transition-all"
+                                    className="h-10 w-10 flex items-center justify-center rounded-xl glass text-[var(--color-slate)] hover:text-red-500 hover:border-red-500/40 transition-all shadow-xl"
                                 >
-                                    {deleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                                    {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                                 </button>
                             </>
                         )}
@@ -642,56 +658,64 @@ export default function StagingGrid({ initialRows, categories }: { initialRows: 
     return (
         <>
             {/* ── Top action bar: Stats + Add Row button (always visible) ── */}
-            <div className="flex flex-col gap-4 mb-4">
-                <div className="flex items-center gap-3 flex-wrap">
-                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/20">
-                        <ClipboardList className="h-4 w-4 text-amber-500" />
-                        <span className="text-xs font-black text-amber-400 uppercase tracking-widest">{countingCount} Counting</span>
+            <div className="flex flex-col gap-6 mb-8 mt-2">
+                <div className="flex items-center gap-4 flex-wrap">
+                    <div className="flex items-center gap-3 px-5 py-2.5 rounded-2xl glass border border-white/5 bg-white/[0.02] shadow-xl">
+                        <div className="p-1.5 rounded-lg bg-[var(--color-gold)]/10">
+                            <ClipboardList className="h-4 w-4 text-[var(--color-gold)]" />
+                        </div>
+                        <div className="flex flex-col">
+                            <span className="text-[10px] font-black text-[var(--color-gold)] uppercase tracking-[0.15em]">{countingCount} STAGED</span>
+                            <span className="text-[8px] font-black text-[var(--color-slate)] uppercase tracking-widest opacity-40">Initial Count</span>
+                        </div>
                     </div>
-                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
-                        <PackageCheck className="h-4 w-4 text-emerald-500" />
-                        <span className="text-xs font-black text-emerald-400 uppercase tracking-widest">{migratedCount} Migrated</span>
-                    </div>
-                    <span className="text-xs text-slate-600 italic hidden md:inline">Fields auto-save</span>
 
-                    <div className="ml-auto flex items-center gap-2 flex-wrap justify-end">
-                        {/* Download CSV */}
+                    <div className="flex items-center gap-3 px-5 py-2.5 rounded-2xl glass border border-white/5 bg-white/[0.02] shadow-xl">
+                        <div className="p-1.5 rounded-lg bg-emerald-500/10">
+                            <PackageCheck className="h-4 w-4 text-emerald-500" />
+                        </div>
+                        <div className="flex flex-col">
+                            <span className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.15em]">{migratedCount} FLEET</span>
+                            <span className="text-[8px] font-black text-[var(--color-slate)] uppercase tracking-widest opacity-40">Active Assets</span>
+                        </div>
+                    </div>
+
+                    <div className="ml-auto flex items-center gap-3 flex-wrap justify-end">
                         <button
                             type="button"
                             onClick={handleDownloadCSV}
-                            className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-slate-800 border border-white/10 hover:bg-slate-700 active:scale-95 text-slate-300 font-bold text-sm transition-all"
+                            className="flex items-center gap-3 px-6 h-14 rounded-2xl glass border border-white/10 hover:bg-white/5 active:scale-95 text-[var(--color-slate)] hover:text-white font-black text-[10px] uppercase tracking-[0.2em] transition-all shadow-xl"
                             title="Export to CSV"
                         >
                             <Download className="h-4 w-4" />
-                            <span className="hidden sm:inline">Export List</span>
+                            <span className="hidden sm:inline">Export Audit</span>
                         </button>
                         
-                        {/* ── Primary Add Row button (top-right, always visible on desktop) ── */}
                         <button
                             type="button"
                             onClick={handleAddRow}
                             disabled={addingRow}
-                            className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-[#0A0F1C] font-black text-sm transition-all disabled:opacity-50 shadow-lg shadow-amber-500/20"
+                            className="flex items-center gap-4 px-8 h-14 rounded-2xl bg-[var(--color-gold)] text-[var(--color-navy)] font-black text-[10px] uppercase tracking-[0.25em] transition-all disabled:opacity-50 shadow-[0_0_40px_rgba(212,175,55,0.25)] hover:scale-105 active:scale-95"
                         >
                             {addingRow ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
+                                <Loader2 className="h-5 w-5 animate-spin" />
                             ) : (
-                                <Plus className="h-4 w-4" />
+                                <Plus className="h-5 w-5" />
                             )}
-                            {addingRow ? "Adding..." : "Add Blank Row"}
+                            {addingRow ? "ADDING..." : "INITIALIZE ROW"}
                         </button>
                     </div>
                 </div>
 
                 {/* ── Search Bar ── */}
-                <div className="relative max-w-md w-full">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+                <div className="relative max-w-xl group">
+                    <Search className="absolute left-6 top-1/2 -translate-y-1/2 h-5 w-5 text-[var(--color-slate)] opacity-40 group-focus-within:text-[var(--color-gold)] group-focus-within:opacity-100 transition-all" />
                     <input
                         type="text"
-                        placeholder="Search items by name or notes..."
+                        placeholder="FILTER BY PROTOCOL IDENTITY OR TECHNICAL STREAM..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full bg-slate-900 border border-white/10 focus:border-amber-500/50 rounded-2xl pl-10 pr-4 py-2.5 outline-none text-slate-100 text-sm placeholder:text-slate-600 transition-colors"
+                        className="w-full bg-black/40 border-2 border-white/5 focus:border-[var(--color-gold)]/50 rounded-2xl pl-16 pr-8 py-5 outline-none text-[var(--color-warm-white)] font-black text-[10px] uppercase tracking-[0.2em] placeholder:text-white/5 transition-all shadow-2xl"
                     />
                 </div>
             </div>
@@ -716,22 +740,24 @@ export default function StagingGrid({ initialRows, categories }: { initialRows: 
                         <tbody>
                             {rows.length === 0 && (
                                 <tr>
-                                    <td colSpan={7} className="py-20 text-center">
-                                        <div className="flex flex-col items-center gap-4 text-slate-600">
-                                            <ClipboardList className="h-12 w-12 opacity-20" />
-                                            <div>
-                                                <p className="text-sm font-bold text-slate-500">No staging items yet</p>
-                                                <p className="text-xs mt-1 text-slate-600">Click <span className="text-amber-400 font-bold">"Add Blank Row"</span> above to start counting.</p>
+                                    <td colSpan={8} className="py-32 text-center">
+                                        <div className="flex flex-col items-center gap-8 text-[var(--color-slate)]">
+                                            <div className="p-8 rounded-[2rem] bg-white/5 border border-white/5 shadow-inner">
+                                                <ClipboardList className="h-16 w-16 opacity-30 text-[var(--color-gold)]" />
+                                            </div>
+                                            <div className="flex flex-col gap-2">
+                                                <p className="text-xl font-[family-name:var(--font-heading)] font-black text-[var(--color-warm-white)] uppercase tracking-[0.2em] italic">Staging Index Empty</p>
+                                                <p className="text-[10px] font-black text-[var(--color-slate)] uppercase tracking-[0.3em] opacity-40">Click initialize to start asset induction</p>
                                             </div>
                                             {/* Inline add button for empty state — extra prominent */}
                                             <button
                                                 type="button"
                                                 onClick={handleAddRow}
                                                 disabled={addingRow}
-                                                className="mt-2 flex items-center gap-2 px-6 py-3 rounded-2xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-[#0A0F1C] font-black text-sm transition-all disabled:opacity-50 shadow-lg shadow-amber-500/20"
+                                                className="mt-4 flex items-center gap-4 px-12 h-16 rounded-2xl bg-[var(--color-gold)] text-[var(--color-navy)] font-black text-[12px] uppercase tracking-[0.4em] transition-all shadow-[0_0_50px_rgba(212,175,55,0.3)] hover:scale-105 active:scale-95"
                                             >
-                                                {addingRow ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-                                                Add First Item
+                                                {addingRow ? <Loader2 className="h-6 w-6 animate-spin" /> : <Plus className="h-6 w-6" />}
+                                                Initialize First Item
                                             </button>
                                         </div>
                                     </td>

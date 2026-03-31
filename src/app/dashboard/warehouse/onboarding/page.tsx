@@ -64,15 +64,15 @@ export default async function BulkOnboardingPage() {
                 <div className="flex items-start justify-between flex-wrap gap-4">
                     <div>
                         <div className="flex items-center gap-3 mb-1">
-                            <div className="p-2 rounded-xl bg-amber-500/10">
-                                <BoxesIcon className="h-5 w-5 text-amber-500" />
+                            <div className="p-2.5 rounded-xl bg-[var(--color-gold)]/10 border border-[var(--color-gold)]/20 shadow-[0_0_15px_rgba(212,175,55,0.1)]">
+                                <BoxesIcon className="h-5 w-5 text-[var(--color-gold)]" />
                             </div>
-                            <h1 className="text-3xl font-black tracking-tight text-slate-100 italic uppercase">
-                                Bulk <span className="text-amber-500">Onboarding</span>
+                            <h1 className="text-3xl font-[family-name:var(--font-heading)] font-black tracking-tight text-[var(--color-warm-white)] italic uppercase">
+                                Bulk <span className="text-[var(--color-gold)]">Onboarding</span>
                             </h1>
                         </div>
-                        <p className="text-slate-500 text-sm font-medium ml-12">
-                            Warehouse Migration Tool — count assets, then convert to live catalog
+                        <p className="text-[var(--color-slate)] text-sm font-medium ml-14">
+                            Warehouse Migration Tool — digitize assets into the live catalog
                         </p>
                     </div>
 
@@ -80,7 +80,7 @@ export default async function BulkOnboardingPage() {
                     {migratedCount > 0 && (
                         <Link
                             href="/dashboard/warehouse/labels"
-                            className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-sky-500/10 border border-sky-500/20 hover:border-sky-500/50 text-sky-400 text-sm font-bold transition-all"
+                            className="flex items-center gap-3 px-5 py-3 rounded-xl bg-sky-500/10 border border-sky-500/20 hover:border-sky-500/50 text-sky-400 text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-sky-500/10"
                         >
                             <PackagePlus className="h-4 w-4" />
                             Print {migratedCount} Migrated QR Labels
@@ -89,25 +89,22 @@ export default async function BulkOnboardingPage() {
                 </div>
 
                 {/* ── Summary stat strip ── */}
-                <div className="flex items-center gap-6 mt-4 overflow-x-auto pb-1">
-                    <div className="flex flex-col">
-                        <span className="text-2xl font-black text-slate-100 leading-none">{rows.length}</span>
-                        <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest mt-1">Total Items</span>
+                <div className="flex items-center gap-8 mt-6 overflow-x-auto pb-2 scrollbar-none">
+                    <div className="flex flex-col bg-white/5 border border-white/5 rounded-xl px-5 py-3 min-w-[120px]">
+                        <span className="text-xs font-black text-[var(--color-slate)] uppercase tracking-[0.2em] mb-1 opacity-60">Total Items</span>
+                        <span className="text-2xl font-[family-name:var(--font-heading)] font-black text-[var(--color-warm-white)] leading-none">{rows.length}</span>
                     </div>
-                    <div className="w-px h-8 bg-white/5" />
-                    <div className="flex flex-col">
-                        <span className="text-2xl font-black text-amber-400 leading-none">{countingCount}</span>
-                        <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest mt-1">Counting</span>
+                    <div className="flex flex-col bg-[var(--color-gold)]/5 border border-[var(--color-gold)]/10 rounded-xl px-5 py-3 min-w-[120px]">
+                        <span className="text-xs font-black text-[var(--color-gold)] uppercase tracking-[0.2em] mb-1 opacity-60">Counting</span>
+                        <span className="text-2xl font-[family-name:var(--font-heading)] font-black text-[var(--color-gold)] leading-none">{countingCount}</span>
                     </div>
-                    <div className="w-px h-8 bg-white/5" />
-                    <div className="flex flex-col">
-                        <span className="text-2xl font-black text-emerald-400 leading-none">{migratedCount}</span>
-                        <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest mt-1">Migrated</span>
+                    <div className="flex flex-col bg-emerald-500/5 border border-emerald-500/10 rounded-xl px-5 py-3 min-w-[120px]">
+                        <span className="text-xs font-black text-emerald-500 uppercase tracking-[0.2em] mb-1 opacity-60">Migrated</span>
+                        <span className="text-2xl font-[family-name:var(--font-heading)] font-black text-emerald-500 leading-none">{migratedCount}</span>
                     </div>
-                    <div className="w-px h-8 bg-white/5" />
-                    <div className="flex flex-col">
-                        <span className="text-2xl font-black text-sky-400 leading-none">{totalUnitsLogged.toLocaleString()}</span>
-                        <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest mt-1">Units Logged</span>
+                    <div className="flex flex-col bg-sky-500/5 border border-sky-500/10 rounded-xl px-5 py-3 min-w-[120px]">
+                        <span className="text-xs font-black text-sky-500 uppercase tracking-[0.2em] mb-1 opacity-60">Units Logged</span>
+                        <span className="text-2xl font-[family-name:var(--font-heading)] font-black text-sky-500 leading-none">{totalUnitsLogged.toLocaleString()}</span>
                     </div>
                 </div>
             </header>
