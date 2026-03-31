@@ -3,8 +3,11 @@
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import {
     Plus, Minus, Trash2, Zap, CheckCircle2, Loader2,
-    ClipboardList, PackageCheck, AlertCircle, X
+    ClipboardList, PackageCheck, AlertCircle, X,
+    ImagePlus, Search, Download
 } from "lucide-react";
+import Image from "next/image";
+import { CloudImageUpload } from "@/components/CloudImageUpload";
 import {
     addStagingRow,
     updateStagingField,
@@ -20,6 +23,7 @@ export type StagingItem = {
     vendorId: string | null;
     roughName: string;
     roughCategory: string | null;
+    roughImageUrl: string | null;
     dimensions: string | null;
     weight: string | null;
     technicalNotes: string | null;
@@ -221,13 +225,17 @@ function StagingRow({
     onUpdate,
     onRemove,
     onConvertClick,
+    onImageClick,
+    categories,
     rowIndex,
 }: {
     item: StagingItem;
     onUpdate: (id: string, field: string, value: string | number) => void;
     onRemove: (id: string) => void;
     onConvertClick: (item: StagingItem) => void;
+    onImageClick: (item: StagingItem) => void;
     rowIndex: number;
+    categories: { id: string; name: string; }[];
 }) {
     const isMigrated = item.migrationStatus === "migrated";
     const [deleting, startDelete] = useTransition();
@@ -282,15 +290,39 @@ function StagingRow({
                     />
                 </td>
 
-                {/* Category hint */}
-                <td className="hidden lg:table-cell px-3 py-2 w-32">
-                    <input
-                        defaultValue={item.roughCategory ?? ""}
+                {/* Image/Photo */}
+                <td className="hidden lg:table-cell px-3 py-2 w-14">
+                    <button
+                        onClick={() => onImageClick(item)}
                         disabled={isMigrated}
-                        placeholder="e.g. Chairs"
+                        className="h-10 w-10 shrink-0 bg-slate-800 rounded-xl border border-white/10 flex items-center justify-center text-slate-400 hover:text-amber-400 hover:border-amber-400/50 transition-all overflow-hidden relative group"
+                    >
+                        {item.roughImageUrl ? (
+                            <>
+                                <Image src={item.roughImageUrl} alt="Thumb" fill className="object-cover" />
+                                <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <ImagePlus className="w-4 h-4 text-white" />
+                                </div>
+                            </>
+                        ) : (
+                            <ImagePlus className="w-4 h-4" />
+                        )}
+                    </button>
+                </td>
+
+                {/* Category hint */}
+                <td className="hidden lg:table-cell px-3 py-2 w-40">
+                    <select
+                        defaultValue={item.roughCategory || ""}
+                        disabled={isMigrated}
                         onChange={(e) => debouncedSave("roughCategory", e.target.value)}
-                        className="w-full bg-transparent border-b border-white/10 focus:border-amber-500/50 outline-none text-slate-400 text-xs py-1.5 placeholder:text-slate-700 transition-colors disabled:opacity-50"
-                    />
+                        className="w-full bg-slate-900 border-b border-white/10 focus:border-amber-500/50 outline-none text-slate-300 text-xs py-1.5 focus:bg-[#0A0F1C] transition-colors disabled:opacity-50"
+                    >
+                        <option value="" disabled className="text-slate-500">Select Category...</option>
+                        {categories.map((c) => (
+                            <option key={c.id} value={c.id}>{c.name}</option>
+                        ))}
+                    </select>
                 </td>
 
                 {/* Dimensions */}
@@ -400,18 +432,37 @@ function StagingRow({
                             />
                         </div>
 
-                        {/* Category + Dimensions row */}
-                        <div className="grid grid-cols-2 gap-3">
-                            <div>
+                        {/* Image + Category row */}
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => onImageClick(item)}
+                                disabled={isMigrated}
+                                className="h-14 w-14 shrink-0 bg-slate-900/50 rounded-xl border border-white/10 flex items-center justify-center text-slate-400 hover:text-amber-400 transition-all overflow-hidden relative"
+                            >
+                                {item.roughImageUrl ? (
+                                    <Image src={item.roughImageUrl} alt="Thumb" fill className="object-cover" />
+                                ) : (
+                                    <ImagePlus className="w-5 h-5" />
+                                )}
+                            </button>
+                            <div className="flex-1">
                                 <label className="block text-[10px] font-black text-slate-600 uppercase tracking-widest mb-1">Category</label>
-                                <input
-                                    defaultValue={item.roughCategory ?? ""}
+                                <select
+                                    defaultValue={item.roughCategory || ""}
                                     disabled={isMigrated}
-                                    placeholder="Chairs"
                                     onChange={(e) => debouncedSave("roughCategory", e.target.value)}
-                                    className="w-full bg-slate-900/50 border border-white/10 focus:border-amber-500/50 rounded-xl px-3 py-2 outline-none text-slate-300 text-sm placeholder:text-slate-700 transition-colors disabled:opacity-50"
-                                />
+                                    className="w-full bg-slate-900/50 border border-white/10 focus:border-amber-500/50 rounded-xl px-3 py-2 outline-none text-slate-300 text-sm focus:bg-[#0A0F1C] disabled:opacity-50"
+                                >
+                                    <option value="" disabled>Select Category...</option>
+                                    {categories.map((c) => (
+                                        <option key={c.id} value={c.id}>{c.name}</option>
+                                    ))}
+                                </select>
                             </div>
+                        </div>
+
+                        {/* Dimensions row */}
+                        <div className="grid grid-cols-1 gap-3">
                             <div>
                                 <label className="block text-[10px] font-black text-slate-600 uppercase tracking-widest mb-1">Dimensions</label>
                                 <input
@@ -455,10 +506,12 @@ function StagingRow({
 
 // ─── Main StagingGrid Component ───────────────────────────────────────────────
 
-export default function StagingGrid({ initialRows }: { initialRows: StagingItem[] }) {
+export default function StagingGrid({ initialRows, categories }: { initialRows: StagingItem[], categories: { id: string; name: string }[] }) {
     const [rows, setRows] = useState<StagingItem[]>(initialRows);
     const [toasts, setToasts] = useState<Toast[]>([]);
     const [migrateTarget, setMigrateTarget] = useState<StagingItem | null>(null);
+    const [imageUploadTarget, setImageUploadTarget] = useState<StagingItem | null>(null);
+    const [searchQuery, setSearchQuery] = useState("");
     const [migrating, startMigration] = useTransition();
     const [addingRow, startAddRow] = useTransition();
 
@@ -480,6 +533,7 @@ export default function StagingGrid({ initialRows }: { initialRows: StagingItem[
                     id: res.id,
                     vendorId: null,
                     roughName: "",
+                    roughImageUrl: null,
                     roughCategory: null,
                     dimensions: null,
                     weight: null,
@@ -538,37 +592,99 @@ export default function StagingGrid({ initialRows }: { initialRows: StagingItem[
         });
     };
 
+    const handleDownloadCSV = () => {
+        const headers = ["Row Index", "Item Name", "Category", "Dimensions", "Notes", "Counted Qty", "Status"];
+        const csvRows = rows.map((r, idx) => {
+            const catName = categories.find((c) => c.id === r.roughCategory)?.name || "";
+            return [
+                idx + 1,
+                `"${(r.roughName || "").replace(/"/g, '""')}"`,
+                `"${catName.replace(/"/g, '""')}"`,
+                `"${(r.dimensions || "").replace(/"/g, '""')}"`,
+                `"${(r.technicalNotes || "").replace(/"/g, '""')}"`,
+                r.countedQuantity,
+                r.migrationStatus
+            ].join(",");
+        });
+        
+        const csvString = [headers.join(","), ...csvRows].join("\n");
+        const blob = new Blob([csvString], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.setAttribute("download", `warehouse_staging_${new Date().toISOString().split("T")[0]}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
     const countingCount = rows.filter((r) => r.migrationStatus === "counting").length;
     const migratedCount = rows.filter((r) => r.migrationStatus === "migrated").length;
+
+    const filteredRows = rows.filter((r) => {
+        if (!searchQuery) return true;
+        const q = searchQuery.toLowerCase();
+        return (
+            (r.roughName || "").toLowerCase().includes(q) ||
+            (r.technicalNotes || "").toLowerCase().includes(q)
+        );
+    });
 
     return (
         <>
             {/* ── Top action bar: Stats + Add Row button (always visible) ── */}
-            <div className="flex items-center gap-3 flex-wrap mb-4">
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/20">
-                    <ClipboardList className="h-4 w-4 text-amber-500" />
-                    <span className="text-xs font-black text-amber-400 uppercase tracking-widest">{countingCount} Counting</span>
-                </div>
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
-                    <PackageCheck className="h-4 w-4 text-emerald-500" />
-                    <span className="text-xs font-black text-emerald-400 uppercase tracking-widest">{migratedCount} Migrated</span>
-                </div>
-                <span className="text-xs text-slate-600 italic hidden sm:inline">Fields auto-save as you type</span>
+            <div className="flex flex-col gap-4 mb-4">
+                <div className="flex items-center gap-3 flex-wrap">
+                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                        <ClipboardList className="h-4 w-4 text-amber-500" />
+                        <span className="text-xs font-black text-amber-400 uppercase tracking-widest">{countingCount} Counting</span>
+                    </div>
+                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                        <PackageCheck className="h-4 w-4 text-emerald-500" />
+                        <span className="text-xs font-black text-emerald-400 uppercase tracking-widest">{migratedCount} Migrated</span>
+                    </div>
+                    <span className="text-xs text-slate-600 italic hidden md:inline">Fields auto-save</span>
 
-                {/* ── Primary Add Row button (top-right, always visible on desktop) ── */}
-                <button
-                    type="button"
-                    onClick={handleAddRow}
-                    disabled={addingRow}
-                    className="ml-auto flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-[#0A0F1C] font-black text-sm transition-all disabled:opacity-50 shadow-lg shadow-amber-500/20"
-                >
-                    {addingRow ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                        <Plus className="h-4 w-4" />
-                    )}
-                    {addingRow ? "Adding..." : "Add Blank Row"}
-                </button>
+                    <div className="ml-auto flex items-center gap-2 flex-wrap justify-end">
+                        {/* Download CSV */}
+                        <button
+                            type="button"
+                            onClick={handleDownloadCSV}
+                            className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-slate-800 border border-white/10 hover:bg-slate-700 active:scale-95 text-slate-300 font-bold text-sm transition-all"
+                            title="Export to CSV"
+                        >
+                            <Download className="h-4 w-4" />
+                            <span className="hidden sm:inline">Export List</span>
+                        </button>
+                        
+                        {/* ── Primary Add Row button (top-right, always visible on desktop) ── */}
+                        <button
+                            type="button"
+                            onClick={handleAddRow}
+                            disabled={addingRow}
+                            className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-[#0A0F1C] font-black text-sm transition-all disabled:opacity-50 shadow-lg shadow-amber-500/20"
+                        >
+                            {addingRow ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                                <Plus className="h-4 w-4" />
+                            )}
+                            {addingRow ? "Adding..." : "Add Blank Row"}
+                        </button>
+                    </div>
+                </div>
+
+                {/* ── Search Bar ── */}
+                <div className="relative max-w-md w-full">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+                    <input
+                        type="text"
+                        placeholder="Search items by name or notes..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full bg-slate-900 border border-white/10 focus:border-amber-500/50 rounded-2xl pl-10 pr-4 py-2.5 outline-none text-slate-100 text-sm placeholder:text-slate-600 transition-colors"
+                    />
+                </div>
             </div>
 
             {/* ── Table (desktop) / Cards (mobile) ── */}
@@ -579,8 +695,9 @@ export default function StagingGrid({ initialRows }: { initialRows: StagingItem[
                         <thead className="hidden lg:table-header-group">
                             <tr className="border-b border-white/10 bg-white/[0.02]">
                                 <th className="px-4 py-3 text-[10px] font-black text-slate-600 uppercase tracking-widest text-center w-10">#</th>
+                                <th className="px-3 py-3 text-[10px] font-black text-slate-600 uppercase tracking-widest text-left w-14">Img</th>
                                 <th className="px-3 py-3 text-[10px] font-black text-slate-600 uppercase tracking-widest text-left">Item Name</th>
-                                <th className="px-3 py-3 text-[10px] font-black text-slate-600 uppercase tracking-widest text-left w-32">Category</th>
+                                <th className="px-3 py-3 text-[10px] font-black text-slate-600 uppercase tracking-widest text-left w-40">Category</th>
                                 <th className="px-3 py-3 text-[10px] font-black text-slate-600 uppercase tracking-widest text-left w-36">Dimensions</th>
                                 <th className="px-3 py-3 text-[10px] font-black text-slate-600 uppercase tracking-widest text-left">Notes</th>
                                 <th className="px-3 py-3 text-[10px] font-black text-slate-600 uppercase tracking-widest text-left w-44">Qty</th>
@@ -611,14 +728,23 @@ export default function StagingGrid({ initialRows }: { initialRows: StagingItem[
                                     </td>
                                 </tr>
                             )}
-                            {rows.map((item, idx) => (
+                            {filteredRows.length === 0 && rows.length > 0 && (
+                                <tr>
+                                    <td colSpan={8} className="py-12 text-center text-slate-500 text-sm">
+                                        No items match your search.
+                                    </td>
+                                </tr>
+                            )}
+                            {filteredRows.map((item, idx) => (
                                 <StagingRow
                                     key={item.id}
                                     item={item}
                                     rowIndex={idx}
+                                    categories={categories}
                                     onUpdate={handleFieldUpdate}
                                     onRemove={handleRemove}
                                     onConvertClick={handleConvertClick}
+                                    onImageClick={setImageUploadTarget}
                                 />
                             ))}
                         </tbody>
@@ -670,6 +796,35 @@ export default function StagingGrid({ initialRows }: { initialRows: StagingItem[
                     onCancel={() => setMigrateTarget(null)}
                     loading={migrating}
                 />
+            )}
+
+            {/* ── Image Upload Modal ── */}
+            {imageUploadTarget && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setImageUploadTarget(null)} />
+                    <div className="relative bg-[#0D1526] border border-white/10 rounded-3xl p-6 w-full max-w-md shadow-2xl">
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="font-bold text-slate-200">Upload Image</h3>
+                            <button onClick={() => setImageUploadTarget(null)} className="p-2 text-slate-400 hover:text-white transition-colors">
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+                        <div className="mb-4">
+                            <CloudImageUpload
+                                folder="staging_inventory"
+                                existingUrl={imageUploadTarget.roughImageUrl || undefined}
+                                label="Item Photo"
+                                onUploadComplete={(url) => {
+                                    handleFieldUpdate(imageUploadTarget.id, "roughImageUrl", url);
+                                    updateStagingField(imageUploadTarget.id, "roughImageUrl", url);
+                                    // Keep modal open if you want, or auto-close here:
+                                    setImageUploadTarget(null);
+                                    toast("Image uploaded successfully.", "success");
+                                }}
+                            />
+                        </div>
+                    </div>
+                </div>
             )}
 
             {/* ── Toasts ── */}

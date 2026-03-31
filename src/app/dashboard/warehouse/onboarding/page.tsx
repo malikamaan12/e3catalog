@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { stagingInventory } from "@/lib/db/schema";
+import { stagingInventory, categories } from "@/lib/db/schema";
 import { desc } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
@@ -31,6 +31,7 @@ export default async function BulkOnboardingPage() {
             id: stagingInventory.id,
             vendorId: stagingInventory.vendorId,
             roughName: stagingInventory.roughName,
+            roughImageUrl: stagingInventory.roughImageUrl,
             roughCategory: stagingInventory.roughCategory,
             dimensions: stagingInventory.dimensions,
             weight: stagingInventory.weight,
@@ -42,6 +43,15 @@ export default async function BulkOnboardingPage() {
         })
         .from(stagingInventory)
         .orderBy(desc(stagingInventory.createdAt));
+
+    // ── Fetch active categories for dropdown ──
+    const allCategories = await db
+        .select({
+            id: categories.id,
+            name: categories.name,
+        })
+        .from(categories)
+        .orderBy(categories.name);
 
     const countingCount = rows.filter((r) => r.migrationStatus === "counting").length;
     const migratedCount = rows.filter((r) => r.migrationStatus === "migrated").length;
@@ -127,7 +137,7 @@ export default async function BulkOnboardingPage() {
             </details>
 
             {/* ── The Grid ── */}
-            <StagingGrid initialRows={rows as StagingItem[]} />
+            <StagingGrid initialRows={rows as StagingItem[]} categories={allCategories} />
         </div>
     );
 }
