@@ -439,6 +439,22 @@ export const bookingUnitAssignments = pgTable("booking_unit_assignments", {
     };
 });
 
+// ─── Dispatch Logs (Transport Manifest) ───
+export const bookingDispatchLogs = pgTable("booking_dispatch_logs", {
+    id: varchar("id", { length: 255 }).primaryKey(),
+    bookingId: varchar("booking_id", { length: 255 }).notNull().references(() => bookings.id),
+    driverName: varchar("driver_name", { length: 255 }).notNull(),
+    vehiclePlateNumber: varchar("vehicle_plate_number", { length: 255 }).notNull(),
+    transportCompany: varchar("transport_company", { length: 255 }).notNull().default("E3 Internal Fleet"),
+    totalGrossWeight: integer("total_gross_weight"), // Derived dynamically at dispatch
+    dispatchedAt: timestamp("dispatched_at").notNull().defaultNow(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => {
+    return {
+        bookingIdIdx: index("booking_dispatch_logs_booking_id_idx").on(table.bookingId),
+    };
+});
+
 // ─── Cart Items ───
 export const cartItems = pgTable("cart_items", {
     id: varchar("id", { length: 255 }).primaryKey(),
@@ -565,7 +581,18 @@ export const bookingsRelations = relations(bookings, ({ one, many }) => ({
         fields: [bookings.id],
         references: [reviews.bookingId]
     }),
+    dispatchLog: one(bookingDispatchLogs, {
+        fields: [bookings.id],
+        references: [bookingDispatchLogs.bookingId]
+    }),
     unitAssignments: many(bookingUnitAssignments),
+}));
+
+export const bookingDispatchLogsRelations = relations(bookingDispatchLogs, ({ one }) => ({
+    booking: one(bookings, {
+        fields: [bookingDispatchLogs.bookingId],
+        references: [bookings.id],
+    }),
 }));
 
 export const bookingUnitAssignmentsRelations = relations(bookingUnitAssignments, ({ one }) => ({

@@ -6,7 +6,8 @@ import {
     Calendar, 
     MapPin, 
     ChevronRight, 
-    ScanLine 
+    ScanLine,
+    FileSignature
 } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
@@ -116,11 +117,18 @@ export default async function DispatchPipelinePage() {
                                 </div>
 
                                 <div className="flex items-center justify-between pt-4 border-t border-white/5 mt-2">
-                                    <div className="flex items-center gap-2 text-xs font-bold text-amber-500 uppercase italic tracking-widest">
-                                        <ScanLine className="h-4 w-4" />
-                                        Scan to Fulfill
-                                    </div>
-                                    <ChevronRight className="h-5 w-5 text-slate-700 transition-transform group-hover:translate-x-2 group-hover:text-sky-500" />
+                                    {project.status === 'dispatched' ? (
+                                        <div className="flex items-center gap-2 text-xs font-bold text-emerald-500 uppercase italic tracking-widest">
+                                            <FileSignature className="h-4 w-4" />
+                                            Manifest Ready
+                                        </div>
+                                    ) : (
+                                        <div className="flex items-center gap-2 text-xs font-bold text-amber-500 uppercase italic tracking-widest">
+                                            <ScanLine className="h-4 w-4" />
+                                            Scan to Fulfill
+                                        </div>
+                                    )}
+                                    <ChevronRight className={`h-5 w-5 transition-transform group-hover:translate-x-2 ${project.status === 'dispatched' ? 'text-emerald-500' : 'group-hover:text-sky-500 text-slate-700'}`} />
                                 </div>
                             </Link>
                         );

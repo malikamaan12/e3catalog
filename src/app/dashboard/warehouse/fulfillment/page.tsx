@@ -11,10 +11,12 @@ import {
     Package,
     Camera,
     Clock,
-    Trash2
+    Trash2,
+    FileSignature
 } from "lucide-react";
 import { format } from "date-fns";
 import QRScannerModal from "@/components/warehouse/QRScannerModal";
+import { finalizeTransport } from "@/actions/dispatch";
 
 type ScanEntry = {
     id: string;
@@ -47,6 +49,13 @@ export default function FulfillmentPage() {
     const [returnCondition, setReturnCondition] = useState("good");
     const [returnNotes, setReturnNotes] = useState("");
     const [scannerOpen, setScannerOpen] = useState(false);
+    
+    // Finalize Modal State
+    const [finalizeModalOpen, setFinalizeModalOpen] = useState(false);
+    const [driverName, setDriverName] = useState("");
+    const [vehiclePlate, setVehiclePlate] = useState("");
+    const [isFinalizing, setIsFinalizing] = useState(false);
+
     const inputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
@@ -128,6 +137,30 @@ export default function FulfillmentPage() {
         processTag(result);
     };
 
+    const handleFinalize = async () => {
+        if (!bookingId || !driverName.trim() || !vehiclePlate.trim()) return;
+        setIsFinalizing(true);
+        try {
+            const res = await finalizeTransport(bookingId, { 
+                driverName, 
+                vehiclePlateNumber: vehiclePlate 
+            });
+            
+            if (res.success) {
+                setFinalizeModalOpen(false);
+                addEntry("SYSTEM", { status: "success", message: "Dispatch Finalized. Generating Manifest..." });
+                // Trigger PDF download via standard Next API route
+                window.open(`/api/pdf/manifest/${bookingId}`, "_blank");
+            } else {
+                addEntry("SYSTEM", { status: "error", message: res.error || "Failed to finalize transport" });
+            }
+        } catch (e: any) {
+            addEntry("SYSTEM", { status: "error", message: "Network error during finalization." });
+        } finally {
+            setIsFinalizing(false);
+        }
+    };
+
     const selectedBooking = bookings.find(b => b.id === bookingId);
 
     return (
@@ -193,11 +226,19 @@ export default function FulfillmentPage() {
                     </div>
 
                     {selectedBooking && (
-                        <div className="flex items-center gap-3 px-4 py-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs text-amber-400">
-                            <Package className="h-4 w-4 shrink-0" />
-                            <span className="font-bold">
-                                {selectedBooking.itemsCount || 0} units total · {selectedBooking.customerName}
-                            </span>
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 bg-amber-500/10 border border-amber-500/20 rounded-xl">
+                            <div className="flex items-center gap-3 text-xs text-amber-400">
+                                <Package className="h-4 w-4 shrink-0" />
+                                <span className="font-bold">
+                                    {selectedBooking.itemsCount || 0} units assigned · {selectedBooking.customerName}
+                                </span>
+                            </div>
+                            <button
+                                onClick={() => setFinalizeModalOpen(true)}
+                                className="flex items-center justify-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-[#0A0F1C] rounded-lg text-xs font-black uppercase tracking-widest transition-all shadow-lg active:scale-95"
+                            >
+                                <FileSignature className="h-4 w-4" /> Finalize Load
+                            </button>
                         </div>
                     )}
                 </div>
@@ -339,6 +380,53 @@ export default function FulfillmentPage() {
                     <div className="text-center">
                         <p className="text-sm font-bold">Awaiting first scan</p>
                         <p className="text-xs mt-1 opacity-60">Use camera or type the asset tag above</p>
+                    </div>
+                </div>
+            )}
+            {/* Finalize Transport Modal */}
+            {finalizeModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => !isFinalizing && setFinalizeModalOpen(false)} />
+                    <div className="relative bg-[#0D1526] border border-white/10 rounded-3xl p-6 w-full max-w-md shadow-2xl flex flex-col gap-6 animate-[slideDown_0.2s_ease-out]">
+                        <div className="flex justify-between items-center">
+                            <div>
+                                <h3 className="text-xl font-black text-slate-100 uppercase tracking-tighter">Finalize Transport</h3>
+                                <p className="text-xs text-slate-500 mt-1">Generate Tri-Party Delivery Manifest</p>
+                            </div>
+                            <button onClick={() => !isFinalizing && setFinalizeModalOpen(false)} className="p-2 text-slate-400 hover:text-white bg-white/5 rounded-full transition-colors">
+                                <XCircle className="h-5 w-5" />
+                            </button>
+                        </div>
+                        
+                        <div className="flex flex-col gap-4">
+                            <div>
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block">Driver Name *</label>
+                                <input
+                                    value={driverName}
+                                    onChange={e => setDriverName(e.target.value)}
+                                    placeholder="e.g. John Doe"
+                                    className="w-full bg-slate-900 border border-white/10 text-slate-100 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-amber-500/50"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block">Vehicle Plate Number *</label>
+                                <input
+                                    value={vehiclePlate}
+                                    onChange={e => setVehiclePlate(e.target.value.toUpperCase())}
+                                    placeholder="e.g. KWT-9342"
+                                    className="w-full bg-slate-900 border border-white/10 text-slate-100 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-amber-500/50"
+                                />
+                            </div>
+                        </div>
+
+                        <button
+                            onClick={handleFinalize}
+                            disabled={!driverName.trim() || !vehiclePlate.trim() || isFinalizing}
+                            className="w-full flex items-center justify-center gap-2 py-4 rounded-xl bg-amber-500 hover:bg-amber-400 text-[#0A0F1C] font-black text-sm uppercase tracking-widest transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {isFinalizing ? <Loader2 className="h-5 w-5 animate-spin" /> : <FileSignature className="h-5 w-5" />}
+                            {isFinalizing ? "Generating..." : "Generate Manifest PDF"}
+                        </button>
                     </div>
                 </div>
             )}
