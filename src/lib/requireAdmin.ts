@@ -20,7 +20,7 @@ export async function requireAdmin(allowedRoles?: string[]): Promise<
     }
 
     // Default allowed roles if none specified
-    const roles = allowedRoles || [USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN, USER_ROLES.SALES_REP];
+    const roles = allowedRoles || [USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN, USER_ROLES.SALES_REP, USER_ROLES.WAREHOUSE_MANAGER];
 
     if (!roles.includes(user.role) && user.role !== USER_ROLES.SUPER_ADMIN) {
         return {

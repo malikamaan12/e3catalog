@@ -5,10 +5,11 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
     LayoutDashboard, FileText, CalendarDays, ShoppingBag,
-    ShoppingCart, Sparkles, User, Globe, LogOut, Menu, X
+    ShoppingCart, Sparkles, User, Globe, LogOut, Menu, X,
+    Truck, Archive, AlertTriangle
 } from "lucide-react";
 
-const NAV_ITEMS = [
+const CLIENT_NAV_ITEMS = [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, exact: true },
     { href: "/dashboard/quotes", label: "My Quotes", icon: FileText, exact: false },
     { href: "/dashboard/bookings", label: "My Bookings", icon: CalendarDays, exact: false },
@@ -18,7 +19,17 @@ const NAV_ITEMS = [
     { href: "/catalog?newquote=1", label: "New Quote Request", icon: Sparkles },
     { divider: true },
     { href: "/dashboard/profile", label: "My Profile", icon: User },
-] as Array<{ href?: string; label?: string; icon?: any; exact?: boolean; divider?: boolean }>;
+];
+
+const WAREHOUSE_NAV_ITEMS = [
+    { href: "/dashboard/warehouse/overview", label: "Warehouse Hub", icon: LayoutDashboard, exact: true },
+    { href: "/dashboard/warehouse/dispatch", label: "Dispatch Pipeline", icon: Truck, exact: false },
+    { href: "/admin/inventory", label: "Inventory Fleet", icon: Archive, exact: false },
+    { divider: true },
+    { href: "/dashboard/warehouse/inspections", label: "Damage Logs", icon: AlertTriangle },
+    { divider: true },
+    { href: "/dashboard/profile", label: "My Profile", icon: User },
+];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
@@ -55,15 +66,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         </div>
                         <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[var(--color-gold)] bg-[var(--color-gold)]/10 border border-[var(--color-gold)]/20 rounded-full px-2 py-0.5 mt-1">
                             <span className="w-1 h-1 rounded-full bg-[var(--color-gold)]"></span>
-                            CLIENT
+                            {user?.role?.toUpperCase() || "CLIENT"}
                         </span>
                     </div>
 
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-gold)] mb-3">Client Portal</p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-gold)] mb-3">
+                        {user?.role === 'warehouse_manager' ? 'Logistics Portal' : 'Client Portal'}
+                    </p>
 
-                    {/* Nav */}
                     <nav className="space-y-0.5 flex-1 overflow-y-auto custom-scrollbar overscroll-contain min-h-0 pb-4">
-                        {NAV_ITEMS.map((item, i) => {
+                        {(user?.role === 'warehouse_manager' ? WAREHOUSE_NAV_ITEMS : CLIENT_NAV_ITEMS).map((item: any, i) => {
                             if (item.divider) return <hr key={`div-${i}`} className="border-white/5 my-2" />;
                             const active = isActive(item.href!, item.exact);
                             const Icon = item.icon;
@@ -106,7 +118,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
                 {/* ── Mobile Top Bar ── */}
                 <div className="lg:hidden fixed left-0 right-0 top-20 z-40 bg-[var(--color-surface)] border-b border-[var(--color-border-subtle)] flex items-center justify-between px-4 py-2">
-                    <span className="text-xs font-bold text-[var(--color-gold)] uppercase tracking-widest">Client Portal</span>
+                    <span className="text-xs font-bold text-[var(--color-gold)] uppercase tracking-widest">
+                        {user?.role === 'warehouse_manager' ? 'Logistics Portal' : 'Client Portal'}
+                    </span>
                     <button
                         onClick={() => setMobileOpen(!mobileOpen)}
                         className="text-[var(--color-slate)] hover:text-[var(--color-warm-white)] transition-colors p-1"
@@ -118,7 +132,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 {/* Mobile Dropdown */}
                 {mobileOpen && (
                     <div className="lg:hidden fixed left-0 right-0 top-[112px] z-30 bg-[var(--color-surface)] border-b border-[var(--color-border-subtle)] p-4 flex flex-col gap-1">
-                        {NAV_ITEMS.map((item, i) => {
+                        {(user?.role === 'warehouse_manager' ? WAREHOUSE_NAV_ITEMS : CLIENT_NAV_ITEMS).map((item: any, i) => {
                             if (item.divider) return <hr key={`div-${i}`} className="border-white/5 my-1" />;
                             const Icon = item.icon;
                             return (
