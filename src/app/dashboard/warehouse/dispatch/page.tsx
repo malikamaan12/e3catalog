@@ -11,8 +11,10 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
+export default async function DispatchPipelinePage(props: { searchParams: Promise<{ tab?: string }> }) {
+    const searchParams = await props.searchParams;
+    const activeTab = searchParams.tab || 'outgoing';
 
-export default async function DispatchPipelinePage() {
     // ── Drizzle Query: Logistics Only (Skip Financials) ──
     const activeBookings = await db
         .select({
@@ -26,17 +28,21 @@ export default async function DispatchPipelinePage() {
             status: bookings.status,
             fulfillmentStatus: bookings.fulfillmentStatus,
             productName: products.name,
-            // Subquery for assigned units
-            assignedCount: sql<number>`(SELECT count(*) FROM ${bookingUnitAssignments} WHERE ${bookingUnitAssignments.bookingId} = ${bookings.id})`,
+            // Subquery for assigned units based on tab
+            assignedCount: activeTab === 'incoming'
+                ? sql<number>`(SELECT count(*) FROM ${bookingUnitAssignments} WHERE ${bookingUnitAssignments.bookingId} = ${bookings.id} AND ${bookingUnitAssignments.status} = 'returned')`
+                : sql<number>`(SELECT count(*) FROM ${bookingUnitAssignments} WHERE ${bookingUnitAssignments.bookingId} = ${bookings.id} AND (${bookingUnitAssignments.status} = 'reserved' OR ${bookingUnitAssignments.status} = 'dispatched'))`,
         })
         .from(bookings)
         .leftJoin(products, eq(bookings.productId, products.id))
         .where(
-            or(
-                eq(bookings.status, "approved"),
-                eq(bookings.status, "dispatched"),
-                eq(bookings.status, "booked")
-            )
+            activeTab === 'incoming'
+                ? eq(bookings.status, "dispatched")
+                : or(
+                    eq(bookings.status, "approved"),
+                    eq(bookings.status, "dispatched"),
+                    eq(bookings.status, "booked")
+                )
         )
         .orderBy(bookings.startDate);
 
@@ -48,6 +54,30 @@ export default async function DispatchPipelinePage() {
                 </h1>
                 <p className="text-slate-400 font-medium tracking-tight">Active Logistics Fulfillment Tracking</p>
             </header>
+
+            {/* Tabs */}
+            <div className="flex gap-2 p-1 bg-white/5 rounded-2xl border border-white/10 w-fit">
+                <Link 
+                    href="/dashboard/warehouse/dispatch?tab=outgoing"
+                    className={`px-6 py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all ${
+                        activeTab === 'outgoing' 
+                            ? 'bg-sky-500 text-white shadow-lg shadow-sky-500/20' 
+                            : 'text-slate-500 hover:text-slate-300'
+                    }`}
+                >
+                    Outgoing (Bump-In)
+                </Link>
+                <Link 
+                    href="/dashboard/warehouse/dispatch?tab=incoming"
+                    className={`px-6 py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all ${
+                        activeTab === 'incoming' 
+                            ? 'bg-amber-500 text-[#0A0F1C] shadow-lg shadow-amber-500/20' 
+                            : 'text-slate-500 hover:text-slate-300'
+                    }`}
+                >
+                    Incoming (Bump-Out)
+                </Link>
+            </div>
 
             <div className="flex flex-col gap-6">
                 {activeBookings.length === 0 ? (
@@ -103,21 +133,28 @@ export default async function DispatchPipelinePage() {
                                 {/* Fulfillment Progress Bar */}
                                 <div className="flex flex-col gap-3">
                                     <div className="flex justify-between items-end">
-                                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Fulfillment Status</span>
-                                        <span className={`text-sm font-black ${isComplete ? 'text-emerald-500' : 'text-sky-500'}`}>
+                                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                                            {activeTab === 'incoming' ? 'Return Status' : 'Fulfillment Status'}
+                                        </span>
+                                        <span className={`text-sm font-black ${isComplete ? 'text-emerald-500' : (activeTab === 'incoming' ? 'text-amber-500' : 'text-sky-500')}`}>
                                             {project.assignedCount} / {project.requiredUnits} Units
                                         </span>
                                     </div>
                                     <div className="h-4 w-full bg-slate-800 rounded-full overflow-hidden border border-white/5">
                                         <div 
-                                            className={`h-full transition-all duration-500 ease-out rounded-full ${isComplete ? 'bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.3)]' : 'bg-sky-500 shadow-[0_0_15px_rgba(14,165,233,0.3)]'}`}
+                                            className={`h-full transition-all duration-500 ease-out rounded-full ${isComplete ? 'bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.3)]' : (activeTab === 'incoming' ? 'bg-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.3)]' : 'bg-sky-500 shadow-[0_0_15px_rgba(14,165,233,0.3)]')}`}
                                             style={{ width: `${progress}%` }}
                                         />
                                     </div>
                                 </div>
 
                                 <div className="flex items-center justify-between pt-4 border-t border-white/5 mt-2">
-                                    {project.status === 'dispatched' ? (
+                                    {activeTab === 'incoming' ? (
+                                        <div className="flex items-center gap-2 text-xs font-bold text-amber-500 uppercase italic tracking-widest">
+                                            <ScanLine className="h-4 w-4" />
+                                            Scan to Return
+                                        </div>
+                                    ) : project.status === 'dispatched' ? (
                                         <div className="flex items-center gap-2 text-xs font-bold text-emerald-500 uppercase italic tracking-widest">
                                             <FileSignature className="h-4 w-4" />
                                             Manifest Ready

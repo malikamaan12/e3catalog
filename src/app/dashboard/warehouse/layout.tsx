@@ -4,7 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { 
     LayoutDashboard, 
-    Truck, 
+    Route, 
+    Truck,
     Package, 
     ShieldAlert, 
     Tag
@@ -12,7 +13,8 @@ import {
 
 const WAREHOUSE_TABS = [
     { href: "/dashboard/warehouse/overview", label: "Hub", icon: LayoutDashboard },
-    { href: "/dashboard/warehouse/dispatch", label: "Pipeline", icon: Truck },
+    { href: "/dashboard/warehouse/dispatch", label: "Pipeline", icon: Route },
+    { href: "/dashboard/warehouse/transport", label: "Transport", icon: Truck },
     { href: "/dashboard/warehouse/fulfillment", label: "Scan", icon: Package },
     { href: "/dashboard/warehouse/fleet", label: "Fleet", icon: Package },
     { href: "/dashboard/warehouse/inspections", label: "Inspect", icon: ShieldAlert },
