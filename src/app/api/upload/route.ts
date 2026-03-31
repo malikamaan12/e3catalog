@@ -34,7 +34,14 @@ export async function POST(req: NextRequest) {
 
         let user = null;
         if (folder !== "kyc") {
-            const authCheck = await requireAdmin([USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN, USER_ROLES.VENDOR, USER_ROLES.CLIENT]);
+            const authCheck = await requireAdmin([
+                USER_ROLES.SUPER_ADMIN, 
+                USER_ROLES.ADMIN, 
+                USER_ROLES.VENDOR, 
+                USER_ROLES.CLIENT, 
+                USER_ROLES.WAREHOUSE_MANAGER, 
+                "sales_manager"
+            ]);
             if (authCheck.error) {
                 console.error("UPLOAD AUTH ERROR: User not authorized to upload to folder:", folder);
                 return authCheck.error;
@@ -52,10 +59,15 @@ export async function POST(req: NextRequest) {
         const cleanName = filename.replace(/[^a-zA-Z0-9.-]/g, "_");
         const uniqueId = uuid().split("-")[0]; // Short unique ID
 
-        // Tenant partitioning for vendors
+        // Tenant partitioning for vendors and their staff
         let prefix = folder;
-        if (user && user.role === USER_ROLES.VENDOR && (user as any).vendorId) {
+        if (user && 
+            (user.role === USER_ROLES.VENDOR || user.role === USER_ROLES.WAREHOUSE_MANAGER || user.role === "sales_manager") 
+            && (user as any).vendorId) {
             prefix = `vendors/${(user as any).vendorId}/${folder}`;
+        } else if (user && user.role === USER_ROLES.VENDOR) {
+            // Fallback for older vendor logic if they don't have a vendorId on the user object directly but are the vendor owner
+            prefix = `vendors/${user.id}/${folder}`;
         }
 
         const key = `${prefix}/${uniqueId}-${cleanName}`;

@@ -27,11 +27,15 @@ export default async function DashboardPage() {
         active: 0,
     };
 
-    if (user.role === USER_ROLES.VENDOR) {
+    if (user.role === USER_ROLES.WAREHOUSE_MANAGER) {
+        redirect("/dashboard/warehouse/overview");
+    }
+
+    if (user.role === USER_ROLES.VENDOR || user.role === "sales_manager") {
         const vendorData = await db
             .select()
             .from(vendors)
-            .where(eq(vendors.userId, user.id))
+            .where(eq(vendors.userId, user.vendorId || user.id)) // If staff, use vendorId, else use their own id
             .limit(1);
         
         const vendor = vendorData[0];
