@@ -543,8 +543,8 @@ export default function StagingGrid({ initialRows }: { initialRows: StagingItem[
 
     return (
         <>
-            {/* ── Stats bar ── */}
-            <div className="flex items-center gap-4 flex-wrap mb-4">
+            {/* ── Top action bar: Stats + Add Row button (always visible) ── */}
+            <div className="flex items-center gap-3 flex-wrap mb-4">
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/20">
                     <ClipboardList className="h-4 w-4 text-amber-500" />
                     <span className="text-xs font-black text-amber-400 uppercase tracking-widest">{countingCount} Counting</span>
@@ -553,7 +553,22 @@ export default function StagingGrid({ initialRows }: { initialRows: StagingItem[
                     <PackageCheck className="h-4 w-4 text-emerald-500" />
                     <span className="text-xs font-black text-emerald-400 uppercase tracking-widest">{migratedCount} Migrated</span>
                 </div>
-                <span className="text-xs text-slate-600 italic">Fields auto-save as you type</span>
+                <span className="text-xs text-slate-600 italic hidden sm:inline">Fields auto-save as you type</span>
+
+                {/* ── Primary Add Row button (top-right, always visible on desktop) ── */}
+                <button
+                    type="button"
+                    onClick={handleAddRow}
+                    disabled={addingRow}
+                    className="ml-auto flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-[#0A0F1C] font-black text-sm transition-all disabled:opacity-50 shadow-lg shadow-amber-500/20"
+                >
+                    {addingRow ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                        <Plus className="h-4 w-4" />
+                    )}
+                    {addingRow ? "Adding..." : "Add Blank Row"}
+                </button>
             </div>
 
             {/* ── Table (desktop) / Cards (mobile) ── */}
@@ -575,11 +590,23 @@ export default function StagingGrid({ initialRows }: { initialRows: StagingItem[
                         <tbody>
                             {rows.length === 0 && (
                                 <tr>
-                                    <td colSpan={7} className="py-24 text-center">
-                                        <div className="flex flex-col items-center gap-3 text-slate-600">
-                                            <ClipboardList className="h-10 w-10 opacity-30" />
-                                            <p className="text-sm font-medium italic">No staging items yet.</p>
-                                            <p className="text-xs">Hit the button below to start counting inventory.</p>
+                                    <td colSpan={7} className="py-20 text-center">
+                                        <div className="flex flex-col items-center gap-4 text-slate-600">
+                                            <ClipboardList className="h-12 w-12 opacity-20" />
+                                            <div>
+                                                <p className="text-sm font-bold text-slate-500">No staging items yet</p>
+                                                <p className="text-xs mt-1 text-slate-600">Click <span className="text-amber-400 font-bold">"Add Blank Row"</span> above to start counting.</p>
+                                            </div>
+                                            {/* Inline add button for empty state — extra prominent */}
+                                            <button
+                                                type="button"
+                                                onClick={handleAddRow}
+                                                disabled={addingRow}
+                                                className="mt-2 flex items-center gap-2 px-6 py-3 rounded-2xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-[#0A0F1C] font-black text-sm transition-all disabled:opacity-50 shadow-lg shadow-amber-500/20"
+                                            >
+                                                {addingRow ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                                                Add First Item
+                                            </button>
                                         </div>
                                     </td>
                                 </tr>
@@ -598,22 +625,41 @@ export default function StagingGrid({ initialRows }: { initialRows: StagingItem[
                     </table>
                 </div>
 
-                {/* ── Sticky Add Row button ── */}
-                <div className="border-t border-white/5 p-4">
-                    <button
-                        type="button"
-                        onClick={handleAddRow}
-                        disabled={addingRow}
-                        className="w-full flex items-center justify-center gap-3 py-4 rounded-2xl border-2 border-dashed border-white/10 hover:border-amber-500/40 hover:bg-amber-500/5 text-slate-500 hover:text-amber-400 font-bold text-sm transition-all active:scale-[0.99] disabled:opacity-50 group"
-                    >
-                        {addingRow ? (
-                            <Loader2 className="h-5 w-5 animate-spin" />
-                        ) : (
-                            <Plus className="h-5 w-5 transition-transform group-hover:rotate-90 group-hover:scale-110" />
-                        )}
-                        {addingRow ? "Adding row..." : "Add Blank Row"}
-                    </button>
-                </div>
+                {/* ── Bottom Add Row (secondary — only shown when rows exist) ── */}
+                {rows.length > 0 && (
+                    <div className="border-t border-white/5 p-3">
+                        <button
+                            type="button"
+                            onClick={handleAddRow}
+                            disabled={addingRow}
+                            className="w-full flex items-center justify-center gap-3 py-3.5 rounded-2xl border-2 border-dashed border-white/10 hover:border-amber-500/40 hover:bg-amber-500/5 text-slate-500 hover:text-amber-400 font-bold text-sm transition-all active:scale-[0.99] disabled:opacity-50 group"
+                        >
+                            {addingRow ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                                <Plus className="h-4 w-4 transition-transform group-hover:rotate-90 group-hover:scale-110" />
+                            )}
+                            {addingRow ? "Adding row..." : "Add Another Row"}
+                        </button>
+                    </div>
+                )}
+            </div>
+
+            {/* ── Sticky FAB for mobile / tablet (bottom of screen) ── */}
+            <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 lg:hidden">
+                <button
+                    type="button"
+                    onClick={handleAddRow}
+                    disabled={addingRow}
+                    className="flex items-center gap-3 px-6 py-4 rounded-full bg-amber-500 hover:bg-amber-400 active:scale-95 text-[#0A0F1C] font-black text-base transition-all disabled:opacity-50 shadow-2xl shadow-amber-500/40 border-4 border-amber-300/20"
+                >
+                    {addingRow ? (
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                    ) : (
+                        <Plus className="h-5 w-5" />
+                    )}
+                    {addingRow ? "Adding..." : "Add Blank Row"}
+                </button>
             </div>
 
             {/* ── Migrate Confirm Dialog ── */}
@@ -631,3 +677,4 @@ export default function StagingGrid({ initialRows }: { initialRows: StagingItem[
         </>
     );
 }
+
