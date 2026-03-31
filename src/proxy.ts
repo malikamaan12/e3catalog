@@ -39,15 +39,35 @@ export default async function middleware(req: NextRequest) {
     const role = session.role;
     const isAnyAdmin = ["admin", "super_admin", "sales_rep", "warehouse_manager", "vendor"].includes(role);
 
-    // ── Rule 2: Client user trying to access Admin Area ──
+    // ── Rule 2: Warehouse Manager RBAC Limits ──
+    if (role === "warehouse_manager") {
+        const restrictedPaths = [
+            "/dashboard/finance",
+            "/dashboard/quotes",
+            "/dashboard/vendors",
+            "/dashboard/settings",
+            "/admin"
+        ];
+        if (restrictedPaths.some(p => pathname.startsWith(p))) {
+            return NextResponse.redirect(new URL("/dashboard/warehouse/overview", req.url));
+        }
+    }
+
+    // ── Rule 3: Client user trying to access Admin Area ──
     if (isAdminRoute && !isAnyAdmin) {
         // Block client from admin — redirect to their own dashboard
         return NextResponse.redirect(new URL("/dashboard", req.url));
     }
 
-    // ── Rule 3: Admin user trying to access Client Dashboard ──
-    if (isDashboardRoute && isAnyAdmin) {
-        // Admins have no business on the client dashboard — send to admin
+    // ── Rule 4: Admin user trying to access Client Dashboard ──
+    if (isDashboardRoute && isAnyAdmin && !pathname.startsWith("/dashboard/warehouse")) {
+        // Admins go to /admin by default, but Warehouse Managers go to their Overview
+        if (role === "warehouse_manager") {
+            if (pathname === "/dashboard") {
+                return NextResponse.redirect(new URL("/dashboard/warehouse/overview", req.url));
+            }
+            return NextResponse.next(); // Allow access to warehouse routes
+        }
         return NextResponse.redirect(new URL("/admin", req.url));
     }
 
