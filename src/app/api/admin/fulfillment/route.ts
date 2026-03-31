@@ -41,6 +41,28 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    // Redact for Warehouse Manager (Financial Blindness)
+    if (user.role === 'warehouse_manager') {
+        const sanitized = { ...bookingRes };
+        delete (sanitized as any).totalPrice;
+        delete (sanitized as any).discount;
+        delete (sanitized as any).logisticsCost;
+        delete (sanitized as any).laborCost;
+        delete (sanitized as any).additionalChargeAmount;
+        // Keep customerName and customerPhone for logistics
+        delete (sanitized as any).customerEmail;
+        
+        // Product pricing redaction
+        if (sanitized.product) {
+            const sanitizedProd = { ...sanitized.product };
+            delete (sanitizedProd as any).pricePerDay;
+            delete (sanitizedProd as any).pricePerHour;
+            sanitized.product = sanitizedProd as any;
+        }
+
+        return NextResponse.json(sanitized);
+    }
+
     return NextResponse.json(bookingRes);
 }
 

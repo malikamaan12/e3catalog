@@ -70,11 +70,12 @@ export default function LabelsPage() {
         const selectedUnits = units.filter(u => selected.has(u.id));
         const SITE_URL = window.location.origin;
 
-        // Size configs
+        // A4 3x6 Grid Config (Avery Standard)
+        // 3 cols, 6 rows = 18 labels per page
         const sizeConfig = {
-            small:  { cols: 4, qrSize: 80, labelPad: "8px",  tagSize: "11px", productSize: "8px",  gap: "8px",  border: "1.5px" },
-            medium: { cols: 3, qrSize: 100, labelPad: "12px", tagSize: "14px", productSize: "10px", gap: "12px", border: "2px" },
-            large:  { cols: 2, qrSize: 150, labelPad: "20px", tagSize: "20px", productSize: "13px", gap: "16px", border: "3px" },
+            small:  { cols: 4, qrSize: 60,  labelPad: "6px",  tagSize: "10px", productSize: "8px",  gap: "4px",  border: "1px",  height: "45mm" },
+            medium: { cols: 3, qrSize: 90,  labelPad: "10px", tagSize: "14px", productSize: "10px", gap: "8px",  border: "1.5px", height: "48mm" },
+            large:  { cols: 2, qrSize: 140, labelPad: "16px", tagSize: "18px", productSize: "12px", gap: "12px", border: "2px",   height: "90mm" },
         };
         const s = sizeConfig[printSize];
 
@@ -90,7 +91,7 @@ export default function LabelsPage() {
                         <div class="product">${unit.productName || "—"}</div>
                         ${unit.serialNumber ? `<div class="sub">S/N: ${unit.serialNumber}</div>` : ""}
                         ${unit.shelfLocation ? `<div class="sub">📍 ${unit.shelfLocation}</div>` : ""}
-                        <div class="brand">E3 Rentals</div>
+                        <div class="brand">E3 Rentals Logistics</div>
                     </div>
                 </div>
             `;
@@ -102,34 +103,57 @@ export default function LabelsPage() {
             <head>
                 <title>E3 Asset Labels (${printSize.toUpperCase()})</title>
                 <style>
+                    @page {
+                        size: A4;
+                        margin: 10mm;
+                    }
                     * { box-sizing: border-box; margin: 0; padding: 0; }
-                    body { font-family: 'Courier New', monospace; background: white; }
-                    .grid { display: grid; grid-template-columns: repeat(${s.cols}, 1fr); gap: ${s.gap}; padding: 16px; }
+                    body { 
+                        font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
+                        background: white; 
+                        -webkit-print-color-adjust: exact;
+                    }
+                    .grid { 
+                        display: grid; 
+                        grid-template-columns: repeat(${s.cols}, 1fr); 
+                        gap: ${s.gap}; 
+                    }
                     .label {
                         display: flex;
                         align-items: center;
                         gap: ${s.labelPad};
                         border: ${s.border} solid #000;
-                        border-radius: 6px;
+                        border-radius: 4px;
                         padding: ${s.labelPad};
+                        height: ${s.height};
                         page-break-inside: avoid;
+                        overflow: hidden;
                         background: white;
                     }
-                    .qr img { display: block; }
-                    .info { flex: 1; min-width: 0; }
-                    .tag { font-size: ${s.tagSize}; font-weight: 900; letter-spacing: 0.08em; word-break: break-all; }
-                    .product { font-size: ${s.productSize}; font-weight: bold; margin-top: 4px; color: #333; }
-                    .sub { font-size: ${parseInt(s.productSize) - 1}px; color: #666; margin-top: 2px; }
-                    .brand { font-size: ${parseInt(s.productSize) - 1}px; font-weight: 900; margin-top: 6px; letter-spacing: 0.2em; color: #888; text-transform: uppercase; }
+                    .qr img { display: block; border: 1px solid #eee; }
+                    .info { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; }
+                    .tag { font-size: ${s.tagSize}; font-weight: 900; letter-spacing: 0.05em; color: #000; border-bottom: 1px solid #eee; padding-bottom: 2px; margin-bottom: 4px; }
+                    .product { font-size: ${s.productSize}; font-weight: bold; color: #333; line-height: 1.1; }
+                    .sub { font-size: ${parseInt(s.productSize) - 2}px; color: #666; margin-top: 1px; }
+                    .brand { font-size: ${parseInt(s.productSize) - 3}px; font-weight: 900; margin-top: auto; letter-spacing: 0.1em; color: #aaa; text-transform: uppercase; }
+                    
                     @media print {
-                        @page { margin: ${printSize === 'large' ? '15mm' : '8mm'}; }
-                        body { print-color-adjust: exact; }
+                        header, footer, nav { display: none !important; }
+                        body { background: none; }
+                        .grid { padding: 0; }
                     }
                 </style>
             </head>
             <body>
                 <div class="grid">${labelsHtml}</div>
-                <script>window.onload = () => window.print();</script>
+                <script>
+                    window.onload = () => {
+                        setTimeout(() => {
+                            window.print();
+                            window.onafterprint = () => window.close();
+                        }, 500);
+                    };
+                </script>
             </body>
             </html>
         `);

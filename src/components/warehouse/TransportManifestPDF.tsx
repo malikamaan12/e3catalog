@@ -172,6 +172,17 @@ const styles = StyleSheet.create({
         color: "#94a3b8",
         marginTop: 2,
     },
+    signStamp: {
+        position: 'absolute',
+        top: 5,
+        right: 10,
+        width: 40,
+        height: 40,
+        borderWidth: 1,
+        borderColor: '#f1f5f9',
+        borderRadius: 20,
+        opacity: 0.1,
+    },
     footerLabel: {
         position: 'absolute',
         bottom: 25,
@@ -287,7 +298,7 @@ export default function TransportManifestPDF({ data }: PdfProps) {
                         </View>
                         {/* Table Rows */}
                         {data.items.map((item, i) => (
-                            <View style={styles.tableRow} key={i}>
+                            <View style={styles.tableRow} key={i} wrap={false}>
                                 <View style={styles.tableColTag}><Text style={styles.tableCellTag}>{item.tag}</Text></View>
                                 <View style={styles.tableColDesc}><Text style={styles.tableCell}>{item.name}</Text></View>
                                 <View style={styles.tableColSerial}><Text style={styles.tableCell}>{item.serial}</Text></View>
@@ -298,23 +309,29 @@ export default function TransportManifestPDF({ data }: PdfProps) {
                 </View>
 
                 {/* Section 4: Tri-Party Sign-Off */}
-                <View style={styles.section}>
+                <View style={[styles.section, { marginTop: 20 }]} wrap={false}>
                     <Text style={styles.sectionTitle}>4. Tri-Party Handover & Sign-Off</Text>
                     <View style={styles.signaturesRow}>
                         <View style={styles.signBlock}>
-                            <View style={styles.signLine}></View>
+                            <View style={styles.signStamp} />
+                            <View style={styles.signLine} />
                             <Text style={styles.signTitle}>Dispatched By</Text>
                             <Text style={styles.signDesc}>Warehouse Manager</Text>
+                            <Text style={{ fontSize: 6, color: '#cbd5e1', marginTop: 4 }}>E3 Depot Operations</Text>
                         </View>
                         <View style={styles.signBlock}>
-                            <View style={styles.signLine}></View>
+                            <View style={styles.signStamp} />
+                            <View style={styles.signLine} />
                             <Text style={styles.signTitle}>Carried By</Text>
                             <Text style={styles.signDesc}>Logistics Driver</Text>
+                            <Text style={{ fontSize: 6, color: '#cbd5e1', marginTop: 4 }}>Company / Independent</Text>
                         </View>
                         <View style={styles.signBlock}>
-                            <View style={styles.signLine}></View>
+                            <View style={styles.signStamp} />
+                            <View style={styles.signLine} />
                             <Text style={styles.signTitle}>Received By</Text>
                             <Text style={styles.signDesc}>Client / Site Manager</Text>
+                            <Text style={{ fontSize: 6, color: '#cbd5e1', marginTop: 4 }}>I confirm receipt of all units</Text>
                         </View>
                     </View>
                 </View>

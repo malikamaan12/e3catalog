@@ -140,36 +140,45 @@ function QuantityStepper({
 }) {
     const [localVal, setLocalVal] = useState(value);
     const [pending, startTransition] = useTransition();
+    const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     useEffect(() => { setLocalVal(value); }, [value]);
+
+    // Debounced server sync
+    const syncWithServer = useCallback((id: string, newVal: number, currentVal: number) => {
+        if (timerRef.current) clearTimeout(timerRef.current);
+        
+        timerRef.current = setTimeout(() => {
+            const delta = newVal - currentVal;
+            if (delta === 0) return;
+            
+            startTransition(async () => {
+                const res = await updateStagingQuantity(id, delta);
+                if ("newQuantity" in res) {
+                    onChange(res.newQuantity);
+                    setLocalVal(res.newQuantity);
+                }
+            });
+        }, 500); // 500ms debounce for rapid clicking
+    }, [onChange]);
 
     const step = useCallback((delta: number) => {
         if (migrated) return;
         const next = Math.max(0, localVal + delta);
-        setLocalVal(next); // Optimistic
-        startTransition(async () => {
-            const res = await updateStagingQuantity(itemId, delta);
-            if ("newQuantity" in res) {
-                onChange(res.newQuantity);
-                setLocalVal(res.newQuantity);
-            }
-        });
-    }, [localVal, itemId, migrated, onChange]);
+        const prev = localVal;
+        setLocalVal(next); // Optimistic UI
+        syncWithServer(itemId, next, prev);
+    }, [localVal, itemId, migrated, syncWithServer]);
 
     const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         const parsed = parseInt(e.target.value, 10);
         if (isNaN(parsed) || parsed < 0) return;
-        const delta = parsed - localVal;
-        if (delta === 0) return;
+        if (parsed === localVal) return;
+        
+        const prev = localVal;
         setLocalVal(parsed);
-        startTransition(async () => {
-            const res = await updateStagingQuantity(itemId, delta);
-            if ("newQuantity" in res) {
-                onChange(res.newQuantity);
-                setLocalVal(res.newQuantity);
-            }
-        });
-    }, [localVal, itemId, onChange]);
+        syncWithServer(itemId, parsed, prev);
+    }, [localVal, itemId, syncWithServer]);
 
     return (
         <div className={`flex items-center gap-1 ${migrated ? "opacity-50 pointer-events-none" : ""}`}>

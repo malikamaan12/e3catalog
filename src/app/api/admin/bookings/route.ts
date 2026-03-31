@@ -80,7 +80,48 @@ export async function GET() {
         return acc;
     }, {});
 
-    const result = Object.values(grouped).sort((a: any, b: any) =>
+    // 3. Post-Process for Role-Based Redaction (Warehouse Manager Blindness)
+    const processed = Object.values(grouped).map((group: any) => {
+        const isWarehouse = user.role === 'warehouse_manager';
+        
+        // Sanitize the top-level group data
+        const sanitizedGroup = { ...group };
+        if (isWarehouse) {
+            delete sanitizedGroup.totalPrice;
+            delete sanitizedGroup.paymentStatus;
+            delete sanitizedGroup.customerEmail;
+        }
+
+        // Sanitize individual items
+        sanitizedGroup.items = group.items.map((item: any) => {
+            const sanitizedItem = { ...item };
+            if (isWarehouse) {
+                // Financial Redaction
+                delete sanitizedItem.totalPrice;
+                delete sanitizedItem.discount;
+                delete sanitizedItem.logisticsCost;
+                delete sanitizedItem.laborCost;
+                delete sanitizedItem.additionalChargeAmount;
+                delete sanitizedItem.additionalChargeName;
+                delete sanitizedItem.additionalChargeType;
+                delete sanitizedItem.paymentStatus;
+                // Privacy Redaction
+                delete sanitizedItem.customerEmail;
+                // Note: customerName and customerPhone are kept for site delivery contact
+                
+                // If it's a product join, ensure product dimensions/weight are kept but price is hidden
+                if (sanitizedItem.product) {
+                    delete sanitizedItem.product.pricePerDay;
+                    delete sanitizedItem.product.pricePerHour;
+                }
+            }
+            return sanitizedItem;
+        });
+
+        return sanitizedGroup;
+    });
+
+    const result = processed.sort((a: any, b: any) =>
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
 
@@ -100,6 +141,16 @@ export async function PATCH(req: NextRequest) {
 
     const body = await req.json();
     const { id, ...updates } = body;
+
+    // Prevent warehouse manager from updating financial fields via PATCH
+    if (user.role === 'warehouse_manager') {
+        const forbiddenFields = [
+            'totalPrice', 'discount', 'logisticsCost', 'laborCost', 
+            'additionalChargeAmount', 'additionalChargeName', 'additionalChargeType',
+            'paymentStatus'
+        ];
+        forbiddenFields.forEach(f => delete (updates as any)[f]);
+    }
 
     if (!id) {
         return NextResponse.json({ error: "Booking ID required" }, { status: 400 });
@@ -124,6 +175,14 @@ export async function PATCH(req: NextRequest) {
             product: { columns: { name: true, slug: true, thumbnailUrl: true } },
         },
     });
+
+    // Final Sanitization of the updated object if returning it
+    if (user.role === 'warehouse_manager' && updated) {
+        const sanitized = { ...updated };
+        delete (sanitized as any).totalPrice;
+        delete (sanitized as any).customerEmail;
+        return NextResponse.json(sanitized);
+    }
 
     return NextResponse.json(updated);
 }

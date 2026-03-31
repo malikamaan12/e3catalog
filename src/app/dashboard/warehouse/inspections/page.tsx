@@ -231,16 +231,16 @@ export default function InspectionsPage() {
                             <button
                                 onClick={() => setScannerOpen(true)}
                                 title="Scan QR code"
-                                className="px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-all flex items-center gap-1"
+                                className="h-12 px-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-all flex items-center gap-1"
                             >
-                                <Camera className="h-4 w-4" />
+                                <Camera className="h-5 w-5" />
                             </button>
                             <button
                                 onClick={lookupUnit}
                                 disabled={lookingUp}
-                                className="px-5 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm font-bold hover:bg-red-500/20 transition-all flex items-center gap-2"
+                                className="h-12 px-5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm font-bold hover:bg-red-500/20 transition-all flex items-center gap-2"
                             >
-                                {lookingUp ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                                {lookingUp ? <Loader2 className="h-5 w-5 animate-spin" /> : <Search className="h-5 w-5" />}
                                 Look Up
                             </button>
                         </div>

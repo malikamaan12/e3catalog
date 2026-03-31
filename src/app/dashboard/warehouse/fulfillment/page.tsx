@@ -22,7 +22,7 @@ type ScanEntry = {
     id: string;
     assetTag: string;
     action: "dispatch" | "return";
-    status: "success" | "error";
+    status: "success" | "error" | "pending";
     message: string;
     timestamp: Date;
 };
@@ -87,8 +87,16 @@ export default function FulfillmentPage() {
             return;
         }
 
-        setLoading(true);
+        const scanId = crypto.randomUUID();
+        // 1. Optimistic Add
+        addEntry(cleanTag, { 
+            id: scanId,
+            status: "pending", 
+            message: "Verifying with server..." 
+        });
+
         setAssetTag("");
+        setLoading(true);
 
         try {
             const body: any = { assetTag: cleanTag, action };
@@ -107,27 +115,33 @@ export default function FulfillmentPage() {
             const data = await res.json();
 
             if (res.ok) {
-                addEntry(cleanTag, { status: "success", message: data.message || "Operation successful" });
+                updateEntry(scanId, { status: "success", message: data.message || "Operation successful" });
             } else {
-                addEntry(cleanTag, { status: "error", message: data.error || "Scan failed" });
+                updateEntry(scanId, { status: "error", message: data.error || "Scan failed" });
             }
         } catch {
-            addEntry(cleanTag, { status: "error", message: "Network error. Try again." });
+            updateEntry(scanId, { status: "error", message: "Network error. Try again." });
         } finally {
             setLoading(false);
             setTimeout(() => inputRef.current?.focus(), 100);
         }
-    }, [assetTag, action, bookingId, returnCondition, returnNotes]);
+    }, [action, bookingId, returnCondition, returnNotes]);
 
     function addEntry(tag: string, result: Partial<ScanEntry>) {
         setScanLog(prev => [{
-            id: crypto.randomUUID(),
+            id: result.id || crypto.randomUUID(),
             assetTag: tag,
             action,
             status: result.status || "success",
             message: result.message || "",
             timestamp: new Date(),
         }, ...prev].slice(0, 50));
+    }
+
+    function updateEntry(id: string, updates: Partial<ScanEntry>) {
+        setScanLog(prev => prev.map(entry => 
+            entry.id === id ? { ...entry, ...updates } : entry
+        ));
     }
 
     // Called when the camera scanner reads a QR code
@@ -235,7 +249,7 @@ export default function FulfillmentPage() {
                             </div>
                             <button
                                 onClick={() => setFinalizeModalOpen(true)}
-                                className="flex items-center justify-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-[#0A0F1C] rounded-lg text-xs font-black uppercase tracking-widest transition-all shadow-lg active:scale-95"
+                                className="flex items-center justify-center gap-3 px-6 h-12 bg-amber-500 hover:bg-amber-400 text-[#0A0F1C] rounded-xl text-xs font-black uppercase tracking-[0.1em] transition-all shadow-lg active:scale-95 shrink-0"
                             >
                                 <FileSignature className="h-4 w-4" /> Finalize Load
                             </button>
@@ -342,15 +356,19 @@ export default function FulfillmentPage() {
                         {scanLog.map(entry => (
                             <div
                                 key={entry.id}
-                                className={`flex items-start gap-4 p-4 rounded-2xl border text-sm ${
+                                className={`flex items-start gap-4 p-4 rounded-2xl border text-sm transition-colors duration-300 ${
                                     entry.status === "success"
                                         ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-100"
-                                        : "bg-red-500/10 border-red-500/20 text-red-100"
+                                        : entry.status === "pending"
+                                            ? "bg-amber-500/10 border-amber-500/20 text-amber-100"
+                                            : "bg-red-500/10 border-red-500/20 text-red-100"
                                 }`}
                             >
                                 {entry.status === "success"
                                     ? <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0 mt-0.5" />
-                                    : <XCircle className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
+                                    : entry.status === "pending"
+                                        ? <Loader2 className="h-5 w-5 text-amber-500 shrink-0 mt-0.5 animate-spin" />
+                                        : <XCircle className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
                                 }
                                 <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-2 flex-wrap">

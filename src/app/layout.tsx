@@ -12,6 +12,14 @@ export const metadata: Metadata = {
   title: "Premium Event Equipment Rentals in Qatar | E3 Digital Operating System",
   description: "Elevate your corporate events and exhibitions in Qatar. E3 Rentals offers premium AV, staging, and event equipment with instant 3D models, real-time availability, and MOCI-compliant professional quotes.",
   keywords: "premium event rentals Qatar, corporate event equipment Doha, exhibition supplies Qatar, 3D event planning Qatar, Civil Defence approved event structures, MOCI approved tent rentals, KAHRAMAA compliant event lighting, event logistics Qatar",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "E3 Rentals ERP",
+  },
+  formatDetection: {
+    telephone: false,
+  },
 };
 
 export default function RootLayout({

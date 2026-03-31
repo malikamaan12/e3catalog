@@ -81,7 +81,7 @@ export async function finalizeTransport(
                 
             for (const row of assignmentRows) {
                 await tx.update(inventoryUnits)
-                    .set({ availabilityStatus: 'deployed', updatedAt: new Date() })
+                    .set({ availabilityStatus: 'on_rent', updatedAt: new Date() })
                     .where(eq(inventoryUnits.id, row.inventoryUnitId));
             }
             
