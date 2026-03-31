@@ -2,11 +2,11 @@
 
 import { useState, useEffect, useCallback } from "react";
 import {
-    Search, Filter, RefreshCw, Package, MapPin,
-    CheckCircle2, AlertTriangle, Wrench, Clock,
-    ChevronRight, X, Save, Loader2, Tag
+    Search, RefreshCw, MapPin,
+    ChevronRight, X, Save, Loader2, Tag, Camera
 } from "lucide-react";
 import { format } from "date-fns";
+import QRScannerModal from "@/components/warehouse/QRScannerModal";
 
 type Unit = {
     id: string;
@@ -49,6 +49,13 @@ export default function FleetPage() {
     const [editStatus, setEditStatus] = useState("");
     const [editShelf, setEditShelf] = useState("");
     const [saving, setSaving] = useState(false);
+    const [scannerOpen, setScannerOpen] = useState(false);
+
+    const handleFleetScan = (tag: string) => {
+        setScannerOpen(false);
+        setSearch(tag);
+        setStatusFilter("all");
+    };
 
     const load = useCallback(() => {
         setLoading(true);
@@ -118,6 +125,12 @@ export default function FleetPage() {
 
     return (
         <div className="flex flex-col gap-0 h-full">
+            <QRScannerModal
+                isOpen={scannerOpen}
+                onClose={() => setScannerOpen(false)}
+                onScan={handleFleetScan}
+                title="Scan to Find Asset"
+            />
             {/* Header + Filters */}
             <div className="p-4 md:p-6 border-b border-white/[0.06] flex flex-col gap-4">
                 <div className="flex items-center justify-between">
@@ -154,15 +167,25 @@ export default function FleetPage() {
                     ))}
                 </div>
 
-                <div className="relative">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-600" />
-                    <input
-                        type="text"
-                        placeholder="Search by tag code, product, or serial no..."
-                        value={search}
-                        onChange={e => setSearch(e.target.value)}
-                        className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-sm text-slate-100 placeholder:text-slate-700 focus:outline-none focus:border-sky-500/50"
-                    />
+                <div className="flex gap-2">
+                    <div className="relative flex-1">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-600" />
+                        <input
+                            type="text"
+                            placeholder="Search by tag code, product, or serial no..."
+                            value={search}
+                            onChange={e => setSearch(e.target.value)}
+                            className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-sm text-slate-100 placeholder:text-slate-700 focus:outline-none focus:border-sky-500/50"
+                        />
+                    </div>
+                    <button
+                        onClick={() => setScannerOpen(true)}
+                        title="Scan to find asset"
+                        className="px-4 rounded-xl bg-sky-500/10 border border-sky-500/20 text-sky-400 hover:bg-sky-500/20 transition-all flex items-center gap-2 text-xs font-bold uppercase tracking-widest shrink-0"
+                    >
+                        <Camera className="h-4 w-4" />
+                        <span className="hidden sm:inline">Scan</span>
+                    </button>
                 </div>
             </div>
 

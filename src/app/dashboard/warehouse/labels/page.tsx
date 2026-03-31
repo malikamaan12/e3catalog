@@ -24,8 +24,7 @@ export default function LabelsPage() {
     const [selected, setSelected] = useState<Set<string>>(new Set());
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
-    const [printing, setPrinting] = useState(false);
-    const printRef = useRef<HTMLDivElement>(null);
+    const [printSize, setPrintSize] = useState<"small" | "medium" | "large">("medium");
 
     const load = useCallback(() => {
         setLoading(true);
@@ -71,13 +70,20 @@ export default function LabelsPage() {
         const selectedUnits = units.filter(u => selected.has(u.id));
         const SITE_URL = window.location.origin;
 
-        // Generate SVG QR codes inline
+        // Size configs
+        const sizeConfig = {
+            small:  { cols: 4, qrSize: 80, labelPad: "8px",  tagSize: "11px", productSize: "8px",  gap: "8px",  border: "1.5px" },
+            medium: { cols: 3, qrSize: 100, labelPad: "12px", tagSize: "14px", productSize: "10px", gap: "12px", border: "2px" },
+            large:  { cols: 2, qrSize: 150, labelPad: "20px", tagSize: "20px", productSize: "13px", gap: "16px", border: "3px" },
+        };
+        const s = sizeConfig[printSize];
+
         const labelsHtml = selectedUnits.map(unit => {
             const url = `${SITE_URL}/passport/${encodeURIComponent(unit.assetTagCode)}`;
             return `
                 <div class="label">
                     <div class="qr">
-                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(url)}" width="100" height="100" />
+                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=${s.qrSize * 2}x${s.qrSize * 2}&data=${encodeURIComponent(url)}" width="${s.qrSize}" height="${s.qrSize}" />
                     </div>
                     <div class="info">
                         <div class="tag">${unit.assetTagCode}</div>
@@ -94,30 +100,29 @@ export default function LabelsPage() {
             <!DOCTYPE html>
             <html>
             <head>
-                <title>E3 Asset Labels</title>
+                <title>E3 Asset Labels (${printSize.toUpperCase()})</title>
                 <style>
                     * { box-sizing: border-box; margin: 0; padding: 0; }
                     body { font-family: 'Courier New', monospace; background: white; }
-                    .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; padding: 16px; }
-                    @media (min-width: 600px) { .grid { grid-template-columns: repeat(3, 1fr); } }
+                    .grid { display: grid; grid-template-columns: repeat(${s.cols}, 1fr); gap: ${s.gap}; padding: 16px; }
                     .label {
                         display: flex;
                         align-items: center;
-                        gap: 12px;
-                        border: 2px solid #000;
-                        border-radius: 8px;
-                        padding: 12px;
+                        gap: ${s.labelPad};
+                        border: ${s.border} solid #000;
+                        border-radius: 6px;
+                        padding: ${s.labelPad};
                         page-break-inside: avoid;
                         background: white;
                     }
                     .qr img { display: block; }
                     .info { flex: 1; min-width: 0; }
-                    .tag { font-size: 14px; font-weight: 900; letter-spacing: 0.1em; word-break: break-all; }
-                    .product { font-size: 10px; font-weight: bold; margin-top: 4px; color: #333; }
-                    .sub { font-size: 9px; color: #666; margin-top: 2px; }
-                    .brand { font-size: 9px; font-weight: 900; margin-top: 6px; letter-spacing: 0.2em; color: #888; text-transform: uppercase; }
+                    .tag { font-size: ${s.tagSize}; font-weight: 900; letter-spacing: 0.08em; word-break: break-all; }
+                    .product { font-size: ${s.productSize}; font-weight: bold; margin-top: 4px; color: #333; }
+                    .sub { font-size: ${parseInt(s.productSize) - 1}px; color: #666; margin-top: 2px; }
+                    .brand { font-size: ${parseInt(s.productSize) - 1}px; font-weight: 900; margin-top: 6px; letter-spacing: 0.2em; color: #888; text-transform: uppercase; }
                     @media print {
-                        @page { margin: 10mm; }
+                        @page { margin: ${printSize === 'large' ? '15mm' : '8mm'}; }
                         body { print-color-adjust: exact; }
                     }
                 </style>
@@ -172,17 +177,37 @@ export default function LabelsPage() {
                     />
                 </div>
 
-                {/* Select all row */}
-                <button
-                    onClick={toggleAll}
-                    className="flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-slate-300 transition-colors"
-                >
-                    {allSelected
-                        ? <CheckSquare className="h-4 w-4 text-slate-300" />
-                        : <Square className="h-4 w-4" />
-                    }
-                    {allSelected ? "Deselect All" : `Select All (${filtered.length})`}
-                </button>
+                {/* Size Selector + Select All */}
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                    <button
+                        onClick={toggleAll}
+                        className="flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-slate-300 transition-colors"
+                    >
+                        {allSelected
+                            ? <CheckSquare className="h-4 w-4 text-slate-300" />
+                            : <Square className="h-4 w-4" />
+                        }
+                        {allSelected ? "Deselect All" : `Select All (${filtered.length})`}
+                    </button>
+
+                    {/* Print Size Selector */}
+                    <div className="flex items-center gap-1 bg-white/5 border border-white/10 rounded-xl p-1">
+                        <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest px-2">Size:</span>
+                        {(["small", "medium", "large"] as const).map(size => (
+                            <button
+                                key={size}
+                                onClick={() => setPrintSize(size)}
+                                className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                                    printSize === size
+                                        ? "bg-slate-100 text-slate-900"
+                                        : "text-slate-500 hover:text-slate-300"
+                                }`}
+                            >
+                                {size === "small" ? "S (2×1″)" : size === "medium" ? "M (3×2″)" : "L (4×4″)"}
+                            </button>
+                        ))}
+                    </div>
+                </div>
             </div>
 
             {/* Units List */}
@@ -211,12 +236,11 @@ export default function LabelsPage() {
                                 {isSelected && <X className="h-3 w-3 text-slate-900" />}
                             </div>
 
-                            {/* Mini Label Preview */}
                             <div className="flex items-center gap-3 flex-1 min-w-0">
                                 <div className="bg-white rounded-lg p-1.5 shrink-0">
                                     <QRCodeSVG
                                         value={`${typeof window !== "undefined" ? window.location.origin : ""}/passport/${unit.assetTagCode}`}
-                                        size={36}
+                                        size={printSize === "large" ? 56 : printSize === "small" ? 24 : 36}
                                         level="M"
                                     />
                                 </div>
@@ -238,7 +262,10 @@ export default function LabelsPage() {
             {/* Fixed Print Bar when selection exists */}
             {selected.size > 0 && (
                 <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-4 px-6 py-4 bg-slate-900 border border-white/20 rounded-2xl shadow-2xl backdrop-blur-xl">
-                    <span className="text-sm font-black text-slate-100">{selected.size} labels ready</span>
+                    <div className="flex flex-col">
+                        <span className="text-sm font-black text-slate-100">{selected.size} labels</span>
+                        <span className="text-[10px] text-slate-500 uppercase font-bold">{printSize === "small" ? "2×1 inch" : printSize === "medium" ? "3×2 inch" : "4×4 inch"}</span>
+                    </div>
                     <button
                         onClick={handlePrint}
                         className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white text-slate-900 font-black text-xs uppercase tracking-widest hover:bg-slate-100 transition-all"

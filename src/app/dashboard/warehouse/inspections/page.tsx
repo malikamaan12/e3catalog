@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
     ShieldAlert, Search, Loader2, Plus, X, CheckCircle2,
-    Clock, Tag, ChevronDown, Save, AlertTriangle
+    Clock, ChevronDown, Save, Camera
 } from "lucide-react";
 import { format } from "date-fns";
+import QRScannerModal from "@/components/warehouse/QRScannerModal";
 
 type InspectionLog = {
     id: string;
@@ -61,6 +62,36 @@ export default function InspectionsPage() {
     const [notes, setNotes] = useState("");
     const [submitting, setSubmitting] = useState(false);
     const [submitMsg, setSubmitMsg] = useState("");
+    const [scannerOpen, setScannerOpen] = useState(false);
+
+    const handleInspectionScan = async (tag: string) => {
+        setScannerOpen(false);
+        setAssetTagInput(tag);
+        // auto-trigger lookup using the scanned value directly
+        setLookingUp(true);
+        setLookupError("");
+        setLookupResult(null);
+        try {
+            const res = await fetch(`/api/passport/${encodeURIComponent(tag)}`);
+            const data = await res.json();
+            if (res.ok) {
+                setLookupResult({
+                    id: data.id,
+                    assetTagCode: data.assetTagCode,
+                    productName: data.productName,
+                    conditionStatus: data.conditionStatus,
+                    availabilityStatus: data.availabilityStatus,
+                });
+                setCondBefore(data.conditionStatus || "good");
+                setCondAfter(data.conditionStatus || "good");
+            } else {
+                setLookupError(data.error || "Asset not found.");
+            }
+        } catch {
+            setLookupError("Network error.");
+        }
+        setLookingUp(false);
+    };
 
     const loadLogs = useCallback(async () => {
         setLoadingLogs(true);
@@ -153,6 +184,12 @@ export default function InspectionsPage() {
 
     return (
         <div className="flex flex-col gap-0 min-h-full">
+            <QRScannerModal
+                isOpen={scannerOpen}
+                onClose={() => setScannerOpen(false)}
+                onScan={handleInspectionScan}
+                title="Scan Asset for Inspection"
+            />
             {/* Header */}
             <div className="p-4 md:p-6 border-b border-white/[0.06] flex items-center justify-between">
                 <div>
@@ -190,6 +227,14 @@ export default function InspectionsPage() {
                                 placeholder="e.g. E3-TRUSS-001"
                                 className="flex-1 bg-white/5 border border-white/10 text-slate-100 rounded-xl px-4 py-3 text-sm font-mono tracking-widest focus:outline-none focus:border-red-500/50"
                             />
+                            {/* Camera Scan button */}
+                            <button
+                                onClick={() => setScannerOpen(true)}
+                                title="Scan QR code"
+                                className="px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-all flex items-center gap-1"
+                            >
+                                <Camera className="h-4 w-4" />
+                            </button>
                             <button
                                 onClick={lookupUnit}
                                 disabled={lookingUp}
