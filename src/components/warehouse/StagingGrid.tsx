@@ -305,17 +305,6 @@ function StagingRow({
                     {String(rowIndex + 1).padStart(2, "0")}
                 </td>
 
-                {/* Name */}
-                <td className="hidden lg:table-cell px-3 py-4">
-                    <input
-                        defaultValue={item.roughName}
-                        disabled={isMigrated}
-                        placeholder="PROTOCOL IDENTITY"
-                        onChange={(e) => debouncedSave("roughName", e.target.value)}
-                        className="w-full bg-transparent border-b border-white/5 focus:border-[var(--color-gold)]/50 outline-none text-[var(--color-warm-white)] font-bold text-sm py-2 placeholder:text-white/5 transition-all disabled:opacity-50 font-[family-name:var(--font-heading)] tracking-wider uppercase"
-                    />
-                </td>
-
                 {/* Image/Photo */}
                 <td className="hidden lg:table-cell px-3 py-4 w-16">
                     <button
@@ -334,6 +323,17 @@ function StagingRow({
                             <ImagePlus className="w-5 h-5 opacity-40 group-hover:opacity-100" />
                         )}
                     </button>
+                </td>
+
+                {/* Name */}
+                <td className="hidden lg:table-cell px-3 py-4 min-w-[240px]">
+                    <input
+                        defaultValue={item.roughName}
+                        disabled={isMigrated}
+                        placeholder="PROTOCOL IDENTITY"
+                        onChange={(e) => debouncedSave("roughName", e.target.value)}
+                        className="w-full bg-transparent border-b border-white/5 focus:border-[var(--color-gold)]/50 outline-none text-[var(--color-warm-white)] font-bold text-sm py-2 placeholder:text-white/5 transition-all disabled:opacity-50 font-[family-name:var(--font-heading)] tracking-wider uppercase"
+                    />
                 </td>
 
                 {/* Category hint */}
@@ -728,8 +728,8 @@ export default function StagingGrid({ initialRows, categories }: { initialRows: 
                         <thead className="hidden lg:table-header-group">
                             <tr className="border-b border-white/10 bg-white/[0.02]">
                                 <th className="px-4 py-3 text-[10px] font-black text-slate-600 uppercase tracking-widest text-center w-10">#</th>
-                                <th className="px-3 py-3 text-[10px] font-black text-slate-600 uppercase tracking-widest text-left w-14">Img</th>
-                                <th className="px-3 py-3 text-[10px] font-black text-slate-600 uppercase tracking-widest text-left">Item Name</th>
+                                <th className="px-3 py-3 text-[10px] font-black text-slate-600 uppercase tracking-widest text-left w-20">Img</th>
+                                <th className="px-3 py-3 text-[10px] font-black text-slate-600 uppercase tracking-widest text-left min-w-[240px]">Item Name</th>
                                 <th className="px-3 py-3 text-[10px] font-black text-slate-600 uppercase tracking-widest text-left w-40">Category</th>
                                 <th className="px-3 py-3 text-[10px] font-black text-slate-600 uppercase tracking-widest text-left w-36">Dimensions</th>
                                 <th className="px-3 py-3 text-[10px] font-black text-slate-600 uppercase tracking-widest text-left">Notes</th>
