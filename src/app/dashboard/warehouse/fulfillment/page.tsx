@@ -78,11 +78,22 @@ export default function FulfillmentPage() {
         if (!scannerOpen) inputRef.current?.focus();
     }, [action, bookingId, scannerOpen]);
 
+    const [lastScanResult, setLastScanResult] = useState<{ status: "success" | "error" | "duplicate"; timestamp: number } | null>(null);
+
     const processTag = useCallback(async (tag: string) => {
         const cleanTag = tag.trim().toUpperCase();
         if (!cleanTag) return;
 
+        // ─── Zone 3: Duplicate Scan Protection ───
+        const isDuplicate = scanLog.some(entry => entry.assetTag === cleanTag && entry.status === "success" && (new Date().getTime() - entry.timestamp.getTime() < 60000));
+        if (isDuplicate) {
+            setLastScanResult({ status: "duplicate", timestamp: Date.now() });
+            addEntry(cleanTag, { status: "error", message: "Duplicate scan detected within 60s." });
+            return;
+        }
+
         if (action === "dispatch" && !bookingId) {
+            setLastScanResult({ status: "error", timestamp: Date.now() });
             addEntry(cleanTag, { status: "error", message: "Please select a booking first." });
             return;
         }
@@ -116,16 +127,19 @@ export default function FulfillmentPage() {
 
             if (res.ok) {
                 updateEntry(scanId, { status: "success", message: data.message || "Operation successful" });
+                setLastScanResult({ status: "success", timestamp: Date.now() });
             } else {
                 updateEntry(scanId, { status: "error", message: data.error || "Scan failed" });
+                setLastScanResult({ status: "error", timestamp: Date.now() });
             }
         } catch {
             updateEntry(scanId, { status: "error", message: "Network error. Try again." });
+            setLastScanResult({ status: "error", timestamp: Date.now() });
         } finally {
             setLoading(false);
             setTimeout(() => inputRef.current?.focus(), 100);
         }
-    }, [action, bookingId, returnCondition, returnNotes]);
+    }, [action, bookingId, returnCondition, returnNotes, scanLog]);
 
     function addEntry(tag: string, result: Partial<ScanEntry>) {
         setScanLog(prev => [{
@@ -146,8 +160,8 @@ export default function FulfillmentPage() {
 
     // Called when the camera scanner reads a QR code
     const handleCameraScan = (result: string) => {
-        setScannerOpen(false);
-        setAssetTag(result);
+        // Mode remains open for continuous warehouse bumping
+        // setScannerOpen(false); 
         processTag(result);
     };
 
@@ -183,7 +197,8 @@ export default function FulfillmentPage() {
                 isOpen={scannerOpen}
                 onClose={() => setScannerOpen(false)}
                 onScan={handleCameraScan}
-                title="Scan Asset Tag"
+                title={`Scanning: ${action.toUpperCase()}`}
+                lastResult={lastScanResult}
             />
 
             <header className="flex flex-col gap-1">

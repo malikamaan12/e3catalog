@@ -6,9 +6,11 @@ import { bookings, bookingDispatchLogs, bookingUnitAssignments, inventoryUnits, 
 import { eq } from "drizzle-orm";
 import { format } from "date-fns";
 
-export async function GET(req: NextRequest, props: { params: Promise<{ bookingId: string }> }) {
-    const params = await props.params;
-    const bookingId = params.bookingId;
+export async function GET(
+    request: NextRequest,
+    { params }: { params: Promise<{ bookingId: string }> }
+) {
+    const { bookingId } = await params;
 
     try {
         // Fetch Booking
