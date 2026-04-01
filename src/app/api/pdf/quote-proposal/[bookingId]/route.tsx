@@ -10,7 +10,7 @@ import { USER_ROLES } from "@/lib/constants";
 
 export async function GET(
     req: NextRequest,
-    { params }: { params: { bookingId: string } }
+    { params }: { params: Promise<{ bookingId: string }> }
 ) {
     try {
         const { bookingId } = await params;
