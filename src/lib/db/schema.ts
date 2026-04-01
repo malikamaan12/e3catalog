@@ -371,6 +371,10 @@ export const bookings = pgTable("bookings", {
 
     addedByAdmin: boolean("added_by_admin").default(false),
     adminItemNote: varchar("admin_item_note", { length: 1000 }),
+
+    // Digital Sign-Off
+    signatureData: text("signature_data"), // Base64 signature
+    signedAt: timestamp("signed_at"),
 }, (table) => {
     return {
         productIdIdx: index("bookings_product_id_idx").on(table.productId),
@@ -734,6 +738,7 @@ export const chatMessages = pgTable("chat_messages", {
     senderId: varchar("sender_id", { length: 255 }).notNull().references(() => users.id),
     receiverId: varchar("receiver_id", { length: 255 }).notNull().references(() => users.id),
     projectId: varchar("project_id", { length: 255 }),
+    bookingId: varchar("booking_id", { length: 255 }).references(() => bookings.id),
     content: varchar("content", { length: 2000 }).notNull(),
     attachmentUrl: varchar("attachment_url", { length: 500 }),
     attachmentType: varchar("attachment_type", { length: 50 }),
@@ -752,6 +757,10 @@ export const chatMessagesRelations = relations(chatMessages, ({ one }) => ({
         fields: [chatMessages.receiverId],
         references: [users.id],
         relationName: "receivedMessages",
+    }),
+    booking: one(bookings, {
+        fields: [chatMessages.bookingId],
+        references: [bookings.id],
     }),
 }));
 

@@ -47,6 +47,7 @@
     "react-dom": "19.2.3",
     "react-hot-toast": "^2.6.0",
     "react-intersection-observer": "^10.0.3",
+    "react-signature-canvas": "^1.1.0-alpha.2",
     "recharts": "^3.8.0",
     "resend": "^6.9.3",
     "tailwind-merge": "^3.5.0",

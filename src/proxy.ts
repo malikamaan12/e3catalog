@@ -53,22 +53,51 @@ export default async function middleware(req: NextRequest) {
         }
     }
 
-    // ── Rule 3: Client user trying to access Admin Area ──
-    if (isAdminRoute && !isAnyAdmin) {
-        // Block client from admin — redirect to their own dashboard
-        return NextResponse.redirect(new URL("/dashboard", req.url));
+    // ── Rule 3: Sales Representative RBAC Limits ──
+    if (role === "sales_rep") {
+        const restrictedPaths = [
+            "/dashboard/warehouse",
+            "/dashboard/fleet",
+            "/dashboard/settings",
+            "/admin/super", // STRICT block from super admin
+        ];
+        if (restrictedPaths.some(p => pathname.startsWith(p))) {
+            return NextResponse.redirect(new URL("/dashboard/sales/overview", req.url));
+        }
     }
 
-    // ── Rule 4: Admin user trying to access Client Dashboard ──
-    if (isDashboardRoute && isAnyAdmin && !pathname.startsWith("/dashboard/warehouse")) {
-        // Admins go to /admin by default, but Warehouse Managers go to their Overview
-        if (role === "warehouse_manager") {
-            if (pathname === "/dashboard") {
-                return NextResponse.redirect(new URL("/dashboard/warehouse/overview", req.url));
-            }
-            return NextResponse.next(); // Allow access to warehouse routes
+    // ── Rule 4: Client user trying to access Admin Area ──
+    if (isAdminRoute && !isAnyAdmin) {
+        return NextResponse.redirect(new URL("/dashboard/client/overview", req.url));
+    }
+
+    // ── Rule 5: Admin user trying to access Client Dashboard ──
+    if (isDashboardRoute && isAnyAdmin) {
+        if (role === "warehouse_manager" && pathname.startsWith("/dashboard/warehouse")) {
+            return NextResponse.next();
         }
-        return NextResponse.redirect(new URL("/admin", req.url));
+        if (role === "sales_rep" && pathname.startsWith("/dashboard/sales")) {
+            return NextResponse.next();
+        }
+
+        if (role === "warehouse_manager") {
+            return NextResponse.redirect(new URL("/dashboard/warehouse/overview", req.url));
+        }
+        if (role === "sales_rep" && !pathname.startsWith("/dashboard/sales")) {
+            return NextResponse.redirect(new URL("/dashboard/sales/overview", req.url));
+        }
+        
+        if (pathname === "/dashboard" || !pathname.startsWith("/admin")) {
+            return NextResponse.redirect(new URL("/admin", req.url));
+        }
+    }
+
+    // ── Rule 6: Client RBAC Isolation ──
+    if (isDashboardRoute && role === "client") {
+        // Force all dashboard traffic for clients into the /dashboard/client prefix
+        if (!pathname.startsWith("/dashboard/client")) {
+            return NextResponse.redirect(new URL("/dashboard/client/overview", req.url));
+        }
     }
 
     return NextResponse.next();

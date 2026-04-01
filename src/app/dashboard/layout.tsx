@@ -10,9 +10,9 @@ import {
 } from "lucide-react";
 
 const CLIENT_NAV_ITEMS = [
-    { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, exact: true },
-    { href: "/dashboard/quotes", label: "My Quotes", icon: FileText, exact: false },
-    { href: "/dashboard/bookings", label: "My Bookings", icon: CalendarDays, exact: false },
+    { href: "/dashboard/client/overview", label: "Dashboard", icon: LayoutDashboard, exact: true },
+    { href: "/dashboard/client/quotes", label: "My Quotes", icon: FileText, exact: false },
+    { href: "/dashboard/client/bookings", label: "My Bookings", icon: CalendarDays, exact: false },
     { divider: true },
     { href: "/catalog", label: "Browse Catalog", icon: ShoppingBag },
     { href: "/cart", label: "My Cart", icon: ShoppingCart },
@@ -30,6 +30,16 @@ const WAREHOUSE_NAV_ITEMS = [
     { href: "/dashboard/warehouse/fulfillment", label: "Scan to Fulfill", icon: Sparkles, exact: false },
     { href: "/dashboard/warehouse/labels", label: "Asset Labels", icon: FileText, exact: false },
     { href: "/dashboard/warehouse/inspections", label: "Damage Audits", icon: AlertTriangle },
+    { divider: true },
+    { href: "/dashboard/profile", label: "My Profile", icon: User },
+];
+
+const SALES_NAV_ITEMS = [
+    { href: "/dashboard/sales/overview", label: "Sales Hub", icon: LayoutDashboard, exact: true },
+    { href: "/dashboard/sales/pipeline", label: "Booking Pipeline", icon: FileText, exact: false },
+    { href: "/dashboard/sales/clients", label: "Client CRM", icon: User, exact: false },
+    { divider: true },
+    { href: "/dashboard/sales/chat", label: "Deal Room Messages", icon: Sparkles, exact: false },
     { divider: true },
     { href: "/dashboard/profile", label: "My Profile", icon: User },
 ];
@@ -74,11 +84,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     </div>
 
                     <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-gold)] mb-3">
-                        {user?.role === 'warehouse_manager' ? 'Logistics Portal' : 'Client Portal'}
+                        {user?.role === 'warehouse_manager' ? 'Logistics Portal' : 
+                         user?.role === 'sales_rep' ? 'Sales Portal' : 'Client Portal'}
                     </p>
 
                     <nav className="space-y-0.5 flex-1 overflow-y-auto custom-scrollbar overscroll-contain min-h-0 pb-4">
-                        {(user?.role === 'warehouse_manager' ? WAREHOUSE_NAV_ITEMS : CLIENT_NAV_ITEMS).map((item: any, i) => {
+                        {(user?.role === 'warehouse_manager' 
+                            ? WAREHOUSE_NAV_ITEMS 
+                            : user?.role === 'sales_rep' 
+                                ? SALES_NAV_ITEMS 
+                                : CLIENT_NAV_ITEMS
+                        ).map((item: any, i) => {
                             if (item.divider) return <hr key={`div-${i}`} className="border-white/5 my-2" />;
                             const active = isActive(item.href!, item.exact);
                             const Icon = item.icon;
@@ -122,7 +138,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 {/* ── Mobile Top Bar ── */}
                 <div className="lg:hidden fixed left-0 right-0 top-20 z-40 bg-[var(--color-surface)] border-b border-[var(--color-border-subtle)] flex items-center justify-between px-4 py-2">
                     <span className="text-xs font-bold text-[var(--color-gold)] uppercase tracking-widest">
-                        {user?.role === 'warehouse_manager' ? 'Logistics Portal' : 'Client Portal'}
+                        {user?.role === 'warehouse_manager' ? 'Logistics Portal' : 
+                         user?.role === 'sales_rep' ? 'Sales Portal' : 'Client Portal'}
                     </span>
                     <button
                         onClick={() => setMobileOpen(!mobileOpen)}
@@ -135,7 +152,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 {/* Mobile Dropdown */}
                 {mobileOpen && (
                     <div className="lg:hidden fixed left-0 right-0 top-[112px] z-30 bg-[var(--color-surface)] border-b border-[var(--color-border-subtle)] p-4 flex flex-col gap-1">
-                        {(user?.role === 'warehouse_manager' ? WAREHOUSE_NAV_ITEMS : CLIENT_NAV_ITEMS).map((item: any, i) => {
+                        {(user?.role === 'warehouse_manager' 
+                            ? WAREHOUSE_NAV_ITEMS 
+                            : user?.role === 'sales_rep' 
+                                ? SALES_NAV_ITEMS 
+                                : CLIENT_NAV_ITEMS
+                        ).map((item: any, i) => {
                             if (item.divider) return <hr key={`div-${i}`} className="border-white/5 my-1" />;
                             const Icon = item.icon;
                             return (
