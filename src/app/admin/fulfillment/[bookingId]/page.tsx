@@ -83,9 +83,12 @@ export default function FulfillmentPage() {
         if (bookingId) fetchBooking();
     }, [bookingId, fetchBooking]);
 
-    const handleAction = async (action: 'dispatch' | 'return', tagToProcess?: string) => {
+    const handleAction = async (
+        action: 'dispatch' | 'return' | 'auto_allocate' | 'manual_allocate' | 'stage' | 'pack' | 'release', 
+        tagToProcess?: string
+    ) => {
         const tag = tagToProcess || scannedTag;
-        if (!tag) return;
+        if (!tag && action !== 'auto_allocate') return;
 
         setProcessingAction(true);
         setError("");
@@ -96,7 +99,7 @@ export default function FulfillmentPage() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     bookingId,
-                    assetTag: tag,
+                    assetTag: tag || undefined,
                     action
                 })
             });
@@ -339,11 +342,26 @@ export default function FulfillmentPage() {
                                 </div>
                                 <button 
                                     disabled={processingAction}
-                                    onClick={() => handleAction('dispatch')}
-                                    className="px-8 py-4 rounded-xl bg-[var(--color-gold)] text-[var(--color-navy)] font-bold uppercase tracking-wider hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-[0_5px_15px_rgba(255,183,0,0.1)] disabled:opacity-50"
+                                    onClick={() => handleAction('auto_allocate')}
+                                    className="px-6 py-4 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-300 font-bold uppercase tracking-wider hover:bg-amber-500/30 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                                 >
-                                    <Truck className="w-5 h-5" /> Load Item
+                                    ⚡ Auto-Allocate
                                 </button>
+                                <button 
+                                    disabled={processingAction}
+                                    onClick={() => handleAction('manual_allocate')}
+                                    className="px-6 py-4 rounded-xl bg-[var(--color-gold)] text-[var(--color-navy)] font-bold uppercase tracking-wider hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-[0_5px_15px_rgba(255,183,0,0.1)] disabled:opacity-50"
+                                >
+                                    <Truck className="w-5 h-5" /> Allocate Tag
+                                </button>
+                                <a 
+                                    href={`/api/pdf/manifest/${bookingId}`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="px-4 py-4 rounded-xl bg-white/5 border border-white/10 text-white hover:bg-white/10 transition-all flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-wider"
+                                >
+                                    📄 PDF Manifest
+                                </a>
                                 <button 
                                     onClick={() => setShowScanner(!showScanner)}
                                     className={`p-4 rounded-xl border flex items-center justify-center transition-all ${
@@ -432,21 +450,48 @@ export default function FulfillmentPage() {
                                             </div>
                                         </div>
 
-                                        <div className="flex items-center gap-6">
-                                            <div className="text-right">
+                                        <div className="flex items-center gap-3">
+                                            <div className="text-right mr-2">
                                                 <p className="text-[10px] text-slate-500 uppercase">Status</p>
                                                 <p className={`text-[10px] font-bold uppercase tracking-wider ${
-                                                    item.status === 'dispatched' ? "text-emerald-500" : "text-slate-400"
+                                                    item.status === 'dispatched' ? "text-emerald-500" :
+                                                    item.status === 'packed' ? "text-amber-400" :
+                                                    item.status === 'staged' ? "text-sky-400" : "text-slate-300"
                                                 }`}>
                                                     {item.status}
                                                 </p>
                                             </div>
+                                            {item.status === 'allocated' && (
+                                                <button 
+                                                    onClick={() => handleAction('stage', item.inventoryUnit.assetTagCode)}
+                                                    className="px-3 py-1.5 rounded-lg bg-sky-500/10 border border-sky-500/20 text-sky-400 text-[10px] font-bold uppercase hover:bg-sky-500/20 transition-all"
+                                                >
+                                                    Stage
+                                                </button>
+                                            )}
+                                            {item.status === 'staged' && (
+                                                <button 
+                                                    onClick={() => handleAction('pack', item.inventoryUnit.assetTagCode)}
+                                                    className="px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px] font-bold uppercase hover:bg-amber-500/20 transition-all"
+                                                >
+                                                    Pack
+                                                </button>
+                                            )}
                                             {item.status === 'dispatched' && (
                                                 <button 
                                                     onClick={() => handleAction('return', item.inventoryUnit.assetTagCode)}
-                                                    className="px-4 py-2 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-500 text-[10px] font-bold uppercase hover:bg-blue-500/20 transition-all"
+                                                    className="px-3 py-1.5 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-500 text-[10px] font-bold uppercase hover:bg-blue-500/20 transition-all"
                                                 >
                                                     Return
+                                                </button>
+                                            )}
+                                            {['allocated', 'staged', 'packed'].includes(item.status) && (
+                                                <button 
+                                                    onClick={() => handleAction('release', item.inventoryUnit.assetTagCode)}
+                                                    className="px-2.5 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-[10px] font-bold uppercase hover:bg-red-500/20 transition-all"
+                                                    title="Release Allocation"
+                                                >
+                                                    ✕
                                                 </button>
                                             )}
                                         </div>

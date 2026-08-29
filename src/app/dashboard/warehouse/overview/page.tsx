@@ -34,13 +34,25 @@ export default async function WarehouseOverviewPage() {
             lte(bookings.endDate, endOfToday)
         ));
 
-    // 3. Units in Maintenance — correct status value
+    // 3. Units in Maintenance
     const maintenance = await db
         .select({ id: inventoryUnits.id })
         .from(inventoryUnits)
         .where(inArray(inventoryUnits.availabilityStatus, ["in_maintenance", "maintenance"]));
 
-    // 4. Expiring Certificates (next 30 days)
+    // 4. Units Awaiting Inspection
+    const awaitingInspection = await db
+        .select({ id: inventoryUnits.id })
+        .from(inventoryUnits)
+        .where(eq(inventoryUnits.availabilityStatus, "awaiting_inspection"));
+
+    // 5. Total Units On Rent / Deployed
+    const onRent = await db
+        .select({ id: inventoryUnits.id })
+        .from(inventoryUnits)
+        .where(inArray(inventoryUnits.availabilityStatus, ["on_rent", "dispatched"]));
+
+    // 6. Expiring Certificates (next 30 days)
     const certificates = await db
         .select({ id: safetyCertificates.id })
         .from(safetyCertificates)
@@ -49,18 +61,13 @@ export default async function WarehouseOverviewPage() {
             lte(safetyCertificates.expiryDate, thirtyDaysFromNow)
         ));
 
-    // 5. Staging items still being counted
-    const stagingItems = await db
-        .select({ id: stagingInventory.id })
-        .from(stagingInventory)
-        .where(eq(stagingInventory.migrationStatus, "counting"));
-
     const stats = [
-        { label: "Dispatches Today",  value: dispatches.length,   icon: Truck,          color: "text-amber-500",   bg: "bg-amber-500/10",   href: "/dashboard/warehouse/dispatch" },
-        { label: "Returns Today",     value: returns.length,      icon: RotateCcw,       color: "text-sky-500",     bg: "bg-sky-500/10",     href: "/dashboard/warehouse/dispatch" },
-        { label: "In Maintenance",    value: maintenance.length,  icon: Wrench,          color: "text-red-500",     bg: "bg-red-500/10",     href: "/dashboard/warehouse/fleet" },
-        { label: "Staging Items",     value: stagingItems.length, icon: BoxesIcon,       color: "text-violet-400",  bg: "bg-violet-500/10",  href: "/dashboard/warehouse/onboarding" },
-        { label: "Expiring Certs",    value: certificates.length, icon: AlertTriangle,   color: "text-amber-400",   bg: "bg-amber-400/10",   href: "/dashboard/warehouse/fleet" },
+        { label: "Dispatches Today",      value: dispatches.length,         icon: Truck,          color: "text-amber-500",   bg: "bg-amber-500/10",   href: "/dashboard/warehouse/dispatch" },
+        { label: "Returns Today",         value: returns.length,            icon: RotateCcw,       color: "text-sky-500",     bg: "bg-sky-500/10",     href: "/dashboard/warehouse/dispatch" },
+        { label: "On Rent / Deployed",    value: onRent.length,             icon: BoxesIcon,       color: "text-emerald-400", bg: "bg-emerald-500/10", href: "/dashboard/warehouse/fleet" },
+        { label: "Awaiting Inspection",   value: awaitingInspection.length, icon: ShieldAlert,     color: "text-orange-400",  bg: "bg-orange-500/10",  href: "/dashboard/warehouse/inspections" },
+        { label: "In Maintenance",        value: maintenance.length,        icon: Wrench,          color: "text-red-500",     bg: "bg-red-500/10",     href: "/dashboard/warehouse/fleet" },
+        { label: "Expiring Certs",        value: certificates.length,       icon: AlertTriangle,   color: "text-amber-400",   bg: "bg-amber-400/10",   href: "/dashboard/warehouse/fleet" },
     ];
 
     const QUICK_ACTIONS = [

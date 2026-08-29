@@ -264,6 +264,32 @@ export const inspectionLogs = pgTable("inspection_logs", {
     };
 });
 
+// ─── Maintenance Records (Fleet Servicing) ───
+export const maintenanceRecords = pgTable("maintenance_records", {
+    id: varchar("id", { length: 255 }).primaryKey(),
+    unitId: varchar("unit_id", { length: 255 }).notNull().references(() => inventoryUnits.id),
+    reportedBy: varchar("reported_by", { length: 255 }).references(() => users.id),
+    issueCategory: varchar("issue_category", { length: 100 }).notNull(), // electrical | mechanical | optical | cosmetic | calibration
+    severity: varchar("severity", { length: 50 }).notNull().default("medium"), // low | medium | high | critical
+    assignedTechnician: varchar("assigned_technician", { length: 255 }),
+    status: varchar("status", { length: 50 }).notNull().default("open"), // open | in_progress | awaiting_parts | completed | cancelled
+    workNotes: text("work_notes"),
+    resolutionNotes: text("resolution_notes"),
+    estimatedCost: real("estimated_cost"),
+    actualCost: real("actual_cost"),
+    openedAt: timestamp("opened_at").notNull().defaultNow(),
+    targetCompletionDate: timestamp("target_completion_date"),
+    completedAt: timestamp("completed_at"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => {
+    return {
+        unitIdIdx: index("maintenance_records_unit_id_idx").on(table.unitId),
+        statusIdx: index("maintenance_records_status_idx").on(table.status),
+        openedAtIdx: index("maintenance_records_opened_at_idx").on(table.openedAt),
+    };
+});
+
 // ─── Pricing Rules & Global Charges ───
 export const globalCharges = pgTable("global_charges", {
     id: varchar("id", { length: 255 }).primaryKey(),
@@ -545,6 +571,7 @@ export const inventoryUnitsRelations = relations(inventoryUnits, ({ one, many })
         references: [vendorWarehouses.id],
     }),
     inspectionLogs: many(inspectionLogs),
+    maintenanceRecords: many(maintenanceRecords),
 }));
 
 export const inspectionLogsRelations = relations(inspectionLogs, ({ one }) => ({
@@ -554,6 +581,17 @@ export const inspectionLogsRelations = relations(inspectionLogs, ({ one }) => ({
     }),
     inspector: one(users, {
         fields: [inspectionLogs.inspectorId],
+        references: [users.id],
+    }),
+}));
+
+export const maintenanceRecordsRelations = relations(maintenanceRecords, ({ one }) => ({
+    unit: one(inventoryUnits, {
+        fields: [maintenanceRecords.unitId],
+        references: [inventoryUnits.id],
+    }),
+    reporter: one(users, {
+        fields: [maintenanceRecords.reportedBy],
         references: [users.id],
     }),
 }));

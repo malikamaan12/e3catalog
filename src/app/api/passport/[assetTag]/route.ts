@@ -105,11 +105,20 @@ export async function GET(
 
         // If the requester is unauthenticated or not authorized staff, return a sanitized public DTO
         if (!isAuthorized) {
+            let publicStatus = "In Commercial Deployment";
+            if (asset[0].availabilityStatus === "in_warehouse") {
+                publicStatus = "Active in Fleet (Verified Ready)";
+            } else if (asset[0].availabilityStatus === "in_maintenance" || asset[0].conditionStatus === "maintenance_required") {
+                publicStatus = "Under Maintenance & Servicing";
+            } else if (asset[0].availabilityStatus === "awaiting_inspection") {
+                publicStatus = "Under Quality Inspection";
+            }
+
             return NextResponse.json({
                 assetTagCode: asset[0].assetTagCode,
                 productName: asset[0].productName,
                 productThumbnail: asset[0].productThumbnail,
-                publicStatus: asset[0].availabilityStatus === "available" ? "Active in Fleet" : "In Commercial Deployment",
+                publicStatus,
                 conditionStatus: asset[0].conditionStatus,
                 lastInspectionDate: asset[0].lastInspectionDate,
                 isAuthorized: false,

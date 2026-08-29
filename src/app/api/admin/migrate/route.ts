@@ -43,6 +43,32 @@ export async function POST() {
             name: "products.keywords",
             sql: `ALTER TABLE products ADD COLUMN IF NOT EXISTS keywords VARCHAR(500)`,
         },
+        {
+            name: "maintenance_records_table",
+            sql: `CREATE TABLE IF NOT EXISTS maintenance_records (
+                id VARCHAR(255) PRIMARY KEY,
+                unit_id VARCHAR(255) NOT NULL REFERENCES inventory_units(id),
+                reported_by VARCHAR(255) REFERENCES users(id),
+                issue_category VARCHAR(100) NOT NULL,
+                severity VARCHAR(50) NOT NULL DEFAULT 'medium',
+                assigned_technician VARCHAR(255),
+                status VARCHAR(50) NOT NULL DEFAULT 'open',
+                work_notes TEXT,
+                resolution_notes TEXT,
+                estimated_cost REAL,
+                actual_cost REAL,
+                opened_at TIMESTAMP NOT NULL DEFAULT NOW(),
+                target_completion_date TIMESTAMP,
+                completed_at TIMESTAMP,
+                created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+                updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+            )`,
+        },
+        {
+            name: "maintenance_records_indexes",
+            sql: `CREATE INDEX IF NOT EXISTS maintenance_records_unit_id_idx ON maintenance_records(unit_id);
+                  CREATE INDEX IF NOT EXISTS maintenance_records_status_idx ON maintenance_records(status);`,
+        },
     ];
 
     for (const migration of migrations) {

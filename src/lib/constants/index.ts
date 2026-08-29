@@ -81,3 +81,42 @@ export const PRODUCT_STATUS = {
 
 export type ProductStatus = typeof PRODUCT_STATUS[keyof typeof PRODUCT_STATUS];
 
+/**
+ * Authoritative Serialized Asset Unit Statuses
+ */
+export const ASSET_STATUS = {
+    ONBOARDING: "onboarding",
+    IN_WAREHOUSE: "in_warehouse",
+    RESERVED: "reserved",
+    ALLOCATED: "allocated",
+    PICKING: "picking",
+    STAGED: "staged",
+    PACKED: "packed",
+    LOADED: "loaded",
+    DISPATCHED: "dispatched",
+    ON_RENT: "on_rent",
+    RETURN_DUE: "return_due",
+    RETURNED: "returned",
+    AWAITING_INSPECTION: "awaiting_inspection",
+    IN_MAINTENANCE: "in_maintenance",
+    DAMAGED_HOLD: "damaged_hold",
+    MISSING_LOST: "missing_lost",
+    RETIRED: "retired",
+} as const;
+
+export type AssetStatus = typeof ASSET_STATUS[keyof typeof ASSET_STATUS];
+
+/**
+ * Maintenance Ticket Statuses
+ */
+export const MAINTENANCE_STATUS = {
+    OPEN: "open",
+    IN_PROGRESS: "in_progress",
+    AWAITING_PARTS: "awaiting_parts",
+    COMPLETED: "completed",
+    CANCELLED: "cancelled",
+} as const;
+
+export type MaintenanceStatus = typeof MAINTENANCE_STATUS[keyof typeof MAINTENANCE_STATUS];
+
+

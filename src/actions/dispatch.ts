@@ -13,10 +13,14 @@ export async function finalizeTransport(
     const authCheck = await requireAdmin();
     if (authCheck.error) return { error: "Unauthorized", success: false };
 
+    if (!driverData.driverName?.trim() || !driverData.vehiclePlateNumber?.trim()) {
+        return { error: "Driver name and vehicle plate number are required for transport dispatch.", success: false };
+    }
+
     try {
         const result = await db.transaction(async (tx) => {
             // Check if booking exists
-            const [booking] = await tx.select({ id: bookings.id }).from(bookings).where(eq(bookings.id, bookingId)).limit(1);
+            const [booking] = await tx.select().from(bookings).where(eq(bookings.id, bookingId)).limit(1);
             if (!booking) {
                 return { error: "Booking not found", success: false };
             }
