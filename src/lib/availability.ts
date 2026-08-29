@@ -1,6 +1,6 @@
 import { db } from "./db";
 import { products, bookings, inventoryOverrides, inventoryUnits } from "./db/schema";
-import { eq, and, or, lte, gte, inArray, ne } from "drizzle-orm";
+import { eq, and, or, lte, gte, inArray } from "drizzle-orm";
 import { addHours, subHours, parseISO, format } from "date-fns";
 import { BOOKING_STATUS } from "./constants";
 
@@ -26,6 +26,40 @@ export interface AvailabilityResult {
 }
 
 /**
+ * Centralized Predicate: Determines whether a physical unit is allocatable and rentable.
+ * Units in maintenance, offline, quarantined, damaged, fair, poor, or maintenance_required
+ * are strictly non-allocatable.
+ */
+export function isUnitAllocatable(unit: {
+    availabilityStatus?: string | null;
+    conditionStatus?: string | null;
+}): boolean {
+    const nonAllocatableAvailability = [
+        "in_maintenance",
+        "maintenance",
+        "offline",
+        "quarantined",
+        "retired",
+        "decommissioned",
+    ];
+    const nonAllocatableConditions = [
+        "maintenance_required",
+        "damaged",
+        "poor",
+        "fair",
+        "retired",
+    ];
+
+    if (unit.availabilityStatus && nonAllocatableAvailability.includes(unit.availabilityStatus.toLowerCase().trim())) {
+        return false;
+    }
+    if (unit.conditionStatus && nonAllocatableConditions.includes(unit.conditionStatus.toLowerCase().trim())) {
+        return false;
+    }
+    return true;
+}
+
+/**
  * Core Availability Engine
  * 
  * Handles:
@@ -33,6 +67,7 @@ export interface AvailabilityResult {
  * 2. Buffer days (installation + dismantling time)
  * 3. Multi-shift same-day turnarounds with hour-level precision
  * 4. Manual inventory overrides (maintenance, manual holds)
+ * 5. Strict deduction of physical maintenance and non-allocatable units
  */
 export async function checkAvailability(req: AvailabilityRequest): Promise<AvailabilityResult> {
     // 1. Fetch product details
@@ -49,7 +84,6 @@ export async function checkAvailability(req: AvailabilityRequest): Promise<Avail
     const cleaningHours = product.cleaningTime || 0;
 
     // 2. Calculate effective date window with buffer
-    // Support both ISO strings and potentially other formats from various browsers
     const parseDate = (d: any) => {
         const parsed = new Date(d);
         return isNaN(parsed.getTime()) ? parseISO(d) : parsed;
@@ -69,9 +103,6 @@ export async function checkAvailability(req: AvailabilityRequest): Promise<Avail
     const effectiveEndStr = format(effectiveEnd, "yyyy-MM-dd");
 
     // 3. Query all bookings that could overlap
-    //    Overlap condition: effectiveStart <= booking.effectiveEnd AND effectiveEnd >= booking.effectiveStart
-    //    Only count approved and booked statuses
-    //    We explicitly IGNORE request, quote_sent, cancelled, undelivered
     const overlappingBookings = await db.query.bookings.findMany({
         where: and(
             eq(bookings.productId, req.productId),
@@ -85,10 +116,7 @@ export async function checkAvailability(req: AvailabilityRequest): Promise<Avail
         ),
     });
 
-    // 4. Implement Sweep-Line Algorithm to find true PEAK simultaneous overlapping bookings
-    // Instead of naively adding every overlapping booking (which fails if two bookings overlap the requested window
-    // but don't overlap *each other*), we plot every start and end event, then sweep chronologically.
-
+    // 4. Sweep-Line Algorithm to find true PEAK simultaneous overlapping bookings
     interface TimeEvent {
         time: Date;
         change: number;
@@ -97,17 +125,13 @@ export async function checkAvailability(req: AvailabilityRequest): Promise<Avail
     let events: TimeEvent[] = [];
 
     for (const booking of overlappingBookings) {
-        // CRITICAL: Ensure dates are Date objects before passing to date-fns.
-        // Drizzle/pg can return timestamps as strings, and date-fns would
-        // internally call e.toISOString() causing 'e.toISOString is not a function'.
         const bStartDate = booking.startDate instanceof Date ? booking.startDate : new Date(booking.startDate);
         const bEndDate = booking.endDate instanceof Date ? booking.endDate : new Date(booking.endDate);
 
         let bookingEffectiveStart = subHours(bStartDate, booking.bufferBefore || 0);
         let bookingEffectiveEnd = addHours(bEndDate, booking.bufferAfter || 0);
 
-        // Advanced Multi-Shift Optimization
-        // If the booking is same-day as the requested window and there is NO time overlap, we completely ignore it.
+        // Multi-Shift Same-Day Optimization
         if (req.startTime && req.endTime && booking.startTime && booking.endTime &&
             format(bStartDate, "yyyy-MM-dd") === format(bEndDate, "yyyy-MM-dd") &&
             req.startDate === format(bStartDate, "yyyy-MM-dd")) {
@@ -118,11 +142,10 @@ export async function checkAvailability(req: AvailabilityRequest): Promise<Avail
             const bookEndMinutes = timeToMinutes(booking.endTime) + (cleaningHours * 60);
 
             if (reqStartMinutes >= bookEndMinutes || reqEndMinutes <= bookStartMinutes) {
-                continue; // This specific booking does not overlap our exact hours
+                continue;
             }
         }
 
-        // Clamp the window so we only evaluate peaks *within* our requested timeframe
         const eventStart = bookingEffectiveStart < effectiveStart ? effectiveStart : bookingEffectiveStart;
         const eventEnd = bookingEffectiveEnd > effectiveEnd ? effectiveEnd : bookingEffectiveEnd;
 
@@ -148,7 +171,7 @@ export async function checkAvailability(req: AvailabilityRequest): Promise<Avail
         events.push({ time: overEnd, change: -over.unitsOffline });
     }
 
-    // Sort events chronologically. If times are identical, process subtractions (returns) BEFORE additions
+    // Sort events chronologically
     events.sort((a, b) => {
         if (a.time.getTime() !== b.time.getTime()) {
             return a.time.getTime() - b.time.getTime();
@@ -166,24 +189,21 @@ export async function checkAvailability(req: AvailabilityRequest): Promise<Avail
         }
     }
 
-    // 6. Query actual physical inventory units dynamically from Drizzle
+    // 6. Query actual physical inventory units and apply isUnitAllocatable predicate
     const physicalUnits = await db.query.inventoryUnits.findMany({
         where: eq(inventoryUnits.productId, req.productId),
+        columns: {
+            id: true,
+            availabilityStatus: true,
+            conditionStatus: true,
+        }
     });
 
-    const offlineUnitsCount = physicalUnits.filter(u => 
-        u.availabilityStatus === "in_maintenance" || 
-        u.availabilityStatus === "maintenance" || 
-        u.availabilityStatus === "offline" || 
-        u.availabilityStatus === "quarantined" ||
-        u.conditionStatus === "fair" ||
-        u.conditionStatus === "poor" ||
-        u.conditionStatus === "damaged"
-    ).length;
-
     const totalUnitsCount = physicalUnits.length;
-    const effectiveRentablePool = Math.max(0, totalUnitsCount - offlineUnitsCount);
-    const unitsAvailable = effectiveRentablePool - peakBooked;
+    const allocatableUnitsCount = physicalUnits.filter(isUnitAllocatable).length;
+    const offlineUnitsCount = totalUnitsCount - allocatableUnitsCount;
+
+    const unitsAvailable = Math.max(0, allocatableUnitsCount - peakBooked);
 
     return {
         available: unitsAvailable >= req.quantity,
@@ -198,7 +218,6 @@ export async function checkAvailability(req: AvailabilityRequest): Promise<Avail
     };
 }
 
-
 /** Convert "HH:mm" to total minutes since midnight */
 function timeToMinutes(time: string): number {
     const [hours, minutes] = time.split(":").map(Number);
@@ -207,8 +226,6 @@ function timeToMinutes(time: string): number {
 
 /**
  * Calculates a day-by-day availability timeline for the next N days.
- * 
- * OPTIMIZED: Fetches all data in ONE batch and processes in-memory to avoid N+1 bottlenecks.
  */
 export async function getAvailabilityTimeline(productId: string, lookaheadDays: number = 30, startDate?: string) {
     const parseDate = (d: any) => {
@@ -225,24 +242,23 @@ export async function getAvailabilityTimeline(productId: string, lookaheadDays: 
     // 1. Fetch Product and Physical Units
     const product = await db.query.products.findFirst({
         where: eq(products.id, productId),
-        with: { inventoryUnits: true }
+        with: {
+            inventoryUnits: {
+                columns: {
+                    id: true,
+                    availabilityStatus: true,
+                    conditionStatus: true,
+                }
+            }
+        }
     });
 
     if (!product) return [];
 
     const units = product.inventoryUnits || [];
-    const offlineUnitsCount = units.filter(u => 
-        u.availabilityStatus === "in_maintenance" || 
-        u.availabilityStatus === "maintenance" || 
-        u.availabilityStatus === "offline" || 
-        u.availabilityStatus === "quarantined" ||
-        u.conditionStatus === "fair" ||
-        u.conditionStatus === "poor" ||
-        u.conditionStatus === "damaged"
-    ).length;
-
     const totalUnitsCount = units.length;
-    const effectiveRentablePool = Math.max(0, totalUnitsCount - offlineUnitsCount);
+    const allocatableUnitsCount = units.filter(isUnitAllocatable).length;
+    const offlineUnitsCount = totalUnitsCount - allocatableUnitsCount;
 
     // 2. FETCH ALL DATA IN BULK
     const allBookings = await db.query.bookings.findMany({
@@ -258,7 +274,6 @@ export async function getAvailabilityTimeline(productId: string, lookaheadDays: 
         ),
     });
 
-    // Query all manual overrides
     const overrides = await db.query.inventoryOverrides.findMany({
         where: and(
             eq(inventoryOverrides.productId, productId),
@@ -302,7 +317,7 @@ export async function getAvailabilityTimeline(productId: string, lookaheadDays: 
         }
 
         const totalUnavailable = peakForDay + maintenanceForDay;
-        const available = Math.max(0, effectiveRentablePool - totalUnavailable);
+        const available = Math.max(0, allocatableUnitsCount - totalUnavailable);
 
         timeline.push({
             date: dateStr,

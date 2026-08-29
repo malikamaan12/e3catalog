@@ -3,28 +3,24 @@ import { db } from "@/lib/db";
 import { bookings, safetyCertificates, products, users } from "@/lib/db/schema";
 import { and, eq, lte, or } from "drizzle-orm";
 import { notificationService } from "@/lib/notifications";
+import { verifyCronAuthorization, methodNotAllowedResponse, unauthorizedCronResponse } from "@/lib/cron-auth";
 
 export const dynamic = "force-dynamic";
 
-function verifyCronAuth(req: NextRequest): boolean {
-    const cronSecret = process.env.CRON_SECRET;
-    if (!cronSecret) return true; // Development fallback
-    const authHeader = req.headers.get("authorization");
-    const xSecret = req.headers.get("x-cron-secret");
-    return authHeader === `Bearer ${cronSecret}` || xSecret === cronSecret;
+/**
+ * GET is strictly forbidden on cron mutating routes to prevent unauthenticated execution.
+ * Returns HTTP 405 Method Not Allowed with Allow: POST header.
+ */
+export async function GET() {
+    return methodNotAllowedResponse();
 }
 
+/**
+ * POST handler strictly requires Bearer token or x-cron-secret matching CRON_SECRET.
+ */
 export async function POST(req: NextRequest) {
-    return handleCron(req);
-}
-
-export async function GET(req: NextRequest) {
-    return handleCron(req);
-}
-
-async function handleCron(req: NextRequest) {
-    if (!verifyCronAuth(req)) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!verifyCronAuthorization(req)) {
+        return unauthorizedCronResponse();
     }
 
     try {
@@ -59,7 +55,7 @@ async function handleCron(req: NextRequest) {
 
         results.expiredQuotes = expiredQuotes.length;
 
-        // Optionally send WhatsApp alerts to users about quote expiry
+        // Send alerts to users about quote expiry
         for (const quote of expiredQuotes) {
             await notificationService.sendAlert({
                 recipientIds: [quote.userId || quote.customerEmail],
@@ -74,8 +70,6 @@ async function handleCron(req: NextRequest) {
         const thirtyDaysFromNow = new Date();
         thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
 
-        // Find certificates expiring in 30 days or less where we haven't already notified
-        // Note: For a true production system, you'd want a "last_notified" column on the cert
         const expiringCerts = await db
             .select({
                 id: safetyCertificates.id,
@@ -92,11 +86,9 @@ async function handleCron(req: NextRequest) {
         results.expiringCertificates = expiringCerts.length;
 
         if (expiringCerts.length > 0) {
-            // Group by vendor/admin
             const superAdmins = await db.select().from(users).where(eq(users.role, "super_admin"));
             const adminIds = superAdmins.map(a => a.id);
 
-            // Notify System Admins
             await notificationService.sendAlert({
                 recipientIds: adminIds,
                 type: 'all',

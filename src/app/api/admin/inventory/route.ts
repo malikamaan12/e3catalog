@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { parseISO, isValid } from "date-fns";
+import { isUnitAllocatable } from "@/lib/availability";
 
 export async function GET() {
     try {
@@ -93,12 +94,17 @@ export async function POST(req: NextRequest) {
         }
 
         // ── Stock Capacity Validation ─────────────────────────────────────────────
-        // Fetch total physical units for this product
+        // Fetch physical units and check allocatable capacity
         const physicalUnits = await db.query.inventoryUnits.findMany({
             where: eq(inventoryUnits.productId, body.productId),
-            columns: { id: true }
+            columns: {
+                id: true,
+                availabilityStatus: true,
+                conditionStatus: true,
+            }
         });
         const totalUnitsInStock = physicalUnits.length;
+        const allocatableInStock = physicalUnits.filter(isUnitAllocatable).length;
 
         if (totalUnitsInStock === 0) {
             return NextResponse.json({ error: "This product has no inventory units configured. Add inventory units first." }, { status: 400 });
@@ -110,9 +116,9 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Units offline must be at least 1." }, { status: 400 });
         }
 
-        if (requestedOffline > totalUnitsInStock) {
+        if (requestedOffline > allocatableInStock) {
             return NextResponse.json({
-                error: `Cannot take ${requestedOffline} unit${requestedOffline > 1 ? "s" : ""} offline. This product only has ${totalUnitsInStock} unit${totalUnitsInStock > 1 ? "s" : ""} in total stock.`
+                error: `Cannot take ${requestedOffline} unit${requestedOffline > 1 ? "s" : ""} offline. This product only has ${allocatableInStock} allocatable unit${allocatableInStock > 1 ? "s" : ""} available (${totalUnitsInStock - allocatableInStock} in maintenance).`
             }, { status: 400 });
         }
 
@@ -129,8 +135,8 @@ export async function POST(req: NextRequest) {
         const alreadyOffline = overlappingOverrides.reduce((sum, o) => sum + o.unitsOffline, 0);
         const totalAfterNew = alreadyOffline + requestedOffline;
 
-        if (totalAfterNew > totalUnitsInStock) {
-            const remaining = Math.max(0, totalUnitsInStock - alreadyOffline);
+        if (totalAfterNew > allocatableInStock) {
+            const remaining = Math.max(0, allocatableInStock - alreadyOffline);
             return NextResponse.json({
                 error: `Cannot lock ${requestedOffline} unit${requestedOffline > 1 ? "s" : ""}. ${alreadyOffline} unit${alreadyOffline > 1 ? "s are" : " is"} already blocked in this date range. Maximum you can lock: ${remaining}.`
             }, { status: 400 });

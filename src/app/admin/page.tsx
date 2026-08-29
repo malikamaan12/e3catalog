@@ -21,14 +21,24 @@ import PipelineKanban from "@/components/admin/PipelineKanban";
 import ComplianceFeed from "@/components/admin/ComplianceFeed";
 
 const calculateTrend = (current: number, previous: number): "up" | "down" | "neutral" => {
-    if (!previous || previous === 0) return current > 0 ? "up" : "neutral";
-    return current > previous ? "up" : current < previous ? "down" : "neutral";
+    const curr = Number(current) || 0;
+    const prev = Number(previous) || 0;
+    if (prev === 0) return curr > 0 ? "up" : "neutral";
+    return curr > prev ? "up" : curr < prev ? "down" : "neutral";
 };
 
-const calculatePct = (current: number, previous: number) => {
-    if (!previous || previous === 0) return current > 0 ? "+100%" : "0%";
-    const pct = ((current - previous) / previous) * 100;
-    return `${pct > 0 ? '+' : ''}${pct.toFixed(1)}%`;
+const calculatePct = (current: number, previous: number): string => {
+    const curr = Number(current) || 0;
+    const prev = Number(previous) || 0;
+    if (prev <= 0) {
+        return curr > 0 ? "+100.0%" : "0.0%";
+    }
+    const change = ((curr - prev) / prev) * 100;
+    if (!isFinite(change) || isNaN(change)) {
+        return "0.0%";
+    }
+    const sign = change > 0 ? "+" : "";
+    return `${sign}${change.toFixed(1)}%`;
 };
 
 export default async function AdminDashboard() {

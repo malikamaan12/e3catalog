@@ -4,7 +4,7 @@ import { products } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://e3rentals.com";
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "https://e3catalog.vercel.app");
 
     // Static public routes
     const staticRoutes: MetadataRoute.Sitemap = [

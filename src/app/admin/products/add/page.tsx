@@ -682,7 +682,12 @@ export default function AddProductPage() {
                     </p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="flex items-center gap-3">
-                            <button type="button" onClick={() => updateField("show3d", !form.show3d)}
+                            <button 
+                                type="button" 
+                                role="switch"
+                                aria-checked={form.show3d}
+                                aria-label="Toggle 3D model viewer tab"
+                                onClick={() => updateField("show3d", !form.show3d)}
                                 className={`w-11 h-6 rounded-full transition-all relative ${form.show3d ? "bg-[var(--color-gold)]" : "bg-[var(--color-navy-lighter)] border border-[var(--color-border-subtle)]"}`}>
                                 <div className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-all ${form.show3d ? "left-6" : "left-1"}`} />
                             </button>
@@ -692,7 +697,12 @@ export default function AddProductPage() {
                             </div>
                         </div>
                         <div className="flex items-center gap-3">
-                            <button type="button" onClick={() => updateField("showVideo", !form.showVideo)}
+                            <button 
+                                type="button" 
+                                role="switch"
+                                aria-checked={form.showVideo}
+                                aria-label="Toggle video player tab"
+                                onClick={() => updateField("showVideo", !form.showVideo)}
                                 className={`w-11 h-6 rounded-full transition-all relative ${form.showVideo ? "bg-[var(--color-gold)]" : "bg-[var(--color-navy-lighter)] border border-[var(--color-border-subtle)]"}`}>
                                 <div className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-all ${form.showVideo ? "left-6" : "left-1"}`} />
                             </button>
@@ -744,7 +754,12 @@ export default function AddProductPage() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 pb-6 border-b border-[var(--color-border-subtle)]">
                         <div className="flex items-center gap-3">
-                            <button type="button" onClick={() => updateField("showPrice", !form.showPrice)}
+                            <button 
+                                type="button" 
+                                role="switch"
+                                aria-checked={form.showPrice}
+                                aria-label="Toggle show price publicly"
+                                onClick={() => updateField("showPrice", !form.showPrice)}
                                 className={`w-11 h-6 rounded-full transition-all relative ${form.showPrice ? "bg-[var(--color-gold)]" : "bg-[var(--color-navy-lighter)] border border-[var(--color-border-subtle)]"}`}>
                                 <div className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-all ${form.showPrice ? "left-6" : "left-1"}`} />
                             </button>
@@ -861,7 +876,12 @@ export default function AddProductPage() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                         <div className="flex items-center gap-3">
-                            <button type="button" onClick={() => updateField("requiresLicense", !form.requiresLicense)}
+                            <button 
+                                type="button" 
+                                role="switch"
+                                aria-checked={form.requiresLicense}
+                                aria-label="Toggle operator requires valid license"
+                                onClick={() => updateField("requiresLicense", !form.requiresLicense)}
                                 className={`w-11 h-6 rounded-full transition-all relative ${form.requiresLicense ? "bg-[var(--color-gold)]" : "bg-[var(--color-navy-lighter)] border border-[var(--color-border-subtle)]"}`}>
                                 <div className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-all ${form.requiresLicense ? "left-6" : "left-1"}`} />
                             </button>
@@ -871,7 +891,12 @@ export default function AddProductPage() {
                             </div>
                         </div>
                         <div className="flex items-center gap-3">
-                            <button type="button" onClick={() => updateField("requiresApproval", !form.requiresApproval)}
+                            <button 
+                                type="button" 
+                                role="switch"
+                                aria-checked={form.requiresApproval}
+                                aria-label="Toggle requires municipal or venue approval"
+                                onClick={() => updateField("requiresApproval", !form.requiresApproval)}
                                 className={`w-11 h-6 rounded-full transition-all relative ${form.requiresApproval ? "bg-[var(--color-gold)]" : "bg-[var(--color-navy-lighter)] border border-[var(--color-border-subtle)]"}`}>
                                 <div className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-all ${form.requiresApproval ? "left-6" : "left-1"}`} />
                             </button>

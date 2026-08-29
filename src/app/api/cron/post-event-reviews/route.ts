@@ -1,41 +1,36 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { bookings, products, vendors, reviews } from "@/lib/db/schema";
-import { eq, inArray, and, lte, isNull } from "drizzle-orm";
+import { eq, inArray, and, lte } from "drizzle-orm";
 import { sendReviewRequestEmail } from "@/lib/email";
+import { verifyCronAuthorization, methodNotAllowedResponse, unauthorizedCronResponse } from "@/lib/cron-auth";
 
-function verifyCronAuth(req: Request): boolean {
-    const cronSecret = process.env.CRON_SECRET;
-    if (!cronSecret) return true;
-    const authHeader = req.headers.get("authorization");
-    const xSecret = req.headers.get("x-cron-secret");
-    return authHeader === `Bearer ${cronSecret}` || xSecret === cronSecret;
+export const dynamic = "force-dynamic";
+
+/**
+ * GET is strictly forbidden on cron mutating routes.
+ * Returns HTTP 405 Method Not Allowed with Allow: POST header.
+ */
+export async function GET() {
+    return methodNotAllowedResponse();
 }
 
-export async function POST(req: Request) {
-    return handleCron(req);
-}
-
-export async function GET(req: Request) {
-    return handleCron(req);
-}
-
-async function handleCron(req: Request) {
-    if (!verifyCronAuth(req)) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+/**
+ * POST handler strictly requires Bearer token or x-cron-secret matching CRON_SECRET.
+ */
+export async function POST(req: NextRequest) {
+    if (!verifyCronAuthorization(req)) {
+        return unauthorizedCronResponse();
     }
 
     try {
         const now = new Date();
         now.setHours(0, 0, 0, 0);
 
-        // Calculate yesterday's date to only target bookings that finished exactly yesterday
         const yesterday = new Date(now);
         yesterday.setDate(yesterday.getDate() - 1);
         yesterday.setHours(0, 0, 0, 0);
 
-        // Find bookings that are 'booked' or 'approved' and ended exactly yesterday
-        // We also check that a review hasn't already been submitted just in case
         const eligibleBookings = await db.select({
             bookingId: bookings.id,
             customerName: bookings.customerName,
@@ -51,7 +46,6 @@ async function handleCron(req: Request) {
         .where(
             and(
                 inArray(bookings.status, ["booked", "approved"]),
-                // Filter for those that ended before today
                 lte(bookings.endDate, now)
             )
         );
@@ -59,10 +53,6 @@ async function handleCron(req: Request) {
         let emailsSent = 0;
         const dispatchPromises = [];
 
-        // Check which ones we actually need to email
-        // To prevent spamming, we check if the difference between endDate and today is exactly 1 day
-        // Or if you want to be safe, just get the ones where we don't have a review yet, and maybe flag them. 
-        // For now, checking diff = -1 (ended yesterday).
         for (const b of eligibleBookings) {
             const endDate = new Date(b.endDate);
             endDate.setHours(0, 0, 0, 0);
@@ -70,10 +60,7 @@ async function handleCron(req: Request) {
             const diffTime = endDate.getTime() - now.getTime();
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
             
-            // Only send if the event ended exactly yesterday
             if (diffDays === -1) {
-                
-                // Double check if a review exists
                 const existingReview = await db.query.reviews.findFirst({
                     where: eq(reviews.bookingId, b.bookingId)
                 });
@@ -86,7 +73,7 @@ async function handleCron(req: Request) {
                             customerName: b.customerName,
                             bookingId: b.bookingId,
                             productName: b.productName,
-                            vendorName: b.vendorName || "E3 Rentals", // Fallback if no vendor
+                            vendorName: b.vendorName || "E3 Rentals",
                         })
                     );
                 }

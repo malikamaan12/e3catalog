@@ -20,10 +20,10 @@ export default function NotFound() {
             404
           </h1>
           <h2 className="text-xl font-bold text-white uppercase tracking-[0.2em]">
-            Asset Not Found
+            Page Not Found
           </h2>
           <p className="text-[var(--color-slate)] text-sm leading-relaxed">
-            The page or equipment you are looking for has been moved, renamed, or is currently off-fleet.
+            The page or resource you are looking for does not exist, has been removed, or is currently unavailable.
           </p>
         </div>
 
@@ -32,14 +32,14 @@ export default function NotFound() {
             href="/catalog"
             className="flex items-center justify-center gap-2 w-full py-4 bg-[var(--color-gold)] text-navy font-black text-xs uppercase tracking-widest rounded-xl hover:bg-yellow-600 transition-all hover:scale-[1.02] active:scale-[0.98]"
           >
-            Explore the Fleet
+            Browse Equipment Catalog
           </Link>
           <Link
             href="/"
             className="flex items-center justify-center gap-2 w-full py-4 border border-white/10 text-white font-black text-xs uppercase tracking-widest rounded-xl hover:bg-white/5 transition-all active:scale-[0.98]"
           >
             <Home className="w-4 h-4" />
-            Back to Base
+            Return to Homepage
           </Link>
         </div>
 

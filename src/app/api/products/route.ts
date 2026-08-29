@@ -6,66 +6,51 @@ import {
     getCache, setCache,
     CACHE_KEYS, TTL,
 } from "@/lib/catalog-cache";
+import { isUnitAllocatable } from "@/lib/availability";
 
 const PAGE_LIMIT = 20;
 
 // ─── Availability helpers ──────────────────────────────────────────────────
 
-/**
- * Compute an availability map { productId → availableUnits } for today.
- * First tries the precomputed cache (written by /api/cron/precompute-facets).
- * Falls back to a live DB query on a cold start (no cron yet, or cache miss).
- */
 interface AvailabilityResult {
     totalMap: Record<string, number>;
     availabilityMap: Record<string, number>;
 }
 
-/**
- * Compute an availability map for today or a custom date range.
- * Handles both full-fleet precomputation and partial cold-start queries.
- */
 async function getAvailabilityMap(productIds: string[], startDate?: string | null, endDate?: string | null): Promise<AvailabilityResult> {
-    // If a custom date range is provided, skip the "today" cache entirely
     if (startDate && endDate) {
         return computeAndCacheAvailability(productIds, startDate, endDate);
     }
 
     const cached = getCache<Record<string, number>>(CACHE_KEYS.AVAILABILITY_MAP);
     
-    // If we have a warm cache, we still need totalUnits (which isn't in this specific cache key)
     if (cached) {
         const totalMap = await computeTotalsOnly(productIds);
         return { totalMap, availabilityMap: cached };
     }
 
-    // 2. Cold-start: compute just what we need for this page to avoid massive query lag
     return computeAndCacheAvailability(productIds);
 }
 
-/**
- * Helper to get just the total counts (no booking math) for a subset.
- */
 async function computeTotalsOnly(productIds: string[]): Promise<Record<string, number>> {
-    const unitCounts = await db
+    const units = await db
         .select({
             productId: inventoryUnits.productId,
-            total: sql<number>`count(*)`,
+            availabilityStatus: inventoryUnits.availabilityStatus,
+            conditionStatus: inventoryUnits.conditionStatus,
         })
         .from(inventoryUnits)
-        .where(inArray(inventoryUnits.productId, productIds))
-        .groupBy(inventoryUnits.productId);
+        .where(inArray(inventoryUnits.productId, productIds));
 
     const totalMap: Record<string, number> = {};
-    for (const row of unitCounts) {
-        totalMap[row.productId] = Number(row.total);
+    for (const u of units) {
+        if (isUnitAllocatable(u)) {
+            totalMap[u.productId] = (totalMap[u.productId] || 0) + 1;
+        }
     }
     return totalMap;
 }
 
-/**
- * Actually query the DB and write to cache.
- */
 export async function computeAndCacheAvailability(
     productIds?: string[],
     startStr?: string | null,
@@ -83,22 +68,27 @@ export async function computeAndCacheAvailability(
         checkEnd.setHours(23, 59, 59, 999);
     }
 
-    // 1. Count total inventory units
-    const unitCounts = await db
+    // 1. Fetch physical units and calculate total and allocatable pool
+    const units = await db
         .select({
             productId: inventoryUnits.productId,
-            total: sql<number>`count(*)`,
+            availabilityStatus: inventoryUnits.availabilityStatus,
+            conditionStatus: inventoryUnits.conditionStatus,
         })
         .from(inventoryUnits)
         .where(productIds && productIds.length > 0
             ? inArray(inventoryUnits.productId, productIds)
             : undefined
-        )
-        .groupBy(inventoryUnits.productId);
+        );
 
     const totalMap: Record<string, number> = {};
-    for (const row of unitCounts) {
-        totalMap[row.productId] = Number(row.total);
+    const allocatableMap: Record<string, number> = {};
+
+    for (const u of units) {
+        totalMap[u.productId] = (totalMap[u.productId] || 0) + 1;
+        if (isUnitAllocatable(u)) {
+            allocatableMap[u.productId] = (allocatableMap[u.productId] || 0) + 1;
+        }
     }
 
     // 2. Count booked units
@@ -142,11 +132,10 @@ export async function computeAndCacheAvailability(
     }
 
     const availabilityMap: Record<string, number> = {};
-    for (const [productId, total] of Object.entries(totalMap)) {
-        availabilityMap[productId] = Math.max(0, total - (bookedMap[productId] || 0));
+    for (const [productId, allocatableCount] of Object.entries(allocatableMap)) {
+        availabilityMap[productId] = Math.max(0, allocatableCount - (bookedMap[productId] || 0));
     }
 
-    // Capture FULL fleet cache ONLY if no productIds filter supplied AND no custom dates applied
     if (!productIds || productIds.length === 0) {
         if (!isCustomDate) {
             setCache(CACHE_KEYS.AVAILABILITY_MAP, availabilityMap, TTL.AVAILABILITY);

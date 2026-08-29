@@ -1,28 +1,26 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { products, safetyCertificates, vendors, users } from "@/lib/db/schema";
 import { eq, inArray } from "drizzle-orm";
 import { sendSafetyAlertEmail, sendSafetyDigestEmail } from "@/lib/email";
+import { verifyCronAuthorization, methodNotAllowedResponse, unauthorizedCronResponse } from "@/lib/cron-auth";
 
-function verifyCronAuth(req: Request): boolean {
-    const cronSecret = process.env.CRON_SECRET;
-    if (!cronSecret) return true;
-    const authHeader = req.headers.get("authorization");
-    const xSecret = req.headers.get("x-cron-secret");
-    return authHeader === `Bearer ${cronSecret}` || xSecret === cronSecret;
+export const dynamic = "force-dynamic";
+
+/**
+ * GET is strictly forbidden on cron routes.
+ * Returns HTTP 405 Method Not Allowed with Allow: POST header.
+ */
+export async function GET() {
+    return methodNotAllowedResponse();
 }
 
-export async function POST(req: Request) {
-    return handleCron(req);
-}
-
-export async function GET(req: Request) {
-    return handleCron(req);
-}
-
-async function handleCron(req: Request) {
-    if (!verifyCronAuth(req)) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+/**
+ * POST handler strictly requires Bearer token or x-cron-secret matching CRON_SECRET.
+ */
+export async function POST(req: NextRequest) {
+    if (!verifyCronAuthorization(req)) {
+        return unauthorizedCronResponse();
     }
 
     try {
@@ -60,7 +58,6 @@ async function handleCron(req: Request) {
                 vendorId: users.vendorId,
                 email: users.email
             }).from(users).where(inArray(users.vendorId, vendorIds));
-            // Just take the first valid email for a vendor
             vendorUsers.forEach(vu => {
                 if (vu.vendorId && !vendorEmailsMap[vu.vendorId]) {
                     vendorEmailsMap[vu.vendorId] = vu.email;
@@ -76,8 +73,6 @@ async function handleCron(req: Request) {
             const diffTime = expiry.getTime() - now.getTime();
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-            // Logic: Alert if expiring in exactly 30 days, exactly 15 days, exactly 0 days, or already expired (negative but maybe just once a week? we'll alert on negative too for critical)
-            // To prevent spamming, we only alert on specific milestones or if it's currently expired
             if (diffDays === 30 || diffDays === 15 || diffDays <= 0) {
                 totalExpiringCounter++;
                 if (!expiringByVendor[cert.vendorId]) {
@@ -115,7 +110,6 @@ async function handleCron(req: Request) {
 
         // Dispatch Super Admin Digest
         if (totalExpiringCounter > 0) {
-            // Find super admin email
             const superAdmins = await db.select({ email: users.email }).from(users).where(eq(users.role, "super_admin")).limit(1);
             if (superAdmins.length > 0) {
                 dispatchPromises.push(

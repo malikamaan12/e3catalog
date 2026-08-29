@@ -522,8 +522,13 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
                                 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                                     <div className="space-y-2">
-                                        <label className="text-[10px] font-black text-slate uppercase tracking-widest ml-1">Arrival Date</label>
-                                        <input type="date" value={startDate}
+                                        <label htmlFor="pdp-arrival-date" className="text-[10px] font-black text-slate uppercase tracking-widest ml-1">Arrival Date</label>
+                                        <input 
+                                            id="pdp-arrival-date"
+                                            name="startDate"
+                                            aria-label="Rental Arrival Date"
+                                            type="date" 
+                                            value={startDate}
                                             min={new Date().toLocaleDateString('en-CA')}
                                             onChange={(e) => {
                                                 setStartDate(e.target.value);
@@ -532,8 +537,13 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
                                             className="w-full px-5 py-4 rounded-2xl bg-white/5 border border-white/10 text-white focus:border-gold focus:outline-none transition-all placeholder:text-slate/30" />
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-[10px] font-black text-slate uppercase tracking-widest ml-1">Release Date</label>
-                                        <input type="date" value={endDate}
+                                        <label htmlFor="pdp-release-date" className="text-[10px] font-black text-slate uppercase tracking-widest ml-1">Release Date</label>
+                                        <input 
+                                            id="pdp-release-date"
+                                            name="endDate"
+                                            aria-label="Rental Release Date"
+                                            type="date" 
+                                            value={endDate}
                                             min={startDate || new Date().toLocaleDateString('en-CA')}
                                             onChange={(e) => setEndDate(e.target.value)}
                                             className="w-full px-5 py-4 rounded-2xl bg-white/5 border border-white/10 text-white focus:border-gold focus:outline-none transition-all placeholder:text-slate/30" />
@@ -543,14 +553,22 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
                                 <div className="mb-8 space-y-2">
                                     <label className="text-[10px] font-black text-slate uppercase tracking-widest ml-1">Asset Quantity</label>
                                     <div className="flex items-center gap-4 bg-white/5 p-2 rounded-2xl border border-white/5">
-                                        <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center text-white hover:bg-gold hover:text-navy transition-all text-xl font-bold">
+                                        <button 
+                                            type="button"
+                                            aria-label="Decrease equipment quantity"
+                                            onClick={() => setQuantity(Math.max(1, quantity - 1))} 
+                                            className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center text-white hover:bg-gold hover:text-navy transition-all text-xl font-bold">
                                             −
                                         </button>
                                         <div className="flex-1 text-center">
                                             <span className="text-xl font-black text-white tracking-tighter">{quantity}</span>
                                             <span className="text-slate text-xs ml-2 uppercase font-bold tracking-widest">{product.unit || 'Units'}</span>
                                         </div>
-                                        <button onClick={() => setQuantity(quantity + 1)} className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center text-white hover:bg-gold hover:text-navy transition-all text-xl font-bold">
+                                        <button 
+                                            type="button"
+                                            aria-label="Increase equipment quantity"
+                                            onClick={() => setQuantity(quantity + 1)} 
+                                            className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center text-white hover:bg-gold hover:text-navy transition-all text-xl font-bold">
                                             +
                                         </button>
                                     </div>

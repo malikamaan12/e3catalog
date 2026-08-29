@@ -8,10 +8,42 @@ import { Toaster } from "react-hot-toast";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { SmoothScroll } from "@/components/SmoothScroll";
 
+const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "https://e3catalog.vercel.app");
+
 export const metadata: Metadata = {
+  metadataBase: new URL(baseUrl),
   title: "Premium Event Equipment Rentals in Qatar | E3 Digital Operating System",
   description: "Elevate your corporate events and exhibitions in Qatar. E3 Rentals offers premium AV, staging, and event equipment with instant 3D models, real-time availability, and MOCI-compliant professional quotes.",
   keywords: "premium event rentals Qatar, corporate event equipment Doha, exhibition supplies Qatar, 3D event planning Qatar, Civil Defence approved event structures, MOCI approved tent rentals, KAHRAMAA compliant event lighting, event logistics Qatar",
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    title: "Premium Event Equipment Rentals in Qatar | E3 Digital Operating System",
+    description: "Elevate your corporate events and exhibitions in Qatar with E3 Rentals. Real-time availability, 3D equipment visualizer, and instant quotes.",
+    url: baseUrl,
+    siteName: "E3 Rentals",
+    images: [
+      {
+        url: "/logo.png",
+        width: 800,
+        height: 600,
+        alt: "E3 Rentals Platform",
+      },
+    ],
+    locale: "en_QA",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Premium Event Equipment Rentals in Qatar | E3 Digital Operating System",
+    description: "Elevate your corporate events and exhibitions in Qatar with E3 Rentals. Real-time availability, 3D equipment visualizer, and instant quotes.",
+    images: ["/logo.png"],
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",

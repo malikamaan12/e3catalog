@@ -3,8 +3,11 @@ import { products, bookings, inventoryOverrides } from "@/lib/db/schema";
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { eq, and, inArray, lte, gte } from "drizzle-orm";
-import { format, parseISO, addHours, subHours } from "date-fns";
+import { format, addHours, subHours } from "date-fns";
 import { BOOKING_STATUS } from "@/lib/constants";
+import { isUnitAllocatable } from "@/lib/availability";
+
+export const dynamic = "force-dynamic";
 
 export async function GET(req: any) {
     try {
@@ -27,10 +30,7 @@ export async function GET(req: any) {
             if (start && end) {
                 const diffTime = Math.abs(end.getTime() - start.getTime());
                 lookahead = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-                // Cap at 45 days for performance
                 if (lookahead > 45) lookahead = 45;
-
-                // Ensure we start from the earlier date if user swapped them
                 if (start > end) actualStart = toDate;
             }
         }
@@ -41,7 +41,7 @@ export async function GET(req: any) {
         const isSuperAdmin = user.role === 'super_admin' || user.role === 'admin';
         const targetVendorId = isSuperAdmin ? null : (user as any).vendorId;
 
-        // Fetch all active products alongside their current unit count
+        // Fetch active products with physical inventory units including condition & availability statuses
         const allProducts = await db.query.products.findMany({
             where: targetVendorId ? eq(products.vendorId, targetVendorId) : undefined,
             columns: {
@@ -55,12 +55,15 @@ export async function GET(req: any) {
                     columns: { name: true }
                 },
                 inventoryUnits: {
-                    columns: { id: true }
+                    columns: {
+                        id: true,
+                        availabilityStatus: true,
+                        conditionStatus: true,
+                    }
                 }
             }
         });
 
-        // Batch calculate timelines optimally in memory
         const productIds = allProducts.map((p) => p.id);
         
         const today = actualStart ? parseDate(actualStart)! : new Date();
@@ -69,7 +72,6 @@ export async function GET(req: any) {
         const endDate = new Date(today);
         endDate.setDate(today.getDate() + lookahead);
 
-        // Map over product IDs but if empty array, query fails in SQL, so bypass
         const allBookings = productIds.length > 0 ? await db.query.bookings.findMany({
             where: and(
                 inArray(bookings.productId, productIds),
@@ -106,7 +108,10 @@ export async function GET(req: any) {
         for (const product of allProducts) {
             const pBookings = bookingsByProduct.get(product.id) || [];
             const pOverrides = overridesByProduct.get(product.id) || [];
-            const totalUnitsCount = product.inventoryUnits.length;
+            const units = product.inventoryUnits || [];
+            const totalUnitsCount = units.length;
+            const allocatableUnitsCount = units.filter(isUnitAllocatable).length;
+            const offlinePhysicalUnits = totalUnitsCount - allocatableUnitsCount;
             
             const timeline = [];
             
@@ -141,14 +146,14 @@ export async function GET(req: any) {
                     }
                 }
 
-                const totalBooked = peakForDay + maintenanceForDay;
-                const available = Math.max(0, totalUnitsCount - totalBooked);
+                const totalUnavailable = peakForDay + maintenanceForDay;
+                const available = Math.max(0, allocatableUnitsCount - totalUnavailable);
 
                 timeline.push({
                     date: dateStr,
                     available,
                     booked: peakForDay,
-                    maintenance: maintenanceForDay,
+                    maintenance: offlinePhysicalUnits + maintenanceForDay,
                     total: totalUnitsCount,
                 });
             }
@@ -158,6 +163,8 @@ export async function GET(req: any) {
                     id: product.id,
                     name: product.name,
                     totalUnits: totalUnitsCount,
+                    allocatableUnits: allocatableUnitsCount,
+                    offlineUnits: offlinePhysicalUnits,
                     unit: product.unit,
                     category: product.category?.name || "Uncategorized"
                 },
@@ -171,7 +178,6 @@ export async function GET(req: any) {
         return NextResponse.json(matrixData);
     } catch (matrixError: any) {
         console.error("MATRIX API ERROR [CRITICAL]:", matrixError);
-        if (matrixError.stack) console.error(matrixError.stack);
         return NextResponse.json({ error: matrixError.message || "Failed to generate inventory matrix" }, { status: 500 });
     }
 }

@@ -3,31 +3,26 @@ import { products, categories, vendors, inventoryUnits, bookings, inventoryOverr
 import { eq, and, inArray, or, isNull, sql, lte, gte } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { setCache, CACHE_KEYS, TTL } from "@/lib/catalog-cache";
+import { verifyCronAuthorization, methodNotAllowedResponse, unauthorizedCronResponse } from "@/lib/cron-auth";
+import { isUnitAllocatable } from "@/lib/availability";
 
-const CRON_SECRET = process.env.CRON_SECRET;
+export const dynamic = "force-dynamic";
 
 /**
- * GET /api/cron/precompute-facets
- *
- * Precomputes:
- *   1. Per-category product counts
- *   2. Today's availability snapshot (total units - booked units) per product
- *
- * Writes both to the in-process catalog cache with a 6-minute TTL.
- * Called by Vercel Cron (vercel.json) and also manually from the products API
- * on a cold start (cache miss).
- *
- * Security: Vercel Cron automatically adds Authorization header.
- * You can also set CRON_SECRET and pass it as ?secret=… for manual hits.
+ * GET is strictly forbidden.
+ * Returns HTTP 405 Method Not Allowed with Allow: POST header.
  */
-export async function GET(req: NextRequest) {
-    // Minimal auth guard — skip in development
-    if (CRON_SECRET && process.env.NODE_ENV !== "development") {
-        const authHeader = req.headers.get("Authorization");
-        const secretParam = new URL(req.url).searchParams.get("secret");
-        if (authHeader !== `Bearer ${CRON_SECRET}` && secretParam !== CRON_SECRET) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-        }
+export async function GET() {
+    return methodNotAllowedResponse();
+}
+
+/**
+ * POST /api/cron/precompute-facets
+ * Precomputes per-category product counts and allocatable availability snapshot.
+ */
+export async function POST(req: NextRequest) {
+    if (!verifyCronAuthorization(req)) {
+        return unauthorizedCronResponse();
     }
 
     try {
@@ -37,7 +32,6 @@ export async function GET(req: NextRequest) {
         tomorrow.setDate(today.getDate() + 1);
 
         // ── 1. Per-category product counts ─────────────────────────────────
-        // Fetch active vendors for the filter
         const activeVendors = await db
             .select({ id: vendors.id })
             .from(vendors)
@@ -67,19 +61,23 @@ export async function GET(req: NextRequest) {
         }
         setCache(CACHE_KEYS.FACETS, facets, TTL.FACETS);
 
-        // ── 2. Full availability snapshot ──────────────────────────────────
-        // Total units per product (aggregate, no row explosion)
-        const unitCounts = await db
+        // ── 2. Full availability snapshot (Allocatable physical units only) ──
+        const allPhysicalUnits = await db
             .select({
                 productId: inventoryUnits.productId,
-                total: sql<number>`count(*)`,
+                availabilityStatus: inventoryUnits.availabilityStatus,
+                conditionStatus: inventoryUnits.conditionStatus,
             })
-            .from(inventoryUnits)
-            .groupBy(inventoryUnits.productId);
+            .from(inventoryUnits);
 
         const totalMap: Record<string, number> = {};
-        for (const row of unitCounts) {
-            totalMap[row.productId] = Number(row.total);
+        const allocatableMap: Record<string, number> = {};
+
+        for (const unit of allPhysicalUnits) {
+            totalMap[unit.productId] = (totalMap[unit.productId] || 0) + 1;
+            if (isUnitAllocatable(unit)) {
+                allocatableMap[unit.productId] = (allocatableMap[unit.productId] || 0) + 1;
+            }
         }
 
         // Booked units today
@@ -117,12 +115,10 @@ export async function GET(req: NextRequest) {
         }
 
         const availabilityMap: Record<string, number> = {};
-        for (const [productId, total] of Object.entries(totalMap)) {
-            availabilityMap[productId] = Math.max(0, total - (bookedMap[productId] || 0));
+        for (const [productId, allocatableCount] of Object.entries(allocatableMap)) {
+            availabilityMap[productId] = Math.max(0, allocatableCount - (bookedMap[productId] || 0));
         }
         setCache(CACHE_KEYS.AVAILABILITY_MAP, availabilityMap, TTL.AVAILABILITY);
-
-        console.log(`[cron] precompute-facets: ${categoryCounts.length} categories, ${Object.keys(availabilityMap).length} products cached.`);
 
         return NextResponse.json({
             ok: true,
