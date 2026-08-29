@@ -144,6 +144,8 @@ function FleetPageContent() {
     const [showScannerModal, setShowScannerModal] = useState(false);
     const [viewLogsUnit, setViewLogsUnit] = useState<InventoryUnit | null>(null);
     const [qrDataUris, setQrDataUris] = useState<Record<string, string>>({});
+    const [currentPage, setCurrentPage] = useState(1);
+    const PAGE_SIZE = 50;
     const [warehouses, setWarehouses] = useState<any[]>([]);
     const [showLocationModal, setShowLocationModal] = useState<InventoryUnit | null>(null);
 
@@ -218,6 +220,9 @@ function FleetPageContent() {
         }
         return true;
     });
+
+    const totalPages = Math.max(1, Math.ceil(filteredUnits.length / PAGE_SIZE));
+    const displayUnits = filteredUnits.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
     const toggleSelect = (id: string) => setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
 
@@ -396,7 +401,7 @@ function FleetPageContent() {
                                         <p className="text-xs mt-1">Try a different filter or add new assets.</p>
                                     </td></tr>
                                 ) : !groupByProduct ? (
-                                    filteredUnits.map(unit => <AssetRow 
+                                    displayUnits.map(unit => <AssetRow 
                                         key={unit.id} unit={unit} isAdmin={isAdmin} 
                                         isSelected={selectedIds.includes(unit.id)} 
                                         onSelect={() => toggleSelect(unit.id)}
@@ -409,8 +414,8 @@ function FleetPageContent() {
                                         setViewLogsUnit={setViewLogsUnit}
                                     />)
                                 ) : (
-                                    Array.from(new Set(filteredUnits.map(u => u.productId))).map(pId => {
-                                        const productUnits = filteredUnits.filter(u => u.productId === pId);
+                                    Array.from(new Set(displayUnits.map(u => u.productId))).map(pId => {
+                                        const productUnits = displayUnits.filter(u => u.productId === pId);
                                         const pName = productUnits[0].productName;
                                         const catName = productUnits[0].categoryName;
                                         return (
@@ -421,7 +426,7 @@ function FleetPageContent() {
                                                             <Package className="w-3.5 h-3.5 text-[var(--color-gold)]" />
                                                             <span className="text-xs font-black text-white uppercase tracking-wider">{pName}</span>
                                                             <span className="text-[10px] text-[var(--color-slate)] uppercase font-bold opacity-50">• {catName}</span>
-                                                            <span className="ml-auto text-[10px] bg-white/10 px-2 py-0.5 rounded-full font-mono">{productUnits.length} Total Units</span>
+                                                            <span className="ml-auto text-[10px] bg-white/10 px-2 py-0.5 rounded-full font-mono">{productUnits.length} Units</span>
                                                         </div>
                                                     </td>
                                                 </tr>
@@ -455,7 +460,7 @@ function FleetPageContent() {
                                 <p className="font-bold text-white">No assets found</p>
                             </div>
                         ) : (
-                            filteredUnits.map(unit => (
+                            displayUnits.map(unit => (
                                 <AssetCard 
                                     key={unit.id} unit={unit} isAdmin={isAdmin} 
                                     isSelected={selectedIds.includes(unit.id)} 
@@ -471,6 +476,36 @@ function FleetPageContent() {
                             ))
                         )}
                     </div>
+
+                    {/* Pagination Bar */}
+                    {filteredUnits.length > PAGE_SIZE && (
+                        <div className="p-4 border-t border-white/10 bg-black/30 flex items-center justify-between text-xs text-[var(--color-slate)]">
+                            <div>
+                                Showing <span className="font-bold text-white">{(currentPage - 1) * PAGE_SIZE + 1}</span> to{" "}
+                                <span className="font-bold text-white">{Math.min(currentPage * PAGE_SIZE, filteredUnits.length)}</span> of{" "}
+                                <span className="font-bold text-white">{filteredUnits.length}</span> assets
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                    disabled={currentPage === 1}
+                                    className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                                >
+                                    Previous
+                                </button>
+                                <span className="px-2 font-mono text-white">
+                                    {currentPage} / {totalPages}
+                                </span>
+                                <button
+                                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                    disabled={currentPage === totalPages}
+                                    className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                                >
+                                    Next
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
 

@@ -17,7 +17,6 @@ export async function POST(req: Request) {
             );
         }
 
-        // Fallback to phone number for users auto-registered before password field was added
         const [user] = await db
             .select({
                 id: users.id,
@@ -26,37 +25,26 @@ export async function POST(req: Request) {
                 role: users.role,
                 status: users.status,
                 password: users.password,
-                phoneNumber: users.phoneNumber,
             })
             .from(users)
             .where(
                 and(
-                    eq(users.email, email.toLowerCase()),
-                    or(
-                        eq(users.password, password),
-                        eq(users.phoneNumber, password)
-                    )
+                    eq(users.email, email.toLowerCase().trim()),
+                    eq(users.password, password)
                 )
             )
             .limit(1);
 
         if (!user) {
             return NextResponse.json(
-                { error: "Invalid credentials. If you requested a quote, your password is the phone number you provided." },
+                { error: "Invalid email or password" },
                 { status: 401 }
             );
         }
 
-        if (user.status === 'blocked') {
+        if (user.status === 'blocked' || user.status === 'suspended') {
             return NextResponse.json(
-                { error: "Your account has been blocked by the administrator." },
-                { status: 403 }
-            );
-        }
-
-        if (user.status === 'frozen') {
-            return NextResponse.json(
-                { error: "Your account is temporarily frozen. Please contact support." },
+                { error: "Your account is not active. Please contact support." },
                 { status: 403 }
             );
         }

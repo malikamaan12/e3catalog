@@ -28,11 +28,7 @@ export default function LoginPage() {
 
             if (!res.ok) {
                 const errorData = await res.json().catch(() => ({}));
-                // Return a more user-friendly error depending on the login mode
-                const errMsg =
-                    loginType === "client"
-                        ? (errorData.error || "Failed to sign in. Did you use the phone number you requested the quote with?")
-                        : (errorData.error || "Invalid admin credentials");
+                const errMsg = errorData.error || "Invalid email or password. Please verify your credentials.";
                 throw new Error(errMsg);
             }
 
@@ -117,6 +113,7 @@ export default function LoginPage() {
                                 <input
                                     id="email"
                                     type="email"
+                                    autoComplete="email"
                                     value={emailState}
                                     onChange={(e) => setEmailState(e.target.value)}
                                     className="block w-full rounded-xl border-navy-600 bg-navy-900/50 py-3 pl-10 pr-3 text-white placeholder-navy-400 focus:border-gold focus:ring-gold sm:text-sm shadow-inner transition-colors"
@@ -129,7 +126,7 @@ export default function LoginPage() {
                         <div>
                             <div className="flex items-center justify-between">
                                 <label className="block text-sm font-medium text-navy-200" htmlFor="password">
-                                    Password {loginType === "client" && <span className="text-navy-400 text-xs font-normal">(Phone Number)</span>}
+                                    Password
                                 </label>
                             </div>
                             <div className="mt-2 relative">
@@ -139,10 +136,11 @@ export default function LoginPage() {
                                 <input
                                     id="password"
                                     type="password"
+                                    autoComplete="current-password"
                                     value={passwordState}
                                     onChange={(e) => setPasswordState(e.target.value)}
                                     className="block w-full rounded-xl border-navy-600 bg-navy-900/50 py-3 pl-10 pr-3 text-white placeholder-navy-400 focus:border-gold focus:ring-gold sm:text-sm shadow-inner transition-colors"
-                                    placeholder={loginType === "admin" ? "Enter admin password" : "Enter your phone number"}
+                                    placeholder="••••••••••••"
                                     required
                                 />
                             </div>

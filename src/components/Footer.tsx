@@ -3,8 +3,6 @@
 import Link from "next/link";
 import { useSiteSettings } from "./SiteSettingsProvider";
 import { ArrowRight } from "lucide-react";
-import Spline from "@splinetool/react-spline";
-import { ErrorBoundary } from "./ErrorBoundary";
 import { useState, useEffect } from "react";
 
 export function Footer() {
@@ -22,29 +20,13 @@ export function Footer() {
         setYear(new Date().getFullYear());
     }, []);
 
-    const [splineError, setSplineError] = useState(false);
-
     return (
         <footer className="bg-[var(--color-surface)] border-t border-[var(--color-border-subtle)]">
             {/* CTA Banner */}
             <div className="max-w-7xl mx-auto px-6 py-16">
                 <div className="glass rounded-2xl p-12 text-center relative overflow-hidden group">
-                    <div className="absolute inset-0 opacity-10 md:opacity-20 pointer-events-none">
-                        <ErrorBoundary name="Footer Spline" fallback={<div className="w-full h-full bg-[var(--color-surface)]" />}>
-                            {!splineError ? (
-                                <Spline 
-                                    scene="https://prod.spline.design/6Wq1Q7YGyWf8Zhp5/scene.splinecode" 
-                                    className="w-full h-full object-cover scale-150"
-                                    onError={() => {
-                                        console.warn("Footer Spline scene failed to load.");
-                                        setSplineError(true);
-                                    }}
-                                />
-                            ) : (
-                                <div className="w-full h-full bg-[var(--color-surface)]" />
-                            )}
-                        </ErrorBoundary>
-                    </div>
+                    {/* Ambient Glow */}
+                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_40%,rgba(201,168,76,0.15),transparent_70%)] pointer-events-none" />
                     <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[var(--color-surface)]/40 to-[var(--color-surface)] pointer-events-none" />
                     <div className="relative z-10">
                         <h2 className="font-[family-name:var(--font-heading)] text-3xl md:text-4xl font-bold mb-4">
@@ -93,10 +75,11 @@ export function Footer() {
                     {/* Legal */}
                     <div>
                         <h4 className="font-[family-name:var(--font-heading)] font-semibold text-sm tracking-wider mb-4 text-[var(--color-gold)] uppercase">LEGAL</h4>
+                        <div className="flex flex-col gap-2">
                             <Link href="/vendors/terms" className="text-sm text-[var(--color-slate)] hover:text-[var(--color-warm-white)] transition-colors">Vendor Terms</Link>
                             <Link href="/vendors/policy" className="text-sm text-[var(--color-slate)] hover:text-[var(--color-warm-white)] transition-colors">Marketplace Policy</Link>
-                            <span className="text-sm text-[var(--color-slate)]">Privacy Policy</span>
-                            <span className="text-sm text-[var(--color-slate)]">Compliance Certificates</span>
+                            <Link href="/privacy" className="text-sm text-[var(--color-slate)] hover:text-[var(--color-warm-white)] transition-colors">Privacy Policy</Link>
+                        </div>
                     </div>
 
                     {/* Contact */}
@@ -116,9 +99,9 @@ export function Footer() {
                         © {year} {siteName}. All rights reserved.
                     </p>
                     <div className="flex items-center gap-6">
-                        <span className="text-xs text-[var(--color-slate)]">MOCI Approved</span>
-                        <span className="text-xs text-[var(--color-slate)]">Civil Defence Compliant</span>
-                        <span className="text-xs text-[var(--color-slate)]">KAHRAMAA Standard</span>
+                        <span className="text-xs text-[var(--color-slate)]">MOCI Event Guidelines</span>
+                        <span className="text-xs text-[var(--color-slate)]">Qatar Civil Defence Standards</span>
+                        <span className="text-xs text-[var(--color-slate)]">Certified Safety Inspections</span>
                     </div>
                 </div>
             </div>

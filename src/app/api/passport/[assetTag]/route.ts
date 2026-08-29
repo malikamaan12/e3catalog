@@ -103,15 +103,30 @@ export async function GET(
         .limit(20)
         .execute();
 
-        // Consolidate history into a unified timeline
+        // If the requester is unauthenticated or not authorized staff, return a sanitized public DTO
+        if (!isAuthorized) {
+            return NextResponse.json({
+                assetTagCode: asset[0].assetTagCode,
+                productName: asset[0].productName,
+                productThumbnail: asset[0].productThumbnail,
+                publicStatus: asset[0].availabilityStatus === "available" ? "Active in Fleet" : "In Commercial Deployment",
+                conditionStatus: asset[0].conditionStatus,
+                lastInspectionDate: asset[0].lastInspectionDate,
+                isAuthorized: false,
+                supportContact: "support@e3rentals.com",
+            });
+        }
+
+        // Consolidate history into a unified timeline for authorized users
         const unifiedHistory = [
-            ...conditionHistory.map(h => ({ ...h, historyType: 'condition' })),
-            ...assignmentHistory.map(h => ({ ...h, historyType: 'assignment' }))
+            ...conditionHistory.map(h => ({ ...h, historyType: 'condition' as const })),
+            ...assignmentHistory.map(h => ({ ...h, historyType: 'assignment' as const }))
         ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
+        // Full operational payload for authorized warehouse and admin staff
         return NextResponse.json({
             ...asset[0],
-            isAuthorized: !!isAuthorized,
+            isAuthorized: true,
             currentAssignment: currentAssignment[0] || null,
             history: unifiedHistory
         });

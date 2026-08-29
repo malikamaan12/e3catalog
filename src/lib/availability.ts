@@ -167,23 +167,29 @@ export async function checkAvailability(req: AvailabilityRequest): Promise<Avail
     }
 
     // 6. Query actual physical inventory units dynamically from Drizzle
-    // Only count units that are in rentable condition
     const physicalUnits = await db.query.inventoryUnits.findMany({
-        where: and(
-            eq(inventoryUnits.productId, req.productId),
-            inArray(inventoryUnits.conditionStatus, ["excellent", "good"]),
-            ne(inventoryUnits.availabilityStatus, "in_maintenance")
-        ),
+        where: eq(inventoryUnits.productId, req.productId),
     });
 
+    const offlineUnitsCount = physicalUnits.filter(u => 
+        u.availabilityStatus === "in_maintenance" || 
+        u.availabilityStatus === "maintenance" || 
+        u.availabilityStatus === "offline" || 
+        u.availabilityStatus === "quarantined" ||
+        u.conditionStatus === "fair" ||
+        u.conditionStatus === "poor" ||
+        u.conditionStatus === "damaged"
+    ).length;
+
     const totalUnitsCount = physicalUnits.length;
-    const unitsAvailable = totalUnitsCount - peakBooked;
+    const effectiveRentablePool = Math.max(0, totalUnitsCount - offlineUnitsCount);
+    const unitsAvailable = effectiveRentablePool - peakBooked;
 
     return {
         available: unitsAvailable >= req.quantity,
         unitsAvailable: Math.max(0, unitsAvailable),
         unitsBooked: peakBooked,
-        unitsMaintenance: 0, // Injected via events sweep
+        unitsMaintenance: offlineUnitsCount,
         totalUnits: totalUnitsCount,
         requestedQuantity: req.quantity,
         effectiveStart: effectiveStartStr,
@@ -224,17 +230,21 @@ export async function getAvailabilityTimeline(productId: string, lookaheadDays: 
 
     if (!product) return [];
 
-    // Only count units that are in rentable condition
-    const rentableUnits = product.inventoryUnits?.filter(u => 
-        u.conditionStatus === "excellent" || u.conditionStatus === "good"
-    ) || [];
-    
-    const totalUnitsCount = rentableUnits.length;
-    const installHours = product.installTime || 0;
-    const dismantleHours = product.dismantleTime || 0;
+    const units = product.inventoryUnits || [];
+    const offlineUnitsCount = units.filter(u => 
+        u.availabilityStatus === "in_maintenance" || 
+        u.availabilityStatus === "maintenance" || 
+        u.availabilityStatus === "offline" || 
+        u.availabilityStatus === "quarantined" ||
+        u.conditionStatus === "fair" ||
+        u.conditionStatus === "poor" ||
+        u.conditionStatus === "damaged"
+    ).length;
+
+    const totalUnitsCount = units.length;
+    const effectiveRentablePool = Math.max(0, totalUnitsCount - offlineUnitsCount);
 
     // 2. FETCH ALL DATA IN BULK
-    // Query all potentially overlapping bookings for the entire window
     const allBookings = await db.query.bookings.findMany({
         where: and(
             eq(bookings.productId, productId),
@@ -258,11 +268,6 @@ export async function getAvailabilityTimeline(productId: string, lookaheadDays: 
     });
 
     // 3. DAILY AGGREGATION
-    // For a simple daily timeline, it's often faster to build a Map of days than to do complex sweeps if the range is small (30 days)
-    const dailyBooked = new Map<string, number>();
-    const dailyMaintenance = new Map<string, number>();
-
-    // Process each day in the timeline
     const timeline: { date: string; available: number; booked: number; maintenance: number; total: number }[] = [];
 
     for (let i = 0; i < lookaheadDays; i++) {
@@ -270,19 +275,13 @@ export async function getAvailabilityTimeline(productId: string, lookaheadDays: 
         currentDate.setDate(today.getDate() + i);
         const dateStr = format(currentDate, "yyyy-MM-dd");
 
-        // Start of day and end of day for this specific slot
         const dayStart = currentDate;
         const dayEnd = addHours(currentDate, 23.99);
 
-        // Calculate peak booked for THIS day specifically
-        // Any booking that overlaps (after adding its buffers) affects this day
         let peakForDay = 0;
         let maintenanceForDay = 0;
 
-        // Note: For extreme performance with large numbers of bookings, we'd use a sweep-line here.
-        // But for < 100 bookings per product, this direct check is very fast.
         for (const booking of allBookings) {
-            // CRITICAL: Ensure dates are Date objects before passing to date-fns.
             const bStartDate = booking.startDate instanceof Date ? booking.startDate : new Date(booking.startDate);
             const bEndDate = booking.endDate instanceof Date ? booking.endDate : new Date(booking.endDate);
 
@@ -295,7 +294,6 @@ export async function getAvailabilityTimeline(productId: string, lookaheadDays: 
         }
 
         for (const over of overrides) {
-            // CRITICAL: Ensure dates are Date objects.
             const oStart = over.startDate instanceof Date ? over.startDate : new Date(over.startDate);
             const oEnd = over.endDate instanceof Date ? over.endDate : new Date(over.endDate);
             if (oStart <= dayEnd && oEnd >= dayStart) {
@@ -303,14 +301,14 @@ export async function getAvailabilityTimeline(productId: string, lookaheadDays: 
             }
         }
 
-        const totalBooked = peakForDay + maintenanceForDay;
-        const available = Math.max(0, totalUnitsCount - totalBooked);
+        const totalUnavailable = peakForDay + maintenanceForDay;
+        const available = Math.max(0, effectiveRentablePool - totalUnavailable);
 
         timeline.push({
             date: dateStr,
             available,
             booked: peakForDay,
-            maintenance: maintenanceForDay,
+            maintenance: offlineUnitsCount + maintenanceForDay,
             total: totalUnitsCount,
         });
     }

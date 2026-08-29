@@ -36,68 +36,88 @@ export default async function middleware(req: NextRequest) {
         return NextResponse.next();
     }
 
-    const role = session.role;
-    const isAnyAdmin = ["admin", "super_admin", "sales_rep", "warehouse_manager", "vendor"].includes(role);
+    const role = session.role || "client";
 
-    // ── Rule 2: Warehouse Manager RBAC Limits ──
-    if (role === "warehouse_manager") {
-        const restrictedPaths = [
-            "/dashboard/finance",
-            "/dashboard/quotes",
-            "/dashboard/vendors",
-            "/dashboard/settings",
-            "/admin"
-        ];
-        if (restrictedPaths.some(p => pathname.startsWith(p))) {
-            return NextResponse.redirect(new URL("/dashboard/warehouse/overview", req.url));
+    // ── Rule 2: Super Admin Exclusive Routes ──
+    if (pathname.startsWith("/admin/super") && role !== "super_admin") {
+        if (["admin", "sales_rep", "warehouse_manager"].includes(role)) {
+            return NextResponse.redirect(new URL("/admin", req.url));
         }
+        return NextResponse.redirect(new URL("/login", req.url));
     }
 
-    // ── Rule 3: Sales Representative RBAC Limits ──
-    if (role === "sales_rep") {
-        const restrictedPaths = [
-            "/dashboard/warehouse",
-            "/dashboard/fleet",
-            "/dashboard/settings",
-            "/admin/super", // STRICT block from super admin
-        ];
-        if (restrictedPaths.some(p => pathname.startsWith(p))) {
-            return NextResponse.redirect(new URL("/dashboard/sales/overview", req.url));
-        }
-    }
+    // ── Rule 3: Sensitive Financial, Billing & Vendor Management (Admin & SuperAdmin only) ──
+    const isSensitiveAdminRoute = 
+        pathname.startsWith("/admin/financials") ||
+        pathname.startsWith("/admin/settings") ||
+        pathname.startsWith("/admin/settlements") ||
+        pathname.startsWith("/admin/vendors");
 
-    // ── Rule 4: Client user trying to access Admin Area ──
-    if (isAdminRoute && !isAnyAdmin) {
-        return NextResponse.redirect(new URL("/dashboard/client/overview", req.url));
-    }
-
-    // ── Rule 5: Admin user trying to access Client Dashboard ──
-    if (isDashboardRoute && isAnyAdmin) {
-        if (role === "warehouse_manager" && pathname.startsWith("/dashboard/warehouse")) {
-            return NextResponse.next();
-        }
-        if (role === "sales_rep" && pathname.startsWith("/dashboard/sales")) {
-            return NextResponse.next();
-        }
-
+    if (isSensitiveAdminRoute && !["admin", "super_admin"].includes(role)) {
         if (role === "warehouse_manager") {
             return NextResponse.redirect(new URL("/dashboard/warehouse/overview", req.url));
         }
-        if (role === "sales_rep" && !pathname.startsWith("/dashboard/sales")) {
+        if (role === "sales_rep") {
             return NextResponse.redirect(new URL("/dashboard/sales/overview", req.url));
         }
-        
-        if (pathname === "/dashboard" || !pathname.startsWith("/admin")) {
-            return NextResponse.redirect(new URL("/admin", req.url));
+        if (role === "vendor") {
+            return NextResponse.redirect(new URL("/dashboard", req.url));
         }
+        return NextResponse.redirect(new URL("/dashboard/client/overview", req.url));
     }
 
-    // ── Rule 6: Client RBAC Isolation ──
-    if (isDashboardRoute && role === "client") {
-        // Force all dashboard traffic for clients into the /dashboard/client prefix
-        if (!pathname.startsWith("/dashboard/client")) {
+    // ── Rule 4: Warehouse Manager Access Scope ──
+    if (role === "warehouse_manager") {
+        const allowedWarehousePaths = [
+            "/dashboard/warehouse",
+            "/admin/fulfillment",
+            "/admin/fleet",
+            "/admin/warehouses",
+            "/passport"
+        ];
+        const isAllowed = allowedWarehousePaths.some(p => pathname.startsWith(p));
+        if (!isAllowed) {
+            return NextResponse.redirect(new URL("/dashboard/warehouse/overview", req.url));
+        }
+        return NextResponse.next();
+    }
+
+    // ── Rule 5: Sales Representative Access Scope ──
+    if (role === "sales_rep") {
+        const allowedSalesPaths = [
+            "/dashboard/sales",
+            "/admin/bookings",
+            "/admin/calendar",
+            "/admin/products",
+            "/admin/chat"
+        ];
+        const isAllowed = allowedSalesPaths.some(p => pathname.startsWith(p));
+        if (!isAllowed) {
+            return NextResponse.redirect(new URL("/dashboard/sales/overview", req.url));
+        }
+        return NextResponse.next();
+    }
+
+    // ── Rule 6: Vendor Tenant Access Scope ──
+    if (role === "vendor") {
+        if (isAdminRoute) {
+            return NextResponse.redirect(new URL("/dashboard", req.url));
+        }
+        if (pathname.startsWith("/dashboard/client") || pathname.startsWith("/dashboard/sales") || pathname.startsWith("/dashboard/warehouse")) {
+            return NextResponse.redirect(new URL("/dashboard", req.url));
+        }
+        return NextResponse.next();
+    }
+
+    // ── Rule 7: Client Access Scope ──
+    if (role === "client") {
+        if (isAdminRoute) {
             return NextResponse.redirect(new URL("/dashboard/client/overview", req.url));
         }
+        if (isDashboardRoute && !pathname.startsWith("/dashboard/client")) {
+            return NextResponse.redirect(new URL("/dashboard/client/overview", req.url));
+        }
+        return NextResponse.next();
     }
 
     return NextResponse.next();

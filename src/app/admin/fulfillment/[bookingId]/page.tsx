@@ -134,7 +134,6 @@ export default function FulfillmentPage() {
                     throw new Error("Barcode Detection API not supported on this browser.");
                 }
 
-                // @ts-ignore
                 const detector = new (window as any).BarcodeDetector({ formats: ['qr_code', 'code_128'] });
                 
                 videoStream = await navigator.mediaDevices.getUserMedia({ 

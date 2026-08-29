@@ -2,7 +2,7 @@
 
 export const dynamic = "force-dynamic";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import {
     Search,
     List,
@@ -74,11 +74,7 @@ export default function VendorRequestsPage() {
     const [searchQuery, setSearchQuery] = useState("");
     const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
-    useEffect(() => {
-        fetchBookings();
-    }, []);
-
-    const fetchBookings = () => {
+    const fetchBookings = useCallback(() => {
         setLoading(true);
         fetch("/api/admin/bookings")
             .then((r) => r.json())
@@ -87,7 +83,11 @@ export default function VendorRequestsPage() {
                 setLoading(false);
             })
             .catch(() => setLoading(false));
-    };
+    }, []);
+
+    useEffect(() => {
+        fetchBookings();
+    }, [fetchBookings]);
 
     const groupedBookingsCount = PIPELINE_ORDER.reduce((acc, status) => {
         acc[status] = bookings.filter((b) => b.status === status).length;

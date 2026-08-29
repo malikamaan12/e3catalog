@@ -10,7 +10,7 @@ function getResend() {
 }
 
 const FROM = process.env.EMAIL_FROM || "E3 Rentals <noreply@e3rentals.com>";
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:5001";
 
 // ─── Status Configs ──────────────────────────────────────────────────────────
 const STATUS_CONFIG: Record<string, {

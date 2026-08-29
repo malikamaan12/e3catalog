@@ -6,10 +6,24 @@ import { notificationService } from "@/lib/notifications";
 
 export const dynamic = "force-dynamic";
 
+function verifyCronAuth(req: NextRequest): boolean {
+    const cronSecret = process.env.CRON_SECRET;
+    if (!cronSecret) return true; // Development fallback
+    const authHeader = req.headers.get("authorization");
+    const xSecret = req.headers.get("x-cron-secret");
+    return authHeader === `Bearer ${cronSecret}` || xSecret === cronSecret;
+}
+
+export async function POST(req: NextRequest) {
+    return handleCron(req);
+}
+
 export async function GET(req: NextRequest) {
-    // 1. Authenticate the Cron Request
-    const authHeader = req.headers.get("x-cron-secret");
-    if (authHeader !== process.env.CRON_SECRET && process.env.NODE_ENV !== "development") {
+    return handleCron(req);
+}
+
+async function handleCron(req: NextRequest) {
+    if (!verifyCronAuth(req)) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

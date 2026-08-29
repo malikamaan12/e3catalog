@@ -4,10 +4,24 @@ import { bookings, products, vendors, reviews } from "@/lib/db/schema";
 import { eq, inArray, and, lte, isNull } from "drizzle-orm";
 import { sendReviewRequestEmail } from "@/lib/email";
 
+function verifyCronAuth(req: Request): boolean {
+    const cronSecret = process.env.CRON_SECRET;
+    if (!cronSecret) return true;
+    const authHeader = req.headers.get("authorization");
+    const xSecret = req.headers.get("x-cron-secret");
+    return authHeader === `Bearer ${cronSecret}` || xSecret === cronSecret;
+}
+
+export async function POST(req: Request) {
+    return handleCron(req);
+}
+
 export async function GET(req: Request) {
-    // Basic security check to ensure this is triggered by Vercel Cron
-    const authHeader = req.headers.get('authorization');
-    if (authHeader !== `Bearer ${process.env.CRON_SECRET}` && process.env.NODE_ENV === 'production') {
+    return handleCron(req);
+}
+
+async function handleCron(req: Request) {
+    if (!verifyCronAuth(req)) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

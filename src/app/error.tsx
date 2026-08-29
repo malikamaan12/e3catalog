@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import Link from "next/link";
 import { AlertCircle, RotateCcw } from "lucide-react";
 
 export default function Error({
@@ -44,12 +45,12 @@ export default function Error({
             <RotateCcw className="w-4 h-4" />
             Try again
           </button>
-          <a
+          <Link
             href="/"
             className="text-white/60 hover:text-white text-sm transition-colors pt-2"
           >
             Return to Home
-          </a>
+          </Link>
         </div>
       </div>
     </div>

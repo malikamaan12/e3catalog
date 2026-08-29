@@ -281,7 +281,7 @@ export default function TransportManifestPDF({ data }: PdfProps) {
                 <View style={styles.hseBox}>
                     <Text style={styles.hseWarningTitle}>HSE & Compliance Warning</Text>
                     <Text style={styles.hseText}>
-                        The total gross weight listed above is generated from the aggregate item data. The Transport Driver holds primary liability for the safe and legal distribution of this load over the vehicle's axles. All items must be securely strapped in accordance with regional road safety transport regulations prior to departing the E3 Depot. 
+                        The total gross weight listed above is generated from the aggregate item data. The Transport Driver holds primary liability for the safe and legal distribution of this load over the vehicle&apos;s axles. All items must be securely strapped in accordance with regional road safety transport regulations prior to departing the E3 Depot. 
                     </Text>
                 </View>
 

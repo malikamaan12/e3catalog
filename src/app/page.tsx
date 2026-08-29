@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState, useMemo } from "react";
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { motion, useScroll, useTransform, AnimatePresence, useSpring, useMotionValue } from "framer-motion";
 import { 
     Zap, ShieldCheck, QrCode, ClipboardList, Box, 
@@ -20,8 +21,11 @@ if (typeof window !== "undefined") {
     gsap.registerPlugin(ScrollTrigger);
 }
 
-// Dynamic Spline (No SSR)
-const Spline = dynamic(() => import("@splinetool/react-spline"), { ssr: false });
+// Dynamic 3D Hero Visualizer (No SSR)
+const InteractiveHero3D = dynamic(() => import("@/components/landing/InteractiveHero3D"), {
+    ssr: false,
+    loading: () => <div className="w-full h-full bg-[#0A0F1C] radial-glow" />,
+});
 
 export default function HomePage() {
     return (
@@ -41,7 +45,6 @@ function HeroSection() {
     const sectionRef = useRef<HTMLElement>(null);
     const contentRef = useRef<HTMLDivElement>(null);
     const splineRef = useRef<HTMLDivElement>(null);
-    const [splineError, setSplineError] = useState(false);
 
     useEffect(() => {
         if (!sectionRef.current || !contentRef.current) return;
@@ -90,22 +93,10 @@ function HeroSection() {
 
     return (
         <section ref={sectionRef} className="relative h-screen flex items-center justify-center z-10">
-            {/* Background Spline */}
+            {/* Background 3D Visualizer */}
             <div ref={splineRef} className="absolute inset-0 z-0 pointer-events-none md:pointer-events-auto">
-                <ErrorBoundary 
-                    name="Hero Spline" 
-                    fallback={<div className="w-full h-full bg-[#0A0F1C] radial-glow" />}
-                >
-                    {!splineError ? (
-                        <Spline 
-                            scene="https://prod.spline.design/6Wq1Q7YGyWf8Zhp5/scene.splinecode" 
-                            className="w-full h-full object-cover scale-110 md:scale-105"
-                            onError={() => setSplineError(true)}
-                        />
-                    ) : (
-                        <div className="w-full h-full bg-[#0A0F1C] radial-glow" />
-                    )}
-                </ErrorBoundary>
+                <InteractiveHero3D />
+                <div className="absolute inset-0 radial-glow pointer-events-none" />
             </div>
 
             {/* Content Overlay */}
@@ -158,9 +149,19 @@ function HeroContent() {
                     mainTitle
                 )}
             </h1>
-            <p className="text-[var(--color-slate)] text-lg md:text-xl max-w-2xl mx-auto font-medium leading-relaxed">
+            <p className="text-[var(--color-slate)] text-lg md:text-xl max-w-2xl mx-auto font-medium leading-relaxed mb-10">
                 {description}
             </p>
+
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pointer-events-auto">
+                <Link href="/catalog" className="btn-primary !py-3.5 !px-8 text-base shadow-[0_0_30px_rgba(201,168,76,0.3)]">
+                    Browse Equipment Catalog
+                    <ArrowRight className="w-4 h-4 ml-2 inline" />
+                </Link>
+                <Link href="/how-it-works" className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl bg-white/5 border border-white/10 text-white font-bold text-sm hover:bg-white/10 hover:border-white/20 transition-all">
+                    How It Works
+                </Link>
+            </div>
         </motion.div>
     );
 }
@@ -168,12 +169,12 @@ function HeroContent() {
 // ── 2. THE ENTERPRISE TRUST MARQUEE (FRAMER MOTION) ─────────────────────────
 function TrustMarquee() {
     const brands = [
-        { icon: ShieldCheck, label: "TUV Rheinland Certified" },
-        { icon: Building2, label: "Qatar Civil Defence Approved" },
-        { icon: Zap, label: "KAHRAMAA Compliant" },
-        { icon: CheckCircle2, label: "MOCI Regulated" },
-        { icon: LayoutGrid, label: "ISO 9001 Logistics" },
-        { icon: Star, label: "Forbes 500 Trusted" },
+        { icon: Building2, label: "Qatar Civil Defence Standards" },
+        { icon: ShieldCheck, label: "MOCI Event Guidelines" },
+        { icon: Zap, label: "KAHRAMAA Power Guidelines" },
+        { icon: CheckCircle2, label: "Pre-Event Rigging Safety Checks" },
+        { icon: LayoutGrid, label: "Certified Event Staging Fleet" },
+        { icon: Star, label: "Commercial B2B Invoicing" },
     ];
 
     return (
@@ -330,9 +331,9 @@ function FastCatalog() {
                     <p className="text-[10px] font-black uppercase tracking-[0.4em] text-gold mb-3">Live Inventory</p>
                     <h2 className="text-3xl md:text-5xl font-black italic tracking-tighter">FAST CATALOG</h2>
                 </div>
-                <button className="flex items-center gap-3 text-xs font-black uppercase tracking-widest hover:text-gold transition-colors group">
+                <Link href="/catalog" className="flex items-center gap-3 text-xs font-black uppercase tracking-widest hover:text-gold transition-colors group">
                     View Full Fleet <MoveRight className="group-hover:translate-x-2 transition-transform" />
-                </button>
+                </Link>
             </div>
 
             <div ref={constraintsRef} className="px-6 md:px-12">
@@ -364,7 +365,7 @@ function FastCatalog() {
 
 function ProductCard({ product }: { product: any }) {
     return (
-        <div className="w-[280px] md:w-[350px] shrink-0 glass rounded-[2.5rem] p-6 border border-white/5 group hover:border-gold/20 transition-all flex flex-col h-full">
+        <Link href={`/catalog/${product.slug}`} className="w-[280px] md:w-[350px] shrink-0 glass rounded-[2.5rem] p-6 border border-white/5 group hover:border-gold/20 transition-all flex flex-col h-full">
             <div className="aspect-video rounded-[2rem] bg-white/5 mb-6 overflow-hidden relative">
                 {product.thumbnailUrl ? (
                     <img 
@@ -396,7 +397,7 @@ function ProductCard({ product }: { product: any }) {
                     <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-all" />
                 </div>
             </div>
-        </div>
+        </Link>
     );
 }
 

@@ -233,15 +233,17 @@ function QuantityStepper({
 
 // ─── Debounce Hook ────────────────────────────────────────────────────────────
 
-function useDebounce<T extends (...args: Parameters<T>) => void>(fn: T, delay: number): T {
+function useDebounce<T extends (...args: any[]) => void>(fn: T, delay: number): T {
+    const fnRef = useRef(fn);
+    useEffect(() => {
+        fnRef.current = fn;
+    });
     const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    return useCallback(
-        ((...args: Parameters<T>) => {
-            if (timerRef.current) clearTimeout(timerRef.current);
-            timerRef.current = setTimeout(() => fn(...args), delay);
-        }) as T,
-        [fn, delay]
-    );
+    const debounced = useCallback((...args: Parameters<T>) => {
+        if (timerRef.current) clearTimeout(timerRef.current);
+        timerRef.current = setTimeout(() => fnRef.current(...args), delay);
+    }, [delay]);
+    return debounced as unknown as T;
 }
 
 // ─── Single Row Component ─────────────────────────────────────────────────────

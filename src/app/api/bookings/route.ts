@@ -66,15 +66,15 @@ export async function POST(req: NextRequest) {
                     requiresLogin: true
                 }, { status: 409 });
             } else {
-                // Auto-register new user
+                // Auto-register new user with a secure random secret
                 targetUserId = uuid();
-                const defaultPassword = customerPhone || "password123"; // Give them a fallback if no phone provided
+                const secureRandomSecret = `e3_${uuid().replace(/-/g, '')}`;
                 await db.insert(users).values({
                     id: targetUserId,
                     name: customerName,
                     email: normalizedEmail,
                     phoneNumber: customerPhone || "",
-                    password: defaultPassword,
+                    password: secureRandomSecret,
                     role: "client",
                     createdAt: new Date(),
                     updatedAt: new Date(),

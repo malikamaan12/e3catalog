@@ -92,7 +92,7 @@ export default function SignupPage() {
                                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-navy-400">
                                     <User className="h-5 w-5" />
                                 </div>
-                                <input id="name" type="text" value={nameState} onChange={(e) => setNameState(e.target.value)} className="block w-full rounded-xl border-navy-600 bg-navy-900/50 py-3 pl-10 pr-3 text-white placeholder-navy-400 focus:border-gold focus:ring-gold sm:text-sm shadow-inner transition-colors" placeholder="John Doe" required />
+                                <input id="name" type="text" autoComplete="name" value={nameState} onChange={(e) => setNameState(e.target.value)} className="block w-full rounded-xl border-navy-600 bg-navy-900/50 py-3 pl-10 pr-3 text-white placeholder-navy-400 focus:border-gold focus:ring-gold sm:text-sm shadow-inner transition-colors" placeholder="John Doe" required />
                             </div>
                         </div>
 
@@ -102,7 +102,7 @@ export default function SignupPage() {
                                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-navy-400">
                                     <Mail className="h-5 w-5" />
                                 </div>
-                                <input id="email" type="email" value={emailState} onChange={(e) => setEmailState(e.target.value)} className="block w-full rounded-xl border-navy-600 bg-navy-900/50 py-3 pl-10 pr-3 text-white placeholder-navy-400 focus:border-gold focus:ring-gold sm:text-sm shadow-inner transition-colors" placeholder="hello@company.com" required />
+                                <input id="email" type="email" autoComplete="email" value={emailState} onChange={(e) => setEmailState(e.target.value)} className="block w-full rounded-xl border-navy-600 bg-navy-900/50 py-3 pl-10 pr-3 text-white placeholder-navy-400 focus:border-gold focus:ring-gold sm:text-sm shadow-inner transition-colors" placeholder="hello@company.com" required />
                             </div>
                         </div>
 
@@ -112,18 +112,37 @@ export default function SignupPage() {
                                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-navy-400">
                                     <Box className="h-5 w-5" />
                                 </div>
-                                <input id="phone" type="tel" value={phoneState} onChange={(e) => setPhoneState(e.target.value)} className="block w-full rounded-xl border-navy-600 bg-navy-900/50 py-3 pl-10 pr-3 text-white placeholder-navy-400 focus:border-gold focus:ring-gold sm:text-sm shadow-inner transition-colors" placeholder="+974 5555 5555" />
+                                <input id="phone" type="tel" autoComplete="tel" value={phoneState} onChange={(e) => setPhoneState(e.target.value)} className="block w-full rounded-xl border-navy-600 bg-navy-900/50 py-3 pl-10 pr-3 text-white placeholder-navy-400 focus:border-gold focus:ring-gold sm:text-sm shadow-inner transition-colors" placeholder="+974 5555 5555" />
                             </div>
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-navy-200" htmlFor="password">Password</label>
+                            <label className="block text-sm font-medium text-navy-200" htmlFor="password">Password (Minimum 8 Characters)</label>
                             <div className="mt-2 relative">
                                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-navy-400">
                                     <Lock className="h-5 w-5" />
                                 </div>
-                                <input id="password" type="password" value={passwordState} onChange={(e) => setPasswordState(e.target.value)} className="block w-full rounded-xl border-navy-600 bg-navy-900/50 py-3 pl-10 pr-3 text-white placeholder-navy-400 focus:border-gold focus:ring-gold sm:text-sm shadow-inner transition-colors" placeholder="Choose a secure password" required minLength={6} />
+                                <input id="password" type="password" autoComplete="new-password" value={passwordState} onChange={(e) => setPasswordState(e.target.value)} className="block w-full rounded-xl border-navy-600 bg-navy-900/50 py-3 pl-10 pr-3 text-white placeholder-navy-400 focus:border-gold focus:ring-gold sm:text-sm shadow-inner transition-colors" placeholder="Choose a secure password (min 8 chars)" required minLength={8} />
                             </div>
+                        </div>
+
+                        <div className="flex items-start gap-3 pt-1">
+                            <input
+                                id="terms-consent"
+                                type="checkbox"
+                                required
+                                className="mt-1 h-4 w-4 rounded border-navy-600 bg-navy-900/50 text-gold focus:ring-gold"
+                            />
+                            <label htmlFor="terms-consent" className="text-xs text-navy-300 leading-relaxed">
+                                I agree to the{" "}
+                                <Link href="/vendors/terms" className="text-gold underline hover:text-gold-300 transition-colors" target="_blank">
+                                    Terms & Conditions
+                                </Link>{" "}
+                                and acknowledge the{" "}
+                                <Link href="/privacy" className="text-gold underline hover:text-gold-300 transition-colors" target="_blank">
+                                    Privacy Policy
+                                </Link>.
+                            </label>
                         </div>
 
                         <div>

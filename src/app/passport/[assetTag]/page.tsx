@@ -215,19 +215,19 @@ export default function PassportPage() {
                                 </div>
 
                                 <div>
-                                    <p className="text-[9px] uppercase tracking-widest text-white/40 mb-1">Serial Number</p>
-                                    <p className="font-mono text-sm text-[var(--color-gold)] font-bold">{data.serialNumber || 'N/A'}</p>
+                                    <p className="text-[9px] uppercase tracking-widest text-white/40 mb-1">Fleet Tag</p>
+                                    <p className="font-mono text-sm text-[var(--color-gold)] font-bold">{data.assetTagCode}</p>
                                 </div>
 
                                 <div className="col-span-2 md:col-span-1">
-                                    <p className="text-[9px] uppercase tracking-widest text-white/40 mb-1">Proprietary Owner</p>
-                                    <p className="font-bold text-sm text-white uppercase truncate">{data.vendorName}</p>
+                                    <p className="text-[9px] uppercase tracking-widest text-white/40 mb-1">Fleet Provider</p>
+                                    <p className="font-bold text-sm text-white uppercase truncate">{data.vendorName || 'E3 Logistics Network'}</p>
                                 </div>
 
                                 <div>
                                     <p className="text-[9px] uppercase tracking-widest text-white/40 mb-1">Verification Date</p>
                                     <p className="font-bold text-sm text-white uppercase">
-                                        {data.lastInspectionDate ? new Date(data.lastInspectionDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A'}
+                                        {data.lastInspectionDate ? new Date(data.lastInspectionDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Verified'}
                                     </p>
                                 </div>
 
@@ -235,13 +235,13 @@ export default function PassportPage() {
                                     <p className="text-[9px] uppercase tracking-widest text-white/40 mb-1">Condition Status</p>
                                     <p className={`font-black text-sm uppercase tracking-tight ${
                                         data.conditionStatus === 'excellent' ? 'text-emerald-400' : 
-                                        data.conditionStatus === 'good' ? 'text-blue-400' : 'text-orange-400'
-                                    }`}>{data.conditionStatus.replace('_', ' ')}</p>
+                                        data.conditionStatus === 'good' ? 'text-blue-400' : 'text-emerald-400'
+                                    }`}>{(data.conditionStatus || 'Standard').replace('_', ' ')}</p>
                                 </div>
 
                                 <div>
-                                    <p className="text-[9px] uppercase tracking-widest text-white/40 mb-1">Availability</p>
-                                    <p className="font-black text-sm text-blue-400 uppercase tracking-tight">{data.availabilityStatus.replace('_', ' ')}</p>
+                                    <p className="text-[9px] uppercase tracking-widest text-white/40 mb-1">Status</p>
+                                    <p className="font-black text-sm text-blue-400 uppercase tracking-tight">{data.availabilityStatus ? data.availabilityStatus.replace('_', ' ') : 'Active in Fleet'}</p>
                                 </div>
                             </div>
 
