@@ -4,6 +4,8 @@ import { eq, and, or, inArray } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { v4 as uuid } from "uuid";
 import { getCurrentUser } from "@/lib/auth";
+import { checkAvailability } from "@/lib/availability";
+import { format } from "date-fns";
 
 const SESSION_COOKIE = "rental_session";
 
@@ -15,8 +17,6 @@ export async function GET(req: NextRequest) {
     try {
         const sessionId = getSessionId(req);
         const currentUser = await getCurrentUser().catch(() => null);
-
-        console.log("Cart GET request:", { sessionId, userId: currentUser?.id });
 
         // Filter: items must match sessionId OR userId (if user is logged in)
         const whereClause = currentUser?.id 
@@ -38,6 +38,9 @@ export async function GET(req: NextRequest) {
                         dimensions: true,
                         unit: true,
                         vendorId: true,
+                        packagingFee: true,
+                        handlingFee: true,
+                        setupFee: true,
                     },
                     with: {
                         vendor: {
@@ -51,18 +54,54 @@ export async function GET(req: NextRequest) {
             },
         });
 
-        // If we found items and user is logged in, ensure they all have their userId set
+        // If user is logged in, ensure all guest items are linked to their userId
         if (currentUser?.id && items.length > 0) {
-            const itemsToUpdate = items.filter(item => !item.userId);
-            if (itemsToUpdate.length > 0) {
-                console.log(`Syncing ${itemsToUpdate.length} cart items to userId: ${currentUser.id}`);
+            const unlinked = items.filter(item => !item.userId);
+            if (unlinked.length > 0) {
                 await db.update(cartItems)
                     .set({ userId: currentUser.id })
-                    .where(inArray(cartItems.id, itemsToUpdate.map(i => i.id)));
+                    .where(inArray(cartItems.id, unlinked.map(i => i.id)));
             }
         }
 
-        const response = NextResponse.json(items);
+        // Live availability check for each item in the cart
+        const itemsWithAvailability = await Promise.all(
+            items.map(async (item) => {
+                try {
+                    const startStr = item.startDate instanceof Date 
+                        ? format(item.startDate, "yyyy-MM-dd") 
+                        : String(item.startDate).split("T")[0];
+                    const endStr = item.endDate instanceof Date 
+                        ? format(item.endDate, "yyyy-MM-dd") 
+                        : String(item.endDate).split("T")[0];
+
+                    const avail = await checkAvailability({
+                        productId: item.productId,
+                        startDate: startStr,
+                        endDate: endStr,
+                        quantity: item.quantity,
+                        startTime: item.startTime || undefined,
+                        endTime: item.endTime || undefined,
+                    });
+
+                    return {
+                        ...item,
+                        isAvailable: avail.available,
+                        unitsAvailable: avail.unitsAvailable,
+                        unitsMaintenance: avail.unitsMaintenance,
+                    };
+                } catch {
+                    return {
+                        ...item,
+                        isAvailable: true,
+                        unitsAvailable: item.quantity,
+                        unitsMaintenance: 0,
+                    };
+                }
+            })
+        );
+
+        const response = NextResponse.json(itemsWithAvailability);
         response.cookies.set(SESSION_COOKIE, sessionId, {
             httpOnly: true,
             sameSite: "lax",
@@ -71,8 +110,8 @@ export async function GET(req: NextRequest) {
         });
         return response;
     } catch (err: any) {
-        console.error("CART GET ERROR:", err);
-        return NextResponse.json([], { status: 200 }); // Return empty array on error to prevent UI crash
+        console.error("[CART_GET] Error:", err);
+        return NextResponse.json([], { status: 200 });
     }
 }
 
@@ -84,21 +123,53 @@ export async function POST(req: NextRequest) {
 
         const { productId, quantity, startDate, endDate, startTime, endTime } = body;
 
-        console.log("Cart POST request:", { productId, quantity, startDate, endDate, sessionId });
-
         if (!productId || !quantity || !startDate || !endDate) {
             return NextResponse.json(
-                { error: "Missing required fields" },
+                { error: "Missing required fields: productId, quantity, startDate, endDate" },
                 { status: 400 }
             );
         }
 
         const startD = new Date(startDate);
-        startD.setHours(0, 0, 0, 0); // Normalize to midnight
+        startD.setHours(0, 0, 0, 0);
         const endD = new Date(endDate);
-        endD.setHours(0, 0, 0, 0); // Normalize to midnight
+        endD.setHours(0, 0, 0, 0);
 
-        // Unified existing check: match by (sessionId OR userId) AND (product + dates)
+        if (isNaN(startD.getTime()) || isNaN(endD.getTime())) {
+            return NextResponse.json({ error: "Invalid start or end date format" }, { status: 400 });
+        }
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        if (startD < today) {
+            return NextResponse.json({ error: "Rental start date cannot be in the past" }, { status: 400 });
+        }
+
+        if (endD < startD) {
+            return NextResponse.json({ error: "Rental end date cannot be earlier than start date" }, { status: 400 });
+        }
+
+        const requestedQty = Math.max(1, Number(quantity) || 1);
+
+        // Check authoritative live availability
+        const startStr = format(startD, "yyyy-MM-dd");
+        const endStr = format(endD, "yyyy-MM-dd");
+        const avail = await checkAvailability({
+            productId,
+            startDate: startStr,
+            endDate: endStr,
+            quantity: requestedQty,
+            startTime,
+            endTime,
+        });
+
+        if (!avail.available && avail.unitsAvailable < requestedQty) {
+            return NextResponse.json({
+                error: `Only ${avail.unitsAvailable} unit${avail.unitsAvailable === 1 ? '' : 's'} available for the selected dates (${avail.unitsMaintenance} in maintenance).`,
+                unitsAvailable: avail.unitsAvailable,
+            }, { status: 400 });
+        }
+
         const matchClause = currentUser?.id 
             ? or(eq(cartItems.sessionId, sessionId), eq(cartItems.userId, currentUser.id))
             : eq(cartItems.sessionId, sessionId);
@@ -113,24 +184,22 @@ export async function POST(req: NextRequest) {
         });
 
         if (existing) {
-            console.log("Updating existing cart item:", existing.id, "New Total:", existing.quantity + Number(quantity));
-            // Update quantity
+            const newTotalQty = existing.quantity + requestedQty;
             await db
                 .update(cartItems)
                 .set({ 
-                    quantity: existing.quantity + Number(quantity),
+                    quantity: newTotalQty,
                     userId: currentUser?.id || existing.userId
                 })
                 .where(eq(cartItems.id, existing.id));
         } else {
             const newItemId = uuid();
-            console.log("Inserting new cart item:", newItemId, { productId, quantity, sessionId });
             await db.insert(cartItems).values({
                 id: newItemId,
                 sessionId,
                 userId: currentUser?.id || null,
                 productId,
-                quantity: Number(quantity),
+                quantity: requestedQty,
                 startDate: startD,
                 endDate: endD,
                 startTime: startTime || null,
@@ -148,7 +217,7 @@ export async function POST(req: NextRequest) {
         });
         return response;
     } catch (err: any) {
-        console.error("CART POST ERROR:", err);
+        console.error("[CART_POST] Error:", err);
         return NextResponse.json(
             { error: "Failed to add to cart: " + (err.message || "Unknown error") },
             { status: 500 }
@@ -159,21 +228,25 @@ export async function POST(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
     try {
         const sessionId = getSessionId(req);
+        const currentUser = await getCurrentUser().catch(() => null);
         const { searchParams } = new URL(req.url);
         const itemId = searchParams.get("id");
+
+        const userOrSession = currentUser?.id
+            ? or(eq(cartItems.sessionId, sessionId), eq(cartItems.userId, currentUser.id))
+            : eq(cartItems.sessionId, sessionId);
 
         if (itemId) {
             await db
                 .delete(cartItems)
-                .where(and(eq(cartItems.id, itemId), eq(cartItems.sessionId, sessionId)));
+                .where(and(eq(cartItems.id, itemId), userOrSession));
         } else {
-            // Clear entire cart
-            await db.delete(cartItems).where(eq(cartItems.sessionId, sessionId));
+            await db.delete(cartItems).where(userOrSession);
         }
 
         return NextResponse.json({ success: true });
     } catch (err: any) {
-        console.error("CART DELETE ERROR:", err);
+        console.error("[CART_DELETE] Error:", err);
         return NextResponse.json({ error: "Failed to delete from cart" }, { status: 500 });
     }
 }
@@ -181,6 +254,7 @@ export async function DELETE(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
     try {
         const sessionId = getSessionId(req);
+        const currentUser = await getCurrentUser().catch(() => null);
         const body = await req.json();
         const { id, quantity, startDate, endDate } = body;
 
@@ -188,26 +262,70 @@ export async function PATCH(req: NextRequest) {
             return NextResponse.json({ error: "Missing item ID" }, { status: 400 });
         }
 
+        const userOrSession = currentUser?.id
+            ? or(eq(cartItems.sessionId, sessionId), eq(cartItems.userId, currentUser.id))
+            : eq(cartItems.sessionId, sessionId);
+
+        const existing = await db.query.cartItems.findFirst({
+            where: and(eq(cartItems.id, id), userOrSession),
+        });
+
+        if (!existing) {
+            return NextResponse.json({ error: "Cart item not found" }, { status: 404 });
+        }
+
         const updateData: any = {};
-        if (quantity !== undefined) updateData.quantity = Number(quantity);
+        let finalQty = existing.quantity;
+        let finalStart = existing.startDate;
+        let finalEnd = existing.endDate;
+
+        if (quantity !== undefined) {
+            finalQty = Math.max(1, Number(quantity) || 1);
+            updateData.quantity = finalQty;
+        }
         
         if (startDate) {
             const sd = new Date(startDate);
-            if (!isNaN(sd.getTime())) updateData.startDate = sd;
+            sd.setHours(0, 0, 0, 0);
+            if (!isNaN(sd.getTime())) {
+                finalStart = sd;
+                updateData.startDate = sd;
+            }
         }
         if (endDate) {
             const ed = new Date(endDate);
-            if (!isNaN(ed.getTime())) updateData.endDate = ed;
+            ed.setHours(0, 0, 0, 0);
+            if (!isNaN(ed.getTime())) {
+                finalEnd = ed;
+                updateData.endDate = ed;
+            }
+        }
+
+        // Live availability check before update
+        const startStr = format(finalStart, "yyyy-MM-dd");
+        const endStr = format(finalEnd, "yyyy-MM-dd");
+        const avail = await checkAvailability({
+            productId: existing.productId,
+            startDate: startStr,
+            endDate: endStr,
+            quantity: finalQty,
+        });
+
+        if (!avail.available && avail.unitsAvailable < finalQty) {
+            return NextResponse.json({
+                error: `Only ${avail.unitsAvailable} unit${avail.unitsAvailable === 1 ? '' : 's'} available for the selected dates.`,
+                unitsAvailable: avail.unitsAvailable,
+            }, { status: 400 });
         }
 
         await db
             .update(cartItems)
             .set(updateData)
-            .where(and(eq(cartItems.id, id), eq(cartItems.sessionId, sessionId)));
+            .where(eq(cartItems.id, id));
 
         return NextResponse.json({ success: true });
     } catch (err: any) {
-        console.error("CART PATCH ERROR:", err);
+        console.error("[CART_PATCH] Error:", err);
         return NextResponse.json({ error: "Failed to update cart" }, { status: 500 });
     }
 }

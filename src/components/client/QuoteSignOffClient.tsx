@@ -8,20 +8,21 @@ import {
     FileText, 
     MessageSquare, 
     ShieldCheck, 
-    ArrowRight,
+    ArrowRight, 
     Loader2,
-    CheckCircle
+    CheckCircle,
+    Download
 } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import SignaturePad from "./SignaturePad";
 import EmbeddedChat from "@/components/chat/EmbeddedChat";
 import { approveBookingWithSignature } from "@/actions/client";
 import { toast } from "react-hot-toast";
 
-// Client-only PDF Viewer
 const PDFViewer = dynamic(
     () => import("@react-pdf/renderer").then((mod) => mod.PDFViewer),
-    { ssr: false, loading: () => <div className="h-full w-full bg-navy/50 animate-pulse flex items-center justify-center text-slate/20 font-black tracking-widest uppercase">Initializing Canvas...</div> }
+    { ssr: false, loading: () => <div className="h-full w-full bg-navy/50 animate-pulse flex items-center justify-center text-slate/20 font-black tracking-widest uppercase text-xs">Loading Commercial Document...</div> }
 );
 
 interface QuoteSignOffClientProps {
@@ -33,18 +34,26 @@ interface QuoteSignOffClientProps {
 export default function QuoteSignOffClient({ booking, financials, user }: QuoteSignOffClientProps) {
     const [activeTab, setActiveTab] = useState<"review" | "negotiate" | "sign">("review");
     const [isPending, startTransition] = useTransition();
-    const [isSuccess, setIsSuccess] = useState(false);
+    const [isSuccess, setIsSuccess] = useState(booking.status === "approved" || booking.status === "booked");
+    const [approvalError, setApprovalError] = useState("");
 
     const handleSignatureSave = (signatureData: string) => {
+        setApprovalError("");
         startTransition(async () => {
-            const res = await approveBookingWithSignature(booking.id, signatureData);
+            const res = await approveBookingWithSignature(booking.projectId || booking.id, signatureData);
             if (res.success) {
                 setIsSuccess(true);
-                toast.success("Proposal Digitally Signed & Approved!");
+                toast.success("Proposal Digitally Signed & Confirmed!");
             } else {
+                setApprovalError(res.error || "Approval failed");
                 toast.error(res.error || "Approval failed");
             }
         });
+    };
+
+    const handleDownloadPDF = () => {
+        const url = `/api/pdf/quote-proposal/${booking.projectId || booking.id}`;
+        window.open(url, "_blank");
     };
 
     if (isSuccess) {
@@ -56,16 +65,25 @@ export default function QuoteSignOffClient({ booking, financials, user }: QuoteS
                 <h1 className="text-4xl font-[family-name:var(--font-heading)] font-black text-white italic uppercase mb-4 tracking-tight">
                     Operation <span className="text-emerald-500">Confirmed</span>
                 </h1>
-                <p className="text-slate max-w-md mx-auto mb-10 font-medium leading-relaxed">
-                    Your digital signature has been recorded. The E3 Operations Team has been notified and will begin the fulfillment sequence.
+                <p className="text-slate max-w-md mx-auto mb-6 font-medium leading-relaxed text-sm">
+                    Your digital signature has been recorded and stock is reserved. The E3 Operations and Warehouse Fulfillment team has been mobilized.
                 </p>
-                <Link 
-                    href="/dashboard/client/overview" 
-                    className="px-10 py-4 rounded-2xl bg-white/5 border border-white/10 text-white font-black text-xs uppercase tracking-widest hover:bg-white/10 transition-all flex items-center gap-3"
-                >
-                    Return to Dashboard
-                    <ArrowRight className="w-4 h-4" />
-                </Link>
+                <div className="flex gap-4">
+                    <button 
+                        onClick={handleDownloadPDF}
+                        className="px-8 py-4 rounded-2xl bg-white/5 border border-white/10 text-white font-black text-xs uppercase tracking-widest hover:bg-white/10 transition-all flex items-center gap-2"
+                    >
+                        <Download className="w-4 h-4 text-gold" />
+                        Download Signed PDF
+                    </button>
+                    <Link 
+                        href="/dashboard/client/overview" 
+                        className="px-8 py-4 rounded-2xl bg-gold text-navy font-black text-xs uppercase tracking-widest hover:scale-105 transition-all flex items-center gap-2"
+                    >
+                        Return to Dashboard
+                        <ArrowRight className="w-4 h-4" />
+                    </Link>
+                </div>
             </div>
         );
     }
@@ -82,6 +100,12 @@ export default function QuoteSignOffClient({ booking, financials, user }: QuoteS
                         </div>
                         <span className="text-[10px] font-black text-white uppercase tracking-[0.2em]">Commercial Proposal Preview</span>
                     </div>
+                    <button 
+                        onClick={handleDownloadPDF}
+                        className="text-[10px] font-black text-gold hover:underline uppercase tracking-wider flex items-center gap-1.5"
+                    >
+                        <Download className="w-3 h-3" /> Download PDF
+                    </button>
                 </div>
                 <div className="flex-1 p-0 overflow-hidden relative">
                     <PDFViewer className="w-full h-full border-none shadow-2xl">
@@ -124,55 +148,95 @@ export default function QuoteSignOffClient({ booking, financials, user }: QuoteS
                 </div>
 
                 {/* Tab Content */}
-                <div className="flex-1 overflow-y-auto p-10 custom-scrollbar overscroll-contain">
+                <div className="flex-1 overflow-y-auto p-8 custom-scrollbar overscroll-contain">
+                    {approvalError && (
+                        <div className="mb-6 p-4 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-medium">
+                            {approvalError}
+                        </div>
+                    )}
+
                     {activeTab === "review" && (
-                        <div className="space-y-10 animate-fade-up">
+                        <div className="space-y-8 animate-fade-up">
                             <div>
-                                <h1 className="text-3xl font-[family-name:var(--font-heading)] font-black text-white uppercase tracking-tight italic mb-2">
+                                <h1 className="text-3xl font-[family-name:var(--font-heading)] font-black text-white uppercase tracking-tight italic mb-1">
                                     Commercial <span className="text-gold">Summary</span>
                                 </h1>
-                                <p className="text-slate text-xs font-bold uppercase tracking-widest opacity-60">Verification Profile #BK-{booking.id.slice(0, 8).toUpperCase()}</p>
+                                <p className="text-slate text-xs font-bold uppercase tracking-widest opacity-60">
+                                    Reference #{(booking.projectId || booking.id).slice(0, 8).toUpperCase()}
+                                </p>
                             </div>
 
-                            {/* Financial breakdown for mobile since they can't see the PDF */}
-                            <div className="xl:hidden glass rounded-3xl p-8 border border-white/10 bg-white/[0.02] shadow-2xl">
-                                <div className="space-y-4">
-                                    <div className="flex justify-between items-center pb-4 border-b border-white/5">
-                                        <span className="text-xs font-black text-slate uppercase tracking-widest">Base Logistics</span>
-                                        <span className="text-sm font-bold text-white">QAR {financials.subtotal.toLocaleString()}</span>
+                            {/* Itemized Assets */}
+                            <div className="space-y-3">
+                                <h3 className="text-[10px] font-black text-slate uppercase tracking-widest">Selected Fleet Assets ({financials.items.length})</h3>
+                                <div className="space-y-2 max-h-60 overflow-y-auto no-scrollbar">
+                                    {financials.items.map((item: any) => (
+                                        <div key={item.id} className="p-3 rounded-xl bg-white/[0.02] border border-white/5 flex items-center justify-between">
+                                            <div className="min-w-0 flex-1">
+                                                <h4 className="text-xs font-bold text-white truncate">{item.name}</h4>
+                                                <span className="text-[9px] text-slate-400">
+                                                    {item.units} Units • {item.days} Days • {item.unitPrice} QAR/Day
+                                                </span>
+                                            </div>
+                                            <span className="text-xs font-black text-gold">
+                                                {item.rentalTotal.toLocaleString()} QAR
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Financial breakdown */}
+                            <div className="glass rounded-3xl p-6 border border-white/10 bg-white/[0.02] shadow-2xl space-y-3">
+                                <div className="flex justify-between items-center text-xs text-slate-400">
+                                    <span>Base Rental</span>
+                                    <span className="text-white font-bold">QAR {financials.baseRentalSubtotal.toLocaleString()}</span>
+                                </div>
+                                {financials.discountAmount > 0 && (
+                                    <div className="flex justify-between items-center text-xs text-red-400">
+                                        <span>Applied Discount ({financials.discountPercent}%)</span>
+                                        <span>- QAR {financials.discountAmount.toLocaleString()}</span>
                                     </div>
-                                    <div className="flex justify-between items-center pb-4 border-b border-white/5">
-                                        <span className="text-xs font-black text-slate uppercase tracking-widest">Management Fee</span>
-                                        <span className="text-sm font-bold text-white">QAR {financials.logistics.toLocaleString()}</span>
+                                )}
+                                {financials.logisticsCost > 0 && (
+                                    <div className="flex justify-between items-center text-xs text-slate-400">
+                                        <span>Logistics / Transport</span>
+                                        <span className="text-white font-bold">+ QAR {financials.logisticsCost.toLocaleString()}</span>
                                     </div>
-                                    <div className="flex justify-between items-center pt-2">
-                                        <span className="text-sm font-black text-gold uppercase tracking-[0.2em]">Grand Total</span>
-                                        <span className="text-2xl font-[family-name:var(--font-heading)] font-black text-gold">QAR {financials.total.toLocaleString()}</span>
+                                )}
+                                {financials.laborCost > 0 && (
+                                    <div className="flex justify-between items-center text-xs text-slate-400">
+                                        <span>Setup / Labor Fee</span>
+                                        <span className="text-white font-bold">+ QAR {financials.laborCost.toLocaleString()}</span>
                                     </div>
+                                )}
+                                <div className="flex justify-between items-center pt-3 border-t border-white/10">
+                                    <span className="text-sm font-black text-gold uppercase tracking-[0.2em]">Grand Total</span>
+                                    <span className="text-2xl font-[family-name:var(--font-heading)] font-black text-gold">
+                                        QAR {financials.grandTotal.toLocaleString()}
+                                    </span>
                                 </div>
                             </div>
 
                             {/* Terms highlight */}
-                            <div className="p-6 rounded-3xl bg-gold/5 border border-gold/10">
-                                <h4 className="text-[10px] font-black text-gold uppercase tracking-widest mb-3 flex items-center gap-2">
-                                    <ShieldCheck className="w-3 h-3" /> Locked Payment Matrix
+                            <div className="p-5 rounded-2xl bg-gold/5 border border-gold/10">
+                                <h4 className="text-[10px] font-black text-gold uppercase tracking-widest mb-1.5 flex items-center gap-2">
+                                    <ShieldCheck className="w-3.5 h-3.5" /> Payment & Compliance Terms
                                 </h4>
-                                <p className="text-sm font-bold text-white mb-2">{booking.paymentTerms || "100% Advance Payment"}</p>
-                                <p className="text-[10px] text-slate leading-relaxed">
-                                    This proposal is valid for 7 working days. Changes after approval may incur additional logistical overhead charges.
+                                <p className="text-xs font-bold text-white mb-1">{booking.paymentTerms || "100% Advance Payment"}</p>
+                                <p className="text-[9px] text-slate-400 leading-relaxed">
+                                    By proceeding to digitally sign, you confirm acceptance of the commercial proposal, delivery timetable, and asset terms.
                                 </p>
                             </div>
 
-                            {/* Digital signature trigger */}
-                            <div className="pt-10 border-t border-white/5">
-                                <button 
-                                    onClick={() => setActiveTab("sign")}
-                                    className="w-full h-20 rounded-3xl bg-white/5 border border-white/10 hover:border-gold/50 text-white font-black text-xs uppercase tracking-[0.3em] flex items-center justify-center gap-4 transition-all group shadow-2xl"
-                                >
-                                    Proceed to Digital Signing
-                                    <ArrowRight className="w-5 h-5 text-gold group-hover:translate-x-2 transition-transform" />
-                                </button>
-                            </div>
+                            {/* Action Button */}
+                            <button 
+                                onClick={() => setActiveTab("sign")}
+                                className="w-full h-16 rounded-2xl bg-gold text-navy font-black text-xs uppercase tracking-[0.3em] flex items-center justify-center gap-3 transition-all hover:scale-[1.02] active:scale-[0.98] shadow-2xl shadow-gold/20"
+                            >
+                                Proceed to Digital Signing
+                                <ArrowRight className="w-4 h-4" />
+                            </button>
                         </div>
                     )}
 
@@ -180,8 +244,8 @@ export default function QuoteSignOffClient({ booking, financials, user }: QuoteS
                         <div className="h-full min-h-[500px]">
                             <EmbeddedChat 
                                 currentUser={user} 
-                                projectId={booking.id} 
-                                receiverId={booking.vendorId || "admin"} 
+                                projectId={booking.projectId || booking.id} 
+                                receiverId="admin" 
                                 receiverName="E3 Operations Lead"
                                 title="Project Negotiation Room"
                             />
@@ -189,12 +253,14 @@ export default function QuoteSignOffClient({ booking, financials, user }: QuoteS
                     )}
 
                     {activeTab === "sign" && (
-                        <div className="animate-fade-up max-w-md mx-auto">
-                            <div className="mb-10 text-center">
-                                <h2 className="text-2xl font-[family-name:var(--font-heading)] font-black text-white uppercase italic tracking-tight mb-2">
+                        <div className="animate-fade-up max-w-md mx-auto space-y-6">
+                            <div className="text-center">
+                                <h2 className="text-2xl font-[family-name:var(--font-heading)] font-black text-white uppercase italic tracking-tight mb-1">
                                     Digitally <span className="text-gold">Authorize</span>
                                 </h2>
-                                <p className="text-[10px] text-slate font-black uppercase tracking-widest opacity-40">Verification Protocol Required</p>
+                                <p className="text-[9px] text-slate font-black uppercase tracking-widest opacity-60">
+                                    Draw or Type Signature Below to Authorize Proposal
+                                </p>
                             </div>
                             
                             <SignaturePad 
@@ -204,7 +270,7 @@ export default function QuoteSignOffClient({ booking, financials, user }: QuoteS
 
                             <button 
                                 onClick={() => setActiveTab("review")}
-                                className="mt-8 w-full py-4 text-[10px] font-black text-slate hover:text-white uppercase tracking-widest transition-colors flex items-center justify-center gap-2"
+                                className="w-full py-3 text-[10px] font-black text-slate hover:text-white uppercase tracking-widest transition-colors flex items-center justify-center gap-2"
                             >
                                 <ChevronLeft className="w-3 h-3" /> Back to Summary
                             </button>
@@ -215,10 +281,12 @@ export default function QuoteSignOffClient({ booking, financials, user }: QuoteS
             
             {/* Mobile PDF floating action */}
             <div className="xl:hidden fixed bottom-6 left-6 right-6 z-50">
-               {/* Mobile users can download the PDF instead of viewing it on a small screen */}
-               <button className="w-full h-14 rounded-2xl bg-navy/90 backdrop-blur-xl border border-white/10 text-white text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-3 shadow-2xl">
+               <button 
+                    onClick={handleDownloadPDF}
+                    className="w-full h-14 rounded-2xl bg-navy/90 backdrop-blur-xl border border-white/10 text-white text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-3 shadow-2xl"
+                >
                     <FileText className="w-4 h-4 text-gold" />
-                    Download Commercial Version
+                    Download Commercial PDF Version
                </button>
             </div>
         </div>

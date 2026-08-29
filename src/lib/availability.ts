@@ -1,6 +1,6 @@
 import { db } from "./db";
 import { products, bookings, inventoryOverrides, inventoryUnits } from "./db/schema";
-import { eq, and, or, lte, gte, inArray } from "drizzle-orm";
+import { eq, and, or, lte, gte, inArray, ne } from "drizzle-orm";
 import { addHours, subHours, parseISO, format } from "date-fns";
 import { BOOKING_STATUS } from "./constants";
 
@@ -11,6 +11,8 @@ export interface AvailabilityRequest {
     quantity: number;
     startTime?: string; // HH:mm — for multi-shift
     endTime?: string;   // HH:mm — for multi-shift
+    excludeBookingId?: string; // Exclude current booking during updates/edits
+    excludeProjectId?: string; // Exclude current project during quote updates
 }
 
 export interface AvailabilityResult {
@@ -24,6 +26,20 @@ export interface AvailabilityResult {
     effectiveEnd: string;
     conflictingBookings: number;
 }
+
+/**
+ * Authoritative statuses that reserve and lock physical inventory.
+ * Any booking in these operational states blocks stock across its date window + buffer.
+ */
+export const INVENTORY_BLOCKING_STATUSES = [
+    BOOKING_STATUS.QUOTE_ACCEPTED,
+    BOOKING_STATUS.APPROVED,
+    BOOKING_STATUS.BOOKED,
+    "packing",
+    "packed",
+    "out_for_delivery",
+    "delivered",
+];
 
 /**
  * Centralized Predicate: Determines whether a physical unit is allocatable and rentable.
@@ -103,17 +119,22 @@ export async function checkAvailability(req: AvailabilityRequest): Promise<Avail
     const effectiveEndStr = format(effectiveEnd, "yyyy-MM-dd");
 
     // 3. Query all bookings that could overlap
+    const whereConditions: any[] = [
+        eq(bookings.productId, req.productId),
+        inArray(bookings.status, INVENTORY_BLOCKING_STATUSES),
+        lte(bookings.startDate, effectiveEnd),
+        gte(bookings.endDate, effectiveStart),
+    ];
+
+    if (req.excludeBookingId) {
+        whereConditions.push(ne(bookings.id, req.excludeBookingId));
+    }
+    if (req.excludeProjectId) {
+        whereConditions.push(ne(bookings.projectId, req.excludeProjectId));
+    }
+
     const overlappingBookings = await db.query.bookings.findMany({
-        where: and(
-            eq(bookings.productId, req.productId),
-            inArray(bookings.status, [
-                BOOKING_STATUS.APPROVED, 
-                BOOKING_STATUS.BOOKED, 
-                BOOKING_STATUS.QUOTE_ACCEPTED
-            ]),
-            lte(bookings.startDate, effectiveEnd),
-            gte(bookings.endDate, effectiveStart),
-        ),
+        where: and(...whereConditions),
     });
 
     // 4. Sweep-Line Algorithm to find true PEAK simultaneous overlapping bookings
@@ -225,6 +246,70 @@ function timeToMinutes(time: string): number {
 }
 
 /**
+ * Validates availability across multiple items in a quote / project atomically.
+ */
+export async function validateProjectAvailability(
+    items: Array<{
+        productId: string;
+        units: number;
+        startDate: string | Date;
+        endDate: string | Date;
+        startTime?: string;
+        endTime?: string;
+    }>,
+    options?: { excludeProjectId?: string; excludeBookingId?: string }
+): Promise<{
+    valid: boolean;
+    conflicts: Array<{
+        productId: string;
+        requested: number;
+        available: number;
+        error: string;
+    }>;
+}> {
+    const conflicts: Array<{
+        productId: string;
+        requested: number;
+        available: number;
+        error: string;
+    }> = [];
+
+    for (const item of items) {
+        const startStr = item.startDate instanceof Date 
+            ? format(item.startDate, "yyyy-MM-dd") 
+            : String(item.startDate).split("T")[0];
+        const endStr = item.endDate instanceof Date 
+            ? format(item.endDate, "yyyy-MM-dd") 
+            : String(item.endDate).split("T")[0];
+
+        const avail = await checkAvailability({
+            productId: item.productId,
+            startDate: startStr,
+            endDate: endStr,
+            quantity: item.units,
+            startTime: item.startTime,
+            endTime: item.endTime,
+            excludeProjectId: options?.excludeProjectId,
+            excludeBookingId: options?.excludeBookingId,
+        });
+
+        if (!avail.available) {
+            conflicts.push({
+                productId: item.productId,
+                requested: item.units,
+                available: avail.unitsAvailable,
+                error: `Requested ${item.units} units, but only ${avail.unitsAvailable} are available for dates ${startStr} to ${endStr}.`,
+            });
+        }
+    }
+
+    return {
+        valid: conflicts.length === 0,
+        conflicts,
+    };
+}
+
+/**
  * Calculates a day-by-day availability timeline for the next N days.
  */
 export async function getAvailabilityTimeline(productId: string, lookaheadDays: number = 30, startDate?: string) {
@@ -264,11 +349,7 @@ export async function getAvailabilityTimeline(productId: string, lookaheadDays: 
     const allBookings = await db.query.bookings.findMany({
         where: and(
             eq(bookings.productId, productId),
-            inArray(bookings.status, [
-                BOOKING_STATUS.APPROVED, 
-                BOOKING_STATUS.BOOKED, 
-                BOOKING_STATUS.QUOTE_ACCEPTED
-            ]),
+            inArray(bookings.status, INVENTORY_BLOCKING_STATUSES),
             lte(bookings.startDate, endDate),
             gte(bookings.endDate, today),
         ),

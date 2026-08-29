@@ -7,14 +7,19 @@ import Link from "next/link";
 import Image from "next/image";
 import { Footer } from "@/components/Footer";
 import { USER_ROLES, BOOKING_STATUS } from "@/lib/constants";
+import { AlertCircle, CheckCircle, ShieldAlert, Sparkles, RefreshCw } from "lucide-react";
 
 interface CartItem {
     id: string;
+    productId: string;
     quantity: number;
     startDate: string;
     endDate: string;
     startTime: string | null;
     endTime: string | null;
+    isAvailable?: boolean;
+    unitsAvailable?: number;
+    unitsMaintenance?: number;
     product: {
         id: string;
         name: string;
@@ -34,12 +39,12 @@ export default function CartPage() {
     const [items, setItems] = useState<CartItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
+    const [errorMessage, setErrorMessage] = useState("");
     const [successMessage, setSuccessMessage] = useState("");
+    const [quoteReference, setQuoteReference] = useState("");
     const [loginPrompt, setLoginPrompt] = useState(false);
-    const [existingQuotes, setExistingQuotes] = useState<{ id: string, projectName: string }[]>([]);
+    const [existingQuotes, setExistingQuotes] = useState<{ id: string; projectName: string }[]>([]);
     const [selectedProjectId, setSelectedProjectId] = useState<string>("new");
-    const [editingItemId, setEditingItemId] = useState<string | null>(null);
-    const [editData, setEditData] = useState({ quantity: 1, startDate: "", endDate: "" });
     const [userRole, setUserRole] = useState<string | null>(null);
     const router = useRouter();
 
@@ -58,6 +63,7 @@ export default function CartPage() {
 
     const fetchCartAndUser = useCallback(async () => {
         try {
+            setErrorMessage("");
             const res = await fetch("/api/cart", { credentials: "include" });
             const data = await res.json();
             setItems(Array.isArray(data) ? data : []);
@@ -83,7 +89,7 @@ export default function CartPage() {
                             setExistingQuotes(activeQuotes);
                         }
                     }
-                } catch (e) {}
+                } catch {}
             }
         } catch {
             setItems([]);
@@ -106,24 +112,16 @@ export default function CartPage() {
     const updateQuantity = async (id: string, currentQuantity: number, change: number) => {
         const newQuantity = Math.max(1, currentQuantity + change);
         if (newQuantity === currentQuantity) return;
-        await fetch("/api/cart", {
+        const res = await fetch("/api/cart", {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             credentials: "include",
             body: JSON.stringify({ id, quantity: newQuantity })
         });
-        fetchCartAndUser();
-    };
-
-    const saveEdit = async (id: string) => {
-        if (editData.quantity < 1 || !editData.startDate || !editData.endDate) return;
-        await fetch("/api/cart", {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify({ id, ...editData })
-        });
-        setEditingItemId(null);
+        if (!res.ok) {
+            const data = await res.json();
+            setErrorMessage(data.error || "Failed to update quantity");
+        }
         fetchCartAndUser();
     };
 
@@ -138,12 +136,12 @@ export default function CartPage() {
         return sum + item.product.pricePerDay * item.quantity * calcDays(item.startDate, item.endDate);
     }, 0);
 
-    const total = subtotal;
     const hasHiddenPrices = items.some(item => !item.product.showPrice);
-    const allHidden = items.length > 0 && items.every(item => !item.product.showPrice);
+    const hasAvailabilityConflict = items.some(item => item.isAvailable === false);
 
     const generateQuoteAndRequest = async (e: React.FormEvent) => {
         e.preventDefault();
+        setErrorMessage("");
         setSubmitting(true);
         try {
             const bookRes = await fetch("/api/bookings", {
@@ -158,16 +156,21 @@ export default function CartPage() {
                     setSubmitting(false);
                     return;
                 }
-                throw new Error(responseData.error || "Failed to create booking request");
+                setErrorMessage(responseData.error || "Failed to create booking request");
+                setSubmitting(false);
+                return;
             }
-            setSuccessMessage("Quote request established. Syncing profile...");
+            
+            const ref = responseData.quoteRef || "CONFIRMED";
+            setQuoteReference(ref);
+            setSuccessMessage(`Quote request established! Reference: #${ref}`);
             fetchCartAndUser();
             setTimeout(() => {
-                router.push("/dashboard");
+                router.push("/dashboard/client/overview");
                 router.refresh();
-            }, 2000);
-        } catch (err) {
-            console.error(err);
+            }, 2500);
+        } catch (err: any) {
+            setErrorMessage(err.message || "Network error submitting proposal");
         }
         setSubmitting(false);
     };
@@ -184,15 +187,38 @@ export default function CartPage() {
                                 Live <span className="gradient-text-gold">Proposal</span> Builder
                             </h1>
                             <p className="text-slate/60 mt-4 font-medium text-lg max-w-xl">
-                                Review your fleet selection, configure project logistics, and establish a secure proposal request for our logistics team.
+                                Review your fleet selection, configure project logistics, and establish a secure proposal request with authoritative stock checks.
                             </p>
                         </motion.div>
                         {items.length > 0 && (
-                            <button onClick={clearCart} className="text-[10px] font-black uppercase tracking-[0.2em] text-red-400/40 hover:text-red-400 transition-all flex items-center gap-2 border border-red-400/10 px-4 py-2 rounded-full hover:bg-red-400/5">
-                                <span>×</span> Reset Proposal
-                            </button>
+                            <div className="flex items-center gap-3">
+                                <button onClick={fetchCartAndUser} className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 hover:text-gold transition-all flex items-center gap-2 border border-white/10 px-4 py-2.5 rounded-full hover:bg-white/5">
+                                    <RefreshCw className="w-3 h-3" /> Check Stock
+                                </button>
+                                <button onClick={clearCart} className="text-[10px] font-black uppercase tracking-[0.2em] text-red-400/60 hover:text-red-400 transition-all flex items-center gap-2 border border-red-400/20 px-4 py-2.5 rounded-full hover:bg-red-400/10">
+                                    <span>×</span> Clear Cart
+                                </button>
+                            </div>
                         )}
                     </div>
+
+                    {/* Conflict Error Banner */}
+                    {hasAvailabilityConflict && (
+                        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-8 p-6 rounded-3xl bg-red-500/10 border border-red-500/30 flex items-center gap-4 text-red-400">
+                            <ShieldAlert className="w-6 h-6 shrink-0" />
+                            <div className="flex-1 text-sm font-medium">
+                                <strong className="font-black uppercase tracking-wider block text-xs mb-0.5">Availability Alert</strong>
+                                One or more items in your cart exceed allocatable physical stock for the chosen dates. Please reduce quantities or adjust dates to continue.
+                            </div>
+                        </motion.div>
+                    )}
+
+                    {errorMessage && (
+                        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-8 p-6 rounded-3xl bg-red-500/10 border border-red-500/30 flex items-center gap-4 text-red-400">
+                            <AlertCircle className="w-6 h-6 shrink-0" />
+                            <div className="flex-1 text-sm font-medium">{errorMessage}</div>
+                        </motion.div>
+                    )}
 
                     {loading ? (
                         <div className="space-y-6">
@@ -236,6 +262,7 @@ export default function CartPage() {
                                             <AnimatePresence initial={false}>
                                                 {group.items.map((item) => {
                                                     const days = calcDays(item.startDate, item.endDate);
+                                                    const isOutOfStock = item.isAvailable === false;
                                                     return (
                                                         <motion.div 
                                                             key={item.id}
@@ -243,7 +270,9 @@ export default function CartPage() {
                                                             initial={{ opacity: 0, y: 20 }}
                                                             animate={{ opacity: 1, y: 0 }}
                                                             exit={{ opacity: 0, scale: 0.9 }}
-                                                            className="glass-dark rounded-[2.5rem] p-6 md:p-8 border border-white/10 group hover:border-gold/30 transition-all shadow-[0_30px_60px_rgba(0,0,0,0.4)] relative overflow-hidden"
+                                                            className={`glass-dark rounded-[2.5rem] p-6 md:p-8 border transition-all shadow-[0_30px_60px_rgba(0,0,0,0.4)] relative overflow-hidden ${
+                                                                isOutOfStock ? "border-red-500/50 bg-red-950/10" : "border-white/10 group hover:border-gold/30"
+                                                            }`}
                                                         >
                                                             <div className="absolute top-0 right-0 w-40 h-40 bg-gold/5 blur-[60px] opacity-0 group-hover:opacity-100 transition-opacity" />
                                                             
@@ -261,13 +290,20 @@ export default function CartPage() {
                                                                             </Link>
                                                                             <span className="text-[9px] font-black text-gold/40 uppercase tracking-[0.3em] mt-1 block">Asset Reference: {item.product.id.slice(0,8).toUpperCase()}</span>
                                                                         </div>
-                                                                        <button onClick={() => removeItem(item.id)} className="w-8 h-8 rounded-full flex items-center justify-center text-slate/40 hover:text-red-400 hover:bg-red-400/10 transition-all text-xl">×</button>
+                                                                        <button 
+                                                                            type="button"
+                                                                            aria-label="Remove item from proposal"
+                                                                            onClick={() => removeItem(item.id)} 
+                                                                            className="w-8 h-8 rounded-full flex items-center justify-center text-slate/40 hover:text-red-400 hover:bg-red-400/10 transition-all text-xl"
+                                                                        >
+                                                                            ×
+                                                                        </button>
                                                                     </div>
                                                                     
                                                                     <div className="flex flex-wrap items-center gap-x-6 gap-y-3 mt-6 mb-8 pb-6 border-b border-white/5">
                                                                         <div className="flex items-center gap-2 bg-white/5 px-4 py-2 rounded-xl border border-white/5">
                                                                             <span className="text-gold text-xs">📅</span>
-                                                                            <span className="text-[10px] font-black uppercase text-white tracking-widest">{item.startDate} — {item.endDate}</span>
+                                                                            <span className="text-[10px] font-black uppercase text-white tracking-widest">{item.startDate.split('T')[0]} — {item.endDate.split('T')[0]}</span>
                                                                             <span className="text-[9px] font-black text-gold/60 ml-1">({days} DAYS)</span>
                                                                         </div>
                                                                         {item.product.dimensions && (
@@ -276,19 +312,46 @@ export default function CartPage() {
                                                                                 <span className="text-[10px] font-black uppercase text-white tracking-widest">{item.product.dimensions}</span>
                                                                             </div>
                                                                         )}
+                                                                        {isOutOfStock ? (
+                                                                            <div className="flex items-center gap-2 bg-red-500/20 text-red-300 px-4 py-2 rounded-xl border border-red-500/30 text-[10px] font-black uppercase tracking-wider">
+                                                                                ⚠️ Out of Stock ({item.unitsAvailable ?? 0} available)
+                                                                            </div>
+                                                                        ) : (
+                                                                            <div className="flex items-center gap-2 bg-emerald-500/10 text-emerald-400 px-4 py-2 rounded-xl border border-emerald-500/20 text-[10px] font-black uppercase tracking-wider">
+                                                                                ✓ {item.unitsAvailable ?? item.quantity} Units Available
+                                                                            </div>
+                                                                        )}
                                                                     </div>
 
                                                                     <div className="flex flex-wrap items-center justify-between gap-6">
                                                                         <div className="flex items-center gap-4 bg-navy-dark p-2 rounded-2xl border border-white/10 shadow-inner">
-                                                                            <button onClick={() => updateQuantity(item.id, item.quantity, -1)} className="w-10 h-10 rounded-xl flex items-center justify-center hover:bg-gold hover:text-navy transition-all font-bold border border-white/5">−</button>
-                                                                            <span className="px-4 text-sm font-black text-white min-w-[3rem] text-center">{item.quantity} <span className="text-[9px] opacity-30 text-slate ml-1 uppercase">{item.product.unit || 'Units'}</span></span>
-                                                                            <button onClick={() => updateQuantity(item.id, item.quantity, 1)} className="w-10 h-10 rounded-xl flex items-center justify-center hover:bg-gold hover:text-navy transition-all font-bold border border-white/5">+</button>
+                                                                            <button 
+                                                                                type="button"
+                                                                                aria-label="Decrease quantity"
+                                                                                onClick={() => updateQuantity(item.id, item.quantity, -1)} 
+                                                                                className="w-10 h-10 rounded-xl flex items-center justify-center hover:bg-gold hover:text-navy transition-all font-bold border border-white/5"
+                                                                            >
+                                                                                −
+                                                                            </button>
+                                                                            <span className="px-4 text-sm font-black text-white min-w-[3rem] text-center">
+                                                                                {item.quantity} <span className="text-[9px] opacity-30 text-slate ml-1 uppercase">{item.product.unit || 'Units'}</span>
+                                                                            </span>
+                                                                            <button 
+                                                                                type="button"
+                                                                                aria-label="Increase quantity"
+                                                                                onClick={() => updateQuantity(item.id, item.quantity, 1)} 
+                                                                                className="w-10 h-10 rounded-xl flex items-center justify-center hover:bg-gold hover:text-navy transition-all font-bold border border-white/5"
+                                                                            >
+                                                                                +
+                                                                            </button>
                                                                         </div>
                                                                         
                                                                         <div className="text-right">
                                                                             {item.product.showPrice ? (
                                                                                 <div className="flex flex-col items-end">
-                                                                                    <span className="text-2xl font-black text-white italic tracking-tighter">{(item.product.pricePerDay * item.quantity * days).toLocaleString()} <span className="text-[10px] text-slate opacity-40 non-italic ml-1">QAR</span></span>
+                                                                                    <span className="text-2xl font-black text-white italic tracking-tighter">
+                                                                                        {(item.product.pricePerDay * item.quantity * days).toLocaleString()} <span className="text-[10px] text-slate opacity-40 non-italic ml-1">QAR</span>
+                                                                                    </span>
                                                                                     <span className="text-[9px] text-slate/40 font-bold uppercase tracking-[0.2em] mt-1">RATE: {item.product.pricePerDay} QAR / DAY</span>
                                                                                 </div>
                                                                             ) : (
@@ -357,10 +420,11 @@ export default function CartPage() {
 
                                     <form onSubmit={generateQuoteAndRequest} className="space-y-8">
                                         <div className="space-y-4">
-                                            <label className="text-[9px] font-black text-slate/50 uppercase tracking-[0.3em] ml-1 block">Project Identity</label>
+                                            <label htmlFor="cart-project-name" className="text-[9px] font-black text-slate/50 uppercase tracking-[0.3em] ml-1 block">Project Identity</label>
                                             <div className="space-y-4">
                                                 {existingQuotes.length > 0 && (
                                                     <select
+                                                        aria-label="Select existing project or create new"
                                                         value={selectedProjectId}
                                                         onChange={(e) => setSelectedProjectId(e.target.value)}
                                                         className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-sm font-bold text-white focus:border-gold focus:outline-none transition-all appearance-none cursor-pointer"
@@ -372,28 +436,57 @@ export default function CartPage() {
                                                     </select>
                                                 )}
                                                 {selectedProjectId === "new" && (
-                                                    <input required type="text" name="projectName" value={formData.projectName} onChange={handleFormChange} placeholder="Strategic Project Name..." className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-sm font-bold text-white focus:border-gold focus:outline-none transition-all placeholder:text-slate/20" />
+                                                    <input 
+                                                        id="cart-project-name"
+                                                        required 
+                                                        type="text" 
+                                                        name="projectName" 
+                                                        value={formData.projectName} 
+                                                        onChange={handleFormChange} 
+                                                        placeholder="Strategic Project Name..." 
+                                                        className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-sm font-bold text-white focus:border-gold focus:outline-none transition-all placeholder:text-slate/20" 
+                                                    />
                                                 )}
                                             </div>
                                         </div>
 
                                         <div className="space-y-4">
-                                            <label className="text-[9px] font-black text-slate/50 uppercase tracking-[0.3em] ml-1 block">Entity Details</label>
-                                            <input required type="text" name="customerName" value={formData.customerName} onChange={handleFormChange} placeholder="Client / Entity Name" className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-sm font-bold text-white focus:border-gold focus:outline-none transition-all placeholder:text-slate/20 shadow-inner" />
-                                            <input required type="email" name="customerEmail" value={formData.customerEmail} onChange={handleFormChange} placeholder="Authorized Contact Email" className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-sm font-bold text-white focus:border-gold focus:outline-none transition-all placeholder:text-slate/20 shadow-inner" />
+                                            <label htmlFor="cart-customer-name" className="text-[9px] font-black text-slate/50 uppercase tracking-[0.3em] ml-1 block">Entity Details</label>
+                                            <input 
+                                                id="cart-customer-name"
+                                                required 
+                                                type="text" 
+                                                name="customerName" 
+                                                value={formData.customerName} 
+                                                onChange={handleFormChange} 
+                                                placeholder="Client / Entity Name" 
+                                                className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-sm font-bold text-white focus:border-gold focus:outline-none transition-all placeholder:text-slate/20 shadow-inner" 
+                                            />
+                                            <input 
+                                                id="cart-customer-email"
+                                                required 
+                                                type="email" 
+                                                name="customerEmail" 
+                                                value={formData.customerEmail} 
+                                                onChange={handleFormChange} 
+                                                placeholder="Authorized Contact Email" 
+                                                className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-sm font-bold text-white focus:border-gold focus:outline-none transition-all placeholder:text-slate/20 shadow-inner" 
+                                            />
                                         </div>
 
                                         <button
                                             type="submit"
-                                            disabled={submitting || userRole === USER_ROLES.ADMIN || userRole === USER_ROLES.SUPER_ADMIN}
+                                            disabled={submitting || hasAvailabilityConflict || userRole === USER_ROLES.ADMIN || userRole === USER_ROLES.SUPER_ADMIN}
                                             className="w-full py-8 rounded-[2rem] bg-gold text-navy font-black text-xs uppercase tracking-[0.4em] shadow-[0_20px_50px_rgba(251,191,36,0.3)] hover:scale-[1.03] active:scale-[0.98] transition-all disabled:opacity-30 flex items-center justify-center gap-4 relative overflow-hidden group"
                                         >
                                             <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-500" />
                                             {submitting ? (
                                                 <>
                                                     <div className="w-4 h-4 border-2 border-navy border-t-transparent rounded-full animate-spin" />
-                                                    Encrypting Proposal...
+                                                    Verifying & Submitting...
                                                 </>
+                                            ) : hasAvailabilityConflict ? (
+                                                <span className="relative z-10">Stock Conflict — Adjust Qty</span>
                                             ) : (
                                                 <span className="relative z-10">Submit for Review</span>
                                             )}
@@ -407,7 +500,7 @@ export default function CartPage() {
                                     {/* Success Message */}
                                     {successMessage && (
                                         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mt-8 p-5 rounded-[2rem] bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[9px] font-black uppercase tracking-[0.2em] text-center">
-                                            <span className="mr-2">✓</span> {successMessage}
+                                            <CheckCircle className="w-4 h-4 inline mr-2 text-emerald-400" /> {successMessage}
                                         </motion.div>
                                     )}
                                 </motion.div>

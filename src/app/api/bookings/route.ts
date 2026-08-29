@@ -1,30 +1,41 @@
 import { db } from "@/lib/db";
-import { bookings, cartItems, users } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { bookings, cartItems, users, products } from "@/lib/db/schema";
+import { eq, or } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { signToken, getCurrentUser } from "@/lib/auth";
 import { cookies } from "next/headers";
 import { v4 as uuid } from "uuid";
-import { sendVendorNotificationEmail } from "@/lib/email";
+import { sendVendorNotificationEmail, sendQuoteStatusEmail } from "@/lib/email";
+import { validateProjectAvailability } from "@/lib/availability";
+import { calculateQuoteFinancials } from "@/lib/pricing";
+import { BOOKING_STATUS } from "@/lib/constants";
+import { logStatusTransition } from "@/lib/state-machine";
 
 export async function POST(req: NextRequest) {
     try {
         const sessionId = req.cookies.get("rental_session")?.value;
+        const currentUser = await getCurrentUser().catch(() => null);
 
-        if (!sessionId) {
-            return NextResponse.json({ error: "No cart session" }, { status: 400 });
+        if (!sessionId && !currentUser) {
+            return NextResponse.json({ error: "No active cart session found" }, { status: 400 });
         }
 
         const body = await req.json();
         const { customerName, customerEmail, customerPhone, projectName, notes, projectId } = body;
 
         if (!customerName || !customerEmail) {
-            return NextResponse.json({ error: "Name and Email are required" }, { status: 400 });
+            return NextResponse.json({ error: "Name and Email are required to request a quote." }, { status: 400 });
         }
 
-        // Fetch cart items
+        const normalizedEmail = customerEmail.trim().toLowerCase();
+
+        // 1. Fetch Cart Items
+        const whereClause = currentUser?.id
+            ? (sessionId ? or(eq(cartItems.sessionId, sessionId), eq(cartItems.userId, currentUser.id)) : eq(cartItems.userId, currentUser.id))
+            : eq(cartItems.sessionId, sessionId!);
+
         const items = await db.query.cartItems.findMany({
-            where: eq(cartItems.sessionId, sessionId),
+            where: whereClause,
             with: {
                 product: {
                     with: {
@@ -39,19 +50,31 @@ export async function POST(req: NextRequest) {
         });
 
         if (items.length === 0) {
-            return NextResponse.json({ error: "Cart is empty" }, { status: 400 });
+            return NextResponse.json({ error: "Your proposal cart is empty. Please add items first." }, { status: 400 });
         }
 
-        // Create a booking record for each item in the cart
-        // (In a real system, you might have an 'Orders' table that groups 'Order Items')
-        // (But based on the schema, bookings handles individual product reservations)
+        // 2. Validate Live Availability Atomically for all items
+        const availabilityCheck = await validateProjectAvailability(
+            items.map(item => ({
+                productId: item.productId,
+                units: item.quantity,
+                startDate: item.startDate,
+                endDate: item.endDate,
+                startTime: item.startTime || undefined,
+                endTime: item.endTime || undefined,
+            }))
+        );
 
-        // --- Auto-Registration Logic ---
-        const normalizedEmail = customerEmail.trim().toLowerCase();
+        if (!availabilityCheck.valid) {
+            const conflictMsgs = availabilityCheck.conflicts.map(c => c.error).join(" ");
+            return NextResponse.json({
+                error: `Availability conflict: ${conflictMsgs}`,
+                conflicts: availabilityCheck.conflicts,
+            }, { status: 409 });
+        }
+
+        // 3. User Resolution / Auto-Registration
         let targetUserId = "";
-
-        // Check if user is already logged in
-        const currentUser = await getCurrentUser();
 
         if (currentUser) {
             targetUserId = currentUser.id;
@@ -60,13 +83,11 @@ export async function POST(req: NextRequest) {
             const existingUsers = await db.select().from(users).where(eq(users.email, normalizedEmail)).limit(1);
 
             if (existingUsers.length > 0) {
-                // Return 409 Conflict to trigger login prompt on the frontend
                 return NextResponse.json({
-                    error: "Email is already registered. Please log in to request a quote.",
-                    requiresLogin: true
+                    error: "An account with this email already exists. Please log in to complete your quote request.",
+                    requiresLogin: true,
                 }, { status: 409 });
             } else {
-                // Auto-register new user with a secure random secret
                 targetUserId = uuid();
                 const secureRandomSecret = `e3_${uuid().replace(/-/g, '')}`;
                 await db.insert(users).values({
@@ -92,28 +113,97 @@ export async function POST(req: NextRequest) {
                     httpOnly: true,
                     secure: process.env.NODE_ENV === "production",
                     sameSite: "lax",
-                    maxAge: 7 * 24 * 60 * 60, // 7 days
+                    maxAge: 7 * 24 * 60 * 60,
                     path: "/",
                 });
             }
         }
-        // -------------------------------
 
-        const activeProjectId = projectId || uuid(); // Group all these cart items under one requested quote/project
+        // 4. Project ID and Name Resolution
+        const activeProjectId = projectId || uuid();
+        let finalProjectName = projectName?.trim() || "Event Production Proposal";
 
-        let finalProjectName = projectName || "Untitled Project";
         if (projectId) {
             const existingBookings = await db.select().from(bookings).where(eq(bookings.projectId, projectId)).limit(1);
             if (existingBookings.length > 0) {
                 finalProjectName = existingBookings[0].projectName || finalProjectName;
-
                 await db.update(bookings)
-                    .set({ status: "changes_requested", updatedAt: new Date() })
+                    .set({ status: BOOKING_STATUS.CHANGES_REQUESTED, updatedAt: new Date() })
                     .where(eq(bookings.projectId, projectId));
             }
         }
 
-        // Group items by vendor for grouped processing/notifications
+        // 5. Calculate Deterministic Pricing
+        const pricing = calculateQuoteFinancials({
+            items: items.map(i => ({
+                productId: i.productId,
+                name: i.product.name,
+                units: i.quantity,
+                pricePerDay: i.product.pricePerDay || 0,
+                startDate: i.startDate,
+                endDate: i.endDate,
+                showPrice: i.product.showPrice !== false,
+                packagingFee: i.product.packagingFee || 0,
+                handlingFee: i.product.handlingFee || 0,
+                setupFee: i.product.setupFee || 0,
+                vendorId: i.product.vendorId,
+            })),
+        });
+
+        // 6. Execute Atomic Transaction (Insert Bookings + Clear Cart)
+        await db.transaction(async (tx) => {
+            for (const item of pricing.items) {
+                const rawItem = items.find(i => i.productId === item.productId)!;
+                const bufferBefore = rawItem.product.installTime || 0;
+                const bufferAfter = rawItem.product.dismantleTime || 0;
+
+                await tx.insert(bookings).values({
+                    id: uuid(),
+                    productId: item.productId,
+                    vendorId: item.vendorId || null,
+                    userId: targetUserId,
+                    projectId: activeProjectId,
+                    projectName: finalProjectName,
+                    units: item.units,
+                    startDate: rawItem.startDate instanceof Date ? rawItem.startDate : new Date(rawItem.startDate),
+                    endDate: rawItem.endDate instanceof Date ? rawItem.endDate : new Date(rawItem.endDate),
+                    startTime: rawItem.startTime || null,
+                    endTime: rawItem.endTime || null,
+                    status: BOOKING_STATUS.REQUEST,
+                    paymentStatus: "unpaid",
+                    bufferBefore,
+                    bufferAfter,
+                    customerName,
+                    customerEmail: normalizedEmail,
+                    customerPhone: customerPhone || null,
+                    notes: notes || null,
+                    totalPrice: item.rentalTotal,
+                    discount: 0,
+                    logisticsCost: 0,
+                    laborCost: 0,
+                    additionalChargeName: item.customFees > 0 ? "Packaging & Setup" : null,
+                    additionalChargeAmount: item.customFees,
+                    additionalChargeType: "fixed",
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
+                });
+            }
+
+            // Clear cart items for this session/user
+            await tx.delete(cartItems).where(whereClause);
+        });
+
+        // 7. Audit log transition
+        await logStatusTransition({
+            actorId: targetUserId,
+            targetId: activeProjectId,
+            fromStatus: "cart",
+            toStatus: BOOKING_STATUS.REQUEST,
+            role: "client",
+            details: `Quote requested for project: ${finalProjectName} (${items.length} items)`,
+        });
+
+        // 8. Notifications
         const groupedByVendor = items.reduce((acc, item) => {
             const vId = item.product.vendorId || "platform";
             if (!acc[vId]) acc[vId] = [];
@@ -121,73 +211,31 @@ export async function POST(req: NextRequest) {
             return acc;
         }, {} as Record<string, typeof items>);
 
-        // Execute as a single transaction
-        await db.transaction(async (tx) => {
-            for (const [vendorId, vendorItems] of Object.entries(groupedByVendor)) {
-                for (const item of vendorItems) {
-                    const bufferBefore = item.product.installTime || 0;
-                    const bufferAfter = item.product.dismantleTime || 0;
-
-                    const pkgFee = (item.product.packagingFee || 0) * item.quantity;
-                    const hndFee = (item.product.handlingFee || 0) * item.quantity;
-                    const setFee = (item.product.setupFee || 0) * item.quantity;
-                    const totalCustomFee = pkgFee + hndFee + setFee;
-
-                    await tx.insert(bookings).values({
-                        id: uuid(),
-                        productId: item.productId,
-                        userId: targetUserId,
-                        projectId: activeProjectId,
-                        projectName: finalProjectName,
-                        units: item.quantity,
-                        startDate: new Date(item.startDate),
-                        endDate: new Date(item.endDate),
-                        startTime: item.startTime,
-                        endTime: item.endTime,
-                        status: "request",
-                        bufferBefore,
-                        bufferAfter,
-                        customerName,
-                        customerEmail: normalizedEmail,
-                        customerPhone,
-                        notes,
-                        totalPrice: 0,
-                        discount: 0,
-                        logisticsCost: 0,
-                        additionalChargeName: totalCustomFee > 0 ? "Setup & Handling Fees" : null,
-                        additionalChargeAmount: totalCustomFee,
-                        additionalChargeType: "fixed",
-                        vendorId: item.product.vendorId,
-                        createdAt: new Date(),
-                        updatedAt: new Date(),
-                    });
-                }
-            }
-
-            // Clear cart after successful transaction
-            await tx.delete(cartItems).where(eq(cartItems.sessionId, sessionId));
-        });
-
-        // Trigger notifications after successful database commit
         for (const [vendorId, vendorItems] of Object.entries(groupedByVendor)) {
             const vendor = vendorItems[0].product.vendor;
             const vendorEmail = vendor?.user?.email;
             if (vendorEmail) {
-                // We don't await this to keep the response snappy
                 sendVendorNotificationEmail({
                     to: vendorEmail,
-                    vendorName: vendor.companyName,
+                    vendorName: vendor?.companyName || "Vendor Partner",
                     customerName,
                     projectName: finalProjectName,
                     projectId: activeProjectId,
-                }).catch(err => console.error("Vendor notification failed:", err));
+                }).catch(console.error);
             }
         }
 
-        return NextResponse.json({ success: true, message: "Quote requested successfully" });
-
-    } catch (error) {
-        console.error("Booking Creation Error:", error);
-        return NextResponse.json({ error: "Failed to create quote request" }, { status: 500 });
+        return NextResponse.json({
+            success: true,
+            projectId: activeProjectId,
+            quoteRef: activeProjectId.slice(0, 8).toUpperCase(),
+            message: "Quote request established successfully.",
+        });
+    } catch (err: any) {
+        console.error("[BOOKINGS_POST] Error:", err);
+        return NextResponse.json(
+            { error: "Failed to establish quote: " + (err.message || "Unknown error") },
+            { status: 500 }
+        );
     }
 }

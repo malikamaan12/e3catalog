@@ -3,10 +3,11 @@ import { renderToStream } from "@react-pdf/renderer";
 import React from "react";
 import { db } from "@/lib/db";
 import { bookings, products } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, or, asc } from "drizzle-orm";
 import { QuoteProposalPDF } from "@/components/pdf/QuoteProposalPDF";
-import { requireAdmin } from "@/lib/requireAdmin";
+import { getCurrentUser } from "@/lib/auth";
 import { USER_ROLES } from "@/lib/constants";
+import { calculateQuoteFinancials } from "@/lib/pricing";
 
 export async function GET(
     req: NextRequest,
@@ -14,64 +15,68 @@ export async function GET(
 ) {
     try {
         const { bookingId } = await params;
+        const currentUser = await getCurrentUser();
 
-        // 1. RBAC Check
-        const { user, error } = await requireAdmin([
-            USER_ROLES.ADMIN, 
-            USER_ROLES.SUPER_ADMIN, 
-            USER_ROLES.SALES_REP,
-            USER_ROLES.VENDOR
-        ]);
-        if (error) return error;
-
-        // 2. Fetch Booking Data
-        const [booking] = await db
-            .select({
-                id: bookings.id,
-                projectName: bookings.projectName,
-                customerName: bookings.customerName,
-                customerEmail: bookings.customerEmail,
-                customerPhone: bookings.customerPhone,
-                status: bookings.status,
-                totalPrice: bookings.totalPrice,
-                units: bookings.units,
-                discount: bookings.discount,
-                logisticsCost: bookings.logisticsCost,
-                laborCost: bookings.laborCost,
-                paymentTerms: bookings.paymentTerms,
+        // 1. Fetch All Booking Items for this project
+        const bookingItems = await db.query.bookings.findMany({
+            where: or(eq(bookings.id, bookingId), eq(bookings.projectId, bookingId)),
+            with: {
                 product: {
-                    name: products.name,
-                    pricePerDay: products.pricePerDay,
-                }
-            })
-            .from(bookings)
-            .leftJoin(products, eq(bookings.productId, products.id))
-            .where(eq(bookings.id, bookingId))
-            .limit(1);
+                    columns: {
+                        name: true,
+                        pricePerDay: true,
+                        showPrice: true,
+                        packagingFee: true,
+                        handlingFee: true,
+                        setupFee: true,
+                    },
+                },
+            },
+            orderBy: [asc(bookings.createdAt)],
+        });
 
-        if (!booking) {
+        if (!bookingItems || bookingItems.length === 0) {
             return NextResponse.json({ error: "Booking not found" }, { status: 404 });
         }
 
-        // 3. Calculate Financials for PDF
-        const subtotal = (booking.product?.pricePerDay || 0) * (booking.units || 1);
-        const discountAmount = (subtotal * (booking.discount || 0)) / 100;
-        const total = subtotal - discountAmount + (booking.logisticsCost || 0) + (booking.laborCost || 0);
+        const firstBooking = bookingItems[0];
 
-        const financials = {
-            subtotal,
-            discount: booking.discount || 0,
-            logistics: booking.logisticsCost || 0,
-            setup: booking.laborCost || 0,
-            total,
-        };
+        // 2. Authorization: Client can view their own quote; Admin/Sales/Vendor can view according to RBAC
+        if (currentUser) {
+            if (currentUser.role === USER_ROLES.CLIENT && firstBooking.userId && firstBooking.userId !== currentUser.id) {
+                return NextResponse.json({ error: "Unauthorized: Access denied to this proposal" }, { status: 403 });
+            }
+        }
+
+        // 3. Calculate Consolidated Financials
+        const financials = calculateQuoteFinancials({
+            items: bookingItems.map(b => ({
+                id: b.id,
+                productId: b.productId,
+                name: b.product?.name || "Rental Asset",
+                units: b.units,
+                pricePerDay: b.product?.pricePerDay || 0,
+                startDate: b.startDate,
+                endDate: b.endDate,
+                showPrice: b.product?.showPrice !== false,
+                packagingFee: b.product?.packagingFee || 0,
+                handlingFee: b.product?.handlingFee || 0,
+                setupFee: b.product?.setupFee || 0,
+            })),
+            discountPercent: firstBooking.discount || 0,
+            logisticsCost: firstBooking.logisticsCost || 0,
+            laborCost: firstBooking.laborCost || 0,
+        });
 
         // 4. Render PDF to stream
         const stream = await renderToStream(
             <QuoteProposalPDF 
-                booking={booking} 
+                booking={{
+                    ...firstBooking,
+                    items: financials.items,
+                }} 
                 financials={financials} 
-                paymentTerms={booking.paymentTerms || "100% Advance"} 
+                paymentTerms={firstBooking.paymentTerms || "100% Advance"} 
             />
         );
 
@@ -80,13 +85,13 @@ export async function GET(
         response.headers.set("Content-Type", "application/pdf");
         response.headers.set(
             "Content-Disposition", 
-            `attachment; filename="E3_Proposal_${booking.id.toUpperCase()}.pdf"`
+            `inline; filename="E3_Proposal_${(firstBooking.projectId || firstBooking.id).slice(0, 8).toUpperCase()}.pdf"`
         );
 
         return response;
 
     } catch (err: any) {
         console.error("[PDF_GEN_ERROR]", err);
-        return NextResponse.json({ error: "Failed to generate PDF" }, { status: 500 });
+        return NextResponse.json({ error: "Failed to generate PDF: " + (err.message || "Unknown error") }, { status: 500 });
     }
 }

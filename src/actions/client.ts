@@ -2,14 +2,19 @@
 
 import { db } from "@/lib/db";
 import { bookings, chatMessages } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, or } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth";
 import { BOOKING_STATUS, USER_ROLES } from "@/lib/constants";
+import { validateProjectAvailability } from "@/lib/availability";
+import { processBookingCommissions } from "@/lib/finance";
+import { logStatusTransition } from "@/lib/state-machine";
+import { sendQuoteStatusEmail } from "@/lib/email";
 
 /**
  * Client-side action to approve a quote with a digital signature.
- * Strictly checks that the booking belongs to the authenticated client.
+ * Strictly checks ownership, re-validates physical availability,
+ * locks inventory, generates vendor ledgers, and logs audit history.
  */
 export async function approveBookingWithSignature(bookingId: string, signatureData: string) {
     const user = await getCurrentUser();
@@ -19,59 +24,127 @@ export async function approveBookingWithSignature(bookingId: string, signatureDa
         return { error: "Unauthorized: Client access required" };
     }
 
-    try {
-        // Security: Ensure the booking belongs to this user
-        const [booking] = await db
-            .select({ id: bookings.id, userId: bookings.userId })
-            .from(bookings)
-            .where(and(
-                eq(bookings.id, bookingId),
-                eq(bookings.userId, user.id)
-            ))
-            .limit(1);
+    if (!signatureData || signatureData.length < 50) {
+        return { error: "A valid digital signature is required to sign off on this commercial proposal." };
+    }
 
-        if (!booking) {
-            return { error: "Booking not found or access denied" };
+    try {
+        // 1. Fetch all items in this project quote belonging to the user
+        const projectBookings = await db.query.bookings.findMany({
+            where: and(
+                eq(bookings.userId, user.id),
+                or(eq(bookings.id, bookingId), eq(bookings.projectId, bookingId))
+            ),
+        });
+
+        if (projectBookings.length === 0) {
+            return { error: "Booking proposal not found or access denied" };
         }
 
-        // Atomic Update
-        await db
-            .update(bookings)
-            .set({
-                status: BOOKING_STATUS.APPROVED,
-                signatureData,
-                signedAt: new Date(),
-                updatedAt: new Date(),
-            })
-            .where(eq(bookings.id, bookingId));
+        const firstBooking = projectBookings[0];
+        const projectId = firstBooking.projectId || firstBooking.id;
 
-        // Revalidate relevant routes
+        // 2. State Check
+        if ([BOOKING_STATUS.CANCELLED, BOOKING_STATUS.COMPLETED].includes(firstBooking.status as any)) {
+            return { error: `This proposal is already ${firstBooking.status} and cannot be approved.` };
+        }
+
+        // 3. Authoritative Live Availability Revalidation before confirming
+        const availabilityCheck = await validateProjectAvailability(
+            projectBookings.map(b => ({
+                productId: b.productId,
+                units: b.units,
+                startDate: b.startDate,
+                endDate: b.endDate,
+                startTime: b.startTime || undefined,
+                endTime: b.endTime || undefined,
+            })),
+            { excludeProjectId: projectId }
+        );
+
+        if (!availabilityCheck.valid) {
+            const conflictMsgs = availabilityCheck.conflicts.map(c => c.error).join(" ");
+            return {
+                error: `Cannot approve proposal due to an inventory conflict: ${conflictMsgs}`,
+            };
+        }
+
+        const now = new Date();
+
+        // 4. Atomic Transaction: Update status, persist signature, and lock inventory
+        await db.transaction(async (tx) => {
+            await tx
+                .update(bookings)
+                .set({
+                    status: BOOKING_STATUS.APPROVED,
+                    signatureData,
+                    signedAt: now,
+                    updatedAt: now,
+                })
+                .where(or(eq(bookings.id, projectId), eq(bookings.projectId, projectId)));
+        });
+
+        // 5. Generate Vendor Financial Ledgers and Commission Receivables
+        await processBookingCommissions(projectId).catch(console.error);
+
+        // 6. Audit Log
+        await logStatusTransition({
+            actorId: user.id,
+            targetId: projectId,
+            fromStatus: firstBooking.status,
+            toStatus: BOOKING_STATUS.APPROVED,
+            role: "client",
+            details: `Client digitally signed and approved proposal (ref: #${projectId.slice(0, 8).toUpperCase()})`,
+        });
+
+        // 7. Send Email Confirmation
+        if (user.email) {
+            sendQuoteStatusEmail({
+                to: user.email,
+                customerName: user.name || "Valued Client",
+                projectName: firstBooking.projectName || "Your Event Proposal",
+                projectId,
+                status: BOOKING_STATUS.APPROVED,
+                startDate: firstBooking.startDate instanceof Date ? firstBooking.startDate.toISOString() : new Date(firstBooking.startDate).toISOString(),
+                endDate: firstBooking.endDate instanceof Date ? firstBooking.endDate.toISOString() : new Date(firstBooking.endDate).toISOString(),
+                totalPrice: firstBooking.totalPrice || 0,
+            }).catch(console.error);
+        }
+
+        // 8. Revalidate paths
         revalidatePath(`/dashboard/client/quote/${bookingId}`);
         revalidatePath(`/dashboard/client/overview`);
-        revalidatePath(`/dashboard/sales/deal/${bookingId}`); // Force Sales Rep view to sync
+        revalidatePath(`/dashboard/sales/deal/${bookingId}`);
+        revalidatePath(`/dashboard/sales/pipeline`);
+        revalidatePath(`/admin/bookings`);
+        revalidatePath(`/admin/inventory`);
         
         return { success: true };
-    } catch (err) {
+    } catch (err: any) {
         console.error("[clientAction] approveBookingWithSignature failed:", err);
-        return { error: "Failed to finalize approval" };
+        return { error: "Failed to finalize approval: " + (err.message || "Unknown error") };
     }
 }
 
 /**
- * Send a message from the client portal regarding a specific booking.
+ * Send a message from the client portal regarding a specific booking/project.
  */
 export async function sendClientMessage(bookingId: string, content: string) {
     const user = await getCurrentUser();
     if (!user) return { error: "Unauthorized" };
 
     try {
-        // Security: Ensure the booking belongs to this user
         const [booking] = await db
-            .select({ vendorId: bookings.vendorId, addedByAdmin: bookings.addedByAdmin })
+            .select({ 
+                id: bookings.id,
+                projectId: bookings.projectId,
+                vendorId: bookings.vendorId, 
+                addedByAdmin: bookings.addedByAdmin 
+            })
             .from(bookings)
             .where(and(
-                eq(bookings.id, bookingId),
-                eq(bookings.userId, user.id)
+                eq(bookings.userId, user.id),
+                or(eq(bookings.id, bookingId), eq(bookings.projectId, bookingId))
             ))
             .limit(1);
 
@@ -79,16 +152,15 @@ export async function sendClientMessage(bookingId: string, content: string) {
             return { error: "Access denied" };
         }
 
-        // Determine receiver: Fallback to system admin if no specific vendor is assigned
         const receiverId = booking.addedByAdmin ? "system_admin" : (booking.vendorId || "system_admin");
-
         const messageId = crypto.randomUUID();
 
         await db.insert(chatMessages).values({
             id: messageId,
             senderId: user.id,
-            receiverId: receiverId === "system_admin" ? "admin" : receiverId, // Adjust based on your admin user ID pattern
-            bookingId,
+            receiverId: receiverId === "system_admin" ? "admin" : receiverId,
+            bookingId: booking.id,
+            projectId: booking.projectId || booking.id,
             content,
             createdAt: new Date(),
         });
