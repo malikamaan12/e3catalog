@@ -88,29 +88,18 @@ export function EvidenceUploadModal({ isOpen, onClose, settlementId, amount, onS
                                 </div>
 
                                 <div className="p-8 space-y-8 max-h-[70vh] overflow-y-auto custom-scrollbar">
-                                    {/* Bank Details Card */}
+                                    {/* Remittance Guidance Card */}
                                     <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/5 relative overflow-hidden group">
                                         <div className="absolute top-0 right-0 p-4 opacity-5">
                                             <Landmark className="w-16 h-16" />
                                         </div>
                                         <div className="flex items-center gap-2 mb-4">
                                             <Info className="w-4 h-4 text-[var(--color-gold)]" />
-                                            <h4 className="text-[10px] font-black text-[var(--color-gold)] uppercase tracking-widest">E3 Bank Credentials</h4>
+                                            <h4 className="text-[10px] font-black text-[var(--color-gold)] uppercase tracking-widest">Remittance Submission</h4>
                                         </div>
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div>
-                                                <p className="text-[10px] text-[var(--color-slate)] uppercase font-black tracking-tighter">Bank Name</p>
-                                                <p className="text-sm font-bold text-[var(--color-warm-white)]">Qatar National Bank (QNB)</p>
-                                            </div>
-                                            <div>
-                                                <p className="text-[10px] text-[var(--color-slate)] uppercase font-black tracking-tighter">Beneficiary</p>
-                                                <p className="text-sm font-bold text-[var(--color-warm-white)]">E3 Logistics & Events WLL</p>
-                                            </div>
-                                            <div className="col-span-2">
-                                                <p className="text-[10px] text-[var(--color-slate)] uppercase font-black tracking-tighter">IBAN Number</p>
-                                                <p className="text-sm font-black text-[var(--color-gold)] tracking-wider">QA95 QNBA 0000 0000 1234 5678 9012</p>
-                                            </div>
-                                        </div>
+                                        <p className="text-xs text-[var(--color-slate)] leading-relaxed">
+                                            Please attach the bank transfer remittance receipt or wire transfer confirmation for verification against your commercial invoice.
+                                        </p>
                                     </div>
 
                                     {/* Upload Area */}

@@ -19,7 +19,6 @@ const defaultSettings = [
     // Contact Group
     { key: "whatsapp_number", value: "97433445566", group: "contact", description: "Primary WhatsApp number for the floating widget" },
     { key: "contact_email", value: "support@e3rentals.com", group: "contact", description: "Main support email address" },
-    { key: "office_address", value: "West Bay, Doha, Qatar", group: "contact", description: "Physical office location for footer" },
 
     // Theme Group
     { key: "primary_color", value: "#C9A84C", group: "theme", description: "Primary brand color (Gold)" },
@@ -34,7 +33,6 @@ const defaultSettings = [
     // Business & Finance Group
     { key: "platform_fee_percentage", value: "10", group: "business", description: "Global default commission percentage" },
     { key: "minimum_rental_duration", value: "1", group: "business", description: "Minimum rental days for any item" },
-    { key: "commercial_registration_number", value: "CR-974-DOHA", group: "business", description: "Official business registration number for invoices" },
 
     // Marketing Group
     { key: "announcement_banner", value: "New winter rental collection launched! Book now for exclusive discounts.", group: "marketing", description: "Top bar text seen by all visitors" },

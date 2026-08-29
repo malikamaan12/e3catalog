@@ -240,9 +240,15 @@ interface QuoteProposalPDFProps {
         grandTotal?: number;
     };
     paymentTerms?: string;
+    bankDetails?: {
+        bankName?: string;
+        iban?: string;
+        accountNumber?: string;
+        swift?: string;
+    };
 }
 
-export function QuoteProposalPDF({ booking, financials, paymentTerms = "100% Advance" }: QuoteProposalPDFProps) {
+export function QuoteProposalPDF({ booking, financials, paymentTerms = "100% Advance", bankDetails }: QuoteProposalPDFProps) {
     const today = new Date().toLocaleDateString("en-QA", { 
         year: 'numeric', 
         month: 'long', 
@@ -364,16 +370,22 @@ export function QuoteProposalPDF({ booking, financials, paymentTerms = "100% Adv
                     </Text>
                 </View>
 
-                <View style={styles.bankDetails}>
-                    <View style={styles.bankCol}>
-                        <Text style={styles.bankLabel}>Bank Name</Text>
-                        <Text style={styles.bankValue}>Qatar National Bank (QNB)</Text>
+                {bankDetails && (bankDetails.bankName || bankDetails.iban) ? (
+                    <View style={styles.bankDetails}>
+                        {bankDetails.bankName ? (
+                            <View style={styles.bankCol}>
+                                <Text style={styles.bankLabel}>Bank Name</Text>
+                                <Text style={styles.bankValue}>{bankDetails.bankName}</Text>
+                            </View>
+                        ) : null}
+                        {bankDetails.iban ? (
+                            <View style={styles.bankCol}>
+                                <Text style={styles.bankLabel}>IBAN</Text>
+                                <Text style={styles.bankValue}>{bankDetails.iban}</Text>
+                            </View>
+                        ) : null}
                     </View>
-                    <View style={styles.bankCol}>
-                        <Text style={styles.bankLabel}>IBAN</Text>
-                        <Text style={styles.bankValue}>QA12 QNBA 0000 0000 1234 5678 9012</Text>
-                    </View>
-                </View>
+                ) : null}
 
                 <View style={styles.bottomBranding}>
                     <Text style={styles.bottomText}>

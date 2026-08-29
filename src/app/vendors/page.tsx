@@ -113,7 +113,7 @@ export default function VendorLandingPage() {
                             {
                                 icon: ShieldCheck,
                                 title: "Secure Payouts",
-                                desc: "Automated monthly settlements via QNB. No more chasing clients—we handle all invoicing and collections."
+                                desc: "Automated monthly settlements via direct bank wire. No more chasing clients—we handle all invoicing and collections."
                             },
                             {
                                 icon: BarChart3,

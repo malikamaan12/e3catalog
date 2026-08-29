@@ -3,7 +3,7 @@ import { setupE2EFixtures, E2ETestFixtures } from "./fixtures";
 import { calculateTax } from "../src/lib/finances";
 import { getSiteSetting } from "../src/lib/settings";
 import { db } from "../src/lib/db";
-import { invoices } from "../src/lib/db/schema";
+import { invoices, siteSettings } from "../src/lib/db/schema";
 import { eq } from "drizzle-orm";
 
 test.describe("Tax Configuration & Invoice Terminology Regression Tests", () => {
@@ -68,5 +68,28 @@ test.describe("Tax Configuration & Invoice Terminology Regression Tests", () => 
         expect(invoiceRec).toBeDefined();
         // Stored snapshot should be numeric and default to 0
         expect(invoiceRec?.taxAmount).toBe(0);
+    });
+
+    test("Unconfigured legal and banking fields are safely omitted from invoice PDF and site settings", async ({ page }) => {
+        // Verify no placeholder CR or TRN numbers exist in site_settings
+        const crSetting = await db.query.siteSettings.findFirst({
+            where: eq(siteSettings.key, "commercial_registration_number" as any)
+        });
+        expect(crSetting?.value).not.toBe("CR-974-DOHA");
+
+        const trnSetting = await db.query.siteSettings.findFirst({
+            where: eq(siteSettings.key, "tax_registration_number" as any)
+        });
+        expect(trnSetting).toBeUndefined();
+
+        // Verify invoice PDF renders cleanly when companyDetails has no CR or IBAN
+        const clientContext = await page.context().browser()?.newContext();
+        if (!clientContext) throw new Error("Could not create browser context");
+
+        await f.loginAsPersona(clientContext, f.clientUser);
+        const res = await clientContext.request.get(`/api/pdf/invoice/${f.invoiceId}`);
+        expect(res.status()).toBe(200);
+
+        await clientContext.close();
     });
 });
