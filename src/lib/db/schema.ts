@@ -1430,4 +1430,171 @@ export const journalEntriesRelations = relations(journalEntries, ({ one }) => ({
     }),
 }));
 
+// ─── Append-Only Audit Logs ───
+export const auditLogs = pgTable("audit_logs", {
+    id: varchar("id", { length: 255 }).primaryKey(),
+    actorId: varchar("actor_id", { length: 255 }).references(() => users.id),
+    actorEmail: varchar("actor_email", { length: 255 }),
+    actorRole: varchar("actor_role", { length: 50 }),
+    tenantId: varchar("tenant_id", { length: 255 }),
+    action: varchar("action", { length: 100 }).notNull(),
+    objectType: varchar("object_type", { length: 100 }).notNull(),
+    objectId: varchar("object_id", { length: 255 }),
+    beforeState: jsonb("before_state"),
+    afterState: jsonb("after_state"),
+    reason: varchar("reason", { length: 1000 }),
+    correlationId: varchar("correlation_id", { length: 255 }).notNull(),
+    ipAddress: varchar("ip_address", { length: 50 }),
+    userAgent: varchar("user_agent", { length: 500 }),
+    severity: varchar("severity", { length: 50 }).notNull().default("info"), // info | warning | critical
+    metadata: jsonb("metadata"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => {
+    return {
+        actorIdIdx: index("audit_logs_actor_id_idx").on(table.actorId),
+        actionIdx: index("audit_logs_action_idx").on(table.action),
+        objectIdx: index("audit_logs_object_idx").on(table.objectType, table.objectId),
+        correlationIdIdx: index("audit_logs_correlation_id_idx").on(table.correlationId),
+        createdAtIdx: index("audit_logs_created_at_idx").on(table.createdAt),
+        tenantIdIdx: index("audit_logs_tenant_id_idx").on(table.tenantId),
+    };
+});
+
+// ─── Compliance Rules ───
+export const complianceRules = pgTable("compliance_rules", {
+    id: varchar("id", { length: 255 }).primaryKey(),
+    ruleCode: varchar("rule_code", { length: 100 }).notNull().unique(),
+    ruleType: varchar("rule_type", { length: 100 }).notNull(), // category_certificate | inspection_interval | vendor_kyc_prerequisite | expiry_window
+    name: varchar("name", { length: 255 }).notNull(),
+    description: varchar("description", { length: 1000 }),
+    targetType: varchar("target_type", { length: 50 }).notNull(), // product | category | asset | vendor
+    targetId: varchar("target_id", { length: 255 }),
+    parameters: jsonb("parameters").notNull(),
+    isMandatory: boolean("is_mandatory").notNull().default(true),
+    isActive: boolean("is_active").notNull().default(true),
+    version: integer("version").notNull().default(1),
+    effectiveDate: timestamp("effective_date").notNull().defaultNow(),
+    createdBy: varchar("created_by", { length: 255 }).references(() => users.id),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => {
+    return {
+        ruleCodeIdx: index("compliance_rules_rule_code_idx").on(table.ruleCode),
+        ruleTypeIdx: index("compliance_rules_rule_type_idx").on(table.ruleType),
+        targetIdx: index("compliance_rules_target_idx").on(table.targetType, table.targetId),
+        isActiveIdx: index("compliance_rules_is_active_idx").on(table.isActive),
+    };
+});
+
+// ─── Notification Outbox ───
+export const notificationOutbox = pgTable("notification_outbox", {
+    id: varchar("id", { length: 255 }).primaryKey(),
+    eventType: varchar("event_type", { length: 100 }).notNull(),
+    recipientId: varchar("recipient_id", { length: 255 }).references(() => users.id),
+    recipientEmail: varchar("recipient_email", { length: 255 }),
+    recipientPhone: varchar("recipient_phone", { length: 100 }),
+    channel: varchar("channel", { length: 50 }).notNull().default("in_app"), // in_app | email | whatsapp
+    templateName: varchar("template_name", { length: 100 }),
+    payload: jsonb("payload").notNull(),
+    status: varchar("status", { length: 50 }).notNull().default("pending"), // pending | suppressed | sent_to_provider | confirmed_delivered | failed | retrying | cancelled
+    providerResponse: jsonb("provider_response"),
+    retryCount: integer("retry_count").notNull().default(0),
+    lastError: varchar("last_error", { length: 1000 }),
+    correlationId: varchar("correlation_id", { length: 255 }),
+    scheduledFor: timestamp("scheduled_for").notNull().defaultNow(),
+    sentAt: timestamp("sent_at"),
+    deliveredAt: timestamp("delivered_at"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => {
+    return {
+        recipientIdIdx: index("notification_outbox_recipient_id_idx").on(table.recipientId),
+        statusIdx: index("notification_outbox_status_idx").on(table.status),
+        eventTypeIdx: index("notification_outbox_event_type_idx").on(table.eventType),
+        createdAtIdx: index("notification_outbox_created_at_idx").on(table.createdAt),
+        correlationIdIdx: index("notification_outbox_correlation_id_idx").on(table.correlationId),
+    };
+});
+
+// ─── Cron Job Execution & Concurrency Governance ───
+export const cronJobRuns = pgTable("cron_job_runs", {
+    id: varchar("id", { length: 255 }).primaryKey(),
+    jobName: varchar("job_name", { length: 100 }).notNull(),
+    triggerType: varchar("trigger_type", { length: 50 }).notNull().default("scheduled"), // scheduled | manual
+    status: varchar("status", { length: 50 }).notNull().default("running"), // running | success | failed | locked
+    startTime: timestamp("start_time").notNull().defaultNow(),
+    endTime: timestamp("end_time"),
+    durationMs: integer("duration_ms"),
+    itemsProcessed: integer("items_processed").notNull().default(0),
+    itemsFailed: integer("items_failed").notNull().default(0),
+    errorDetails: jsonb("error_details"),
+    lockedBy: varchar("locked_by", { length: 255 }),
+    lockExpiresAt: timestamp("lock_expires_at"),
+    triggeredBy: varchar("triggered_by", { length: 255 }).references(() => users.id),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => {
+    return {
+        jobNameIdx: index("cron_job_runs_job_name_idx").on(table.jobName),
+        statusIdx: index("cron_job_runs_status_idx").on(table.status),
+        startTimeIdx: index("cron_job_runs_start_time_idx").on(table.startTime),
+    };
+});
+
+// ─── User Active Sessions & Revocation ───
+export const userSessions = pgTable("user_sessions", {
+    id: varchar("id", { length: 255 }).primaryKey(),
+    userId: varchar("user_id", { length: 255 }).notNull().references(() => users.id),
+    sessionTokenHash: varchar("session_token_hash", { length: 255 }).notNull().unique(),
+    deviceInfo: varchar("device_info", { length: 500 }),
+    ipAddress: varchar("ip_address", { length: 50 }),
+    isRevoked: boolean("is_revoked").notNull().default(false),
+    revokedAt: timestamp("revoked_at"),
+    lastActiveAt: timestamp("last_active_at").notNull().defaultNow(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    expiresAt: timestamp("expires_at").notNull(),
+}, (table) => {
+    return {
+        userIdIdx: index("user_sessions_user_id_idx").on(table.userId),
+        tokenHashIdx: index("user_sessions_token_hash_idx").on(table.sessionTokenHash),
+        isRevokedIdx: index("user_sessions_is_revoked_idx").on(table.isRevoked),
+    };
+});
+
+// ─── Governance Relations ───
+export const auditLogsRelations = relations(auditLogs, ({ one }) => ({
+    actor: one(users, {
+        fields: [auditLogs.actorId],
+        references: [users.id],
+    }),
+}));
+
+export const complianceRulesRelations = relations(complianceRules, ({ one }) => ({
+    creator: one(users, {
+        fields: [complianceRules.createdBy],
+        references: [users.id],
+    }),
+}));
+
+export const notificationOutboxRelations = relations(notificationOutbox, ({ one }) => ({
+    recipient: one(users, {
+        fields: [notificationOutbox.recipientId],
+        references: [users.id],
+    }),
+}));
+
+export const cronJobRunsRelations = relations(cronJobRuns, ({ one }) => ({
+    user: one(users, {
+        fields: [cronJobRuns.triggeredBy],
+        references: [users.id],
+    }),
+}));
+
+export const userSessionsRelations = relations(userSessions, ({ one }) => ({
+    user: one(users, {
+        fields: [userSessions.userId],
+        references: [users.id],
+    }),
+}));
+
+
 

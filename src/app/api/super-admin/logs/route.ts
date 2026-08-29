@@ -1,33 +1,51 @@
 import { NextResponse } from "next/server";
+import { requireAuth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { systemLogs, users } from "@/lib/db/schema";
-import { requireSuperAdmin } from "@/lib/requireSuperAdmin";
-import { eq, desc } from "drizzle-orm";
+import { auditLogs } from "@/lib/db/schema";
+import { eq, and, desc, sql, gte, lte } from "drizzle-orm";
+import { hasPermission } from "@/lib/permissions";
 
-export async function GET() {
-    const { error } = await requireSuperAdmin();
-    if (error) return error;
-
+export async function GET(req: Request) {
     try {
-        const logs = await db
-            .select({
-                id: systemLogs.id,
-                action: systemLogs.action,
-                targetId: systemLogs.targetId,
-                targetType: systemLogs.targetType,
-                details: systemLogs.details,
-                createdAt: systemLogs.createdAt,
-                adminName: users.name,
-                adminEmail: users.email
-            })
-            .from(systemLogs)
-            .innerJoin(users, eq(systemLogs.adminId, users.id))
-            .orderBy(desc(systemLogs.createdAt))
-            .limit(100);
+        const { user, error } = await requireAuth();
+        if (error || !user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        if (!hasPermission(user.role, "view_audit_logs")) {
+            return NextResponse.json({ error: "Forbidden: Super-Admin authority required" }, { status: 403 });
+        }
 
-        return NextResponse.json(logs);
-    } catch (err) {
-        console.error("Error fetching system logs:", err);
-        return NextResponse.json({ error: "Failed to fetch logs" }, { status: 500 });
+        const url = new URL(req.url);
+        const action = url.searchParams.get("action");
+        const severity = url.searchParams.get("severity");
+        const objectType = url.searchParams.get("objectType");
+        const actorId = url.searchParams.get("actorId");
+        const page = parseInt(url.searchParams.get("page") || "1", 10);
+        const limit = Math.min(parseInt(url.searchParams.get("limit") || "50", 10), 100);
+        const offset = (page - 1) * limit;
+
+        const conditions: any[] = [];
+        if (action) conditions.push(eq(auditLogs.action, action));
+        if (severity) conditions.push(eq(auditLogs.severity, severity));
+        if (objectType) conditions.push(eq(auditLogs.objectType, objectType));
+        if (actorId) conditions.push(eq(auditLogs.actorId, actorId));
+
+        const logs = await db.select()
+            .from(auditLogs)
+            .where(conditions.length > 0 ? and(...conditions) : undefined)
+            .orderBy(desc(auditLogs.createdAt))
+            .limit(limit)
+            .offset(offset);
+
+        const [totalRes] = await db.select({ count: sql<number>`count(*)::int` })
+            .from(auditLogs)
+            .where(conditions.length > 0 ? and(...conditions) : undefined);
+
+        return NextResponse.json({
+            logs,
+            total: totalRes?.count || 0,
+            page,
+            limit,
+        });
+    } catch (err: any) {
+        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
     }
 }

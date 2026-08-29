@@ -1,98 +1,85 @@
+import { NextResponse } from "next/server";
+import { requireAuth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { products, bookings, vendors } from "@/lib/db/schema";
-import { or, like, and, eq, sql } from "drizzle-orm";
-import { NextRequest, NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/requireAdmin";
+import { products, bookings, invoices, users, vendors, inventoryUnits } from "@/lib/db/schema";
+import { ilike, or, eq, and } from "drizzle-orm";
+import { hasPermission } from "@/lib/permissions";
 
-export async function GET(req: NextRequest) {
-    const { user, error } = await requireAdmin(["admin", "super_admin", "sales_rep", "vendor"]);
-    if (error) return error;
-
-    const { searchParams } = new URL(req.url);
-    const query = searchParams.get("q");
-
-    if (!query || query.length < 2) {
-        return NextResponse.json([]);
-    }
-
-    const isSuperAdmin = user.role === 'super_admin' || user.role === 'admin';
-    const targetVendorId = isSuperAdmin ? null : (user as any).vendorId;
-    const searchTerm = `%${query.toLowerCase()}%`;
-
+export async function GET(req: Request) {
     try {
-        const results: any[] = [];
-
-        // 1. Search Products
-        const foundProducts = await db.query.products.findMany({
-            where: and(
-                targetVendorId ? eq(products.vendorId, targetVendorId) : sql`1=1`,
-                or(
-                    like(sql`lower(${products.name})`, searchTerm),
-                    like(sql`lower(${products.slug})`, searchTerm),
-                    like(sql`lower(${products.itemCode})`, searchTerm)
-                )
-            ),
-            limit: 5,
-        });
-
-        foundProducts.forEach(p => {
-            results.push({
-                id: p.id,
-                type: "product",
-                title: p.name,
-                subtitle: `ID: ${p.itemCode || p.id} | ${p.pricePerDay} QAR/day`,
-                href: `/admin/products?search=${p.slug}`
-            });
-        });
-
-        // 2. Search Bookings / Quotes
-        const foundBookings = await db.query.bookings.findMany({
-            where: and(
-                targetVendorId ? eq(bookings.vendorId, targetVendorId) : sql`1=1`,
-                or(
-                    like(sql`lower(${bookings.projectName})`, searchTerm),
-                    like(sql`lower(${bookings.customerName})`, searchTerm),
-                    like(sql`lower(${bookings.customerEmail})`, searchTerm),
-                    like(bookings.id, searchTerm)
-                )
-            ),
-            limit: 5,
-        });
-
-        foundBookings.forEach(b => {
-            results.push({
-                id: b.id,
-                type: "booking",
-                title: b.projectName || "Unnamed Project",
-                subtitle: `Quote: ${b.id.slice(0, 8)} | Client: ${b.customerName}`,
-                href: `/admin/bookings/${b.id}`
-            });
-        });
-
-        // 3. Search Vendors (Super Admin only)
-        if (isSuperAdmin) {
-            const foundVendors = await db.query.vendors.findMany({
-                where: or(
-                    like(sql`lower(${vendors.companyName})`, searchTerm),
-                    like(sql`lower(${vendors.taxId})`, searchTerm)
-                ),
-                limit: 5,
-            });
-
-            foundVendors.forEach(v => {
-                results.push({
-                    id: v.id,
-                    type: "vendor",
-                    title: v.companyName,
-                    subtitle: `Tax ID: ${v.taxId || 'N/A'} | KYC: ${v.kycStatus}`,
-                    href: `/admin/super/vendors`
-                });
-            });
+        const { user, error } = await requireAuth();
+        if (error || !user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        if (!hasPermission(user.role, "global_search")) {
+            return NextResponse.json({ error: "Forbidden: Clients and unauthorized roles cannot access global search" }, { status: 403 });
         }
 
-        return NextResponse.json(results);
-    } catch (err) {
-        console.error("Global search error:", err);
-        return NextResponse.json({ error: "Search failed" }, { status: 500 });
+        const url = new URL(req.url);
+        const query = url.searchParams.get("q")?.trim() || "";
+
+        if (query.length < 2) {
+            return NextResponse.json({ results: { products: [], bookings: [], invoices: [], clients: [], vendors: [] } });
+        }
+
+        // 1. Search Products
+        const matchedProducts = await db.select({
+            id: products.id,
+            name: products.name,
+            itemCode: products.itemCode,
+            category: products.categoryId,
+        }).from(products)
+          .where(or(ilike(products.name, `%${query}%`), ilike(products.itemCode, `%${query}%`)))
+          .limit(10);
+
+        // 2. Search Bookings
+        const matchedBookings = await db.select({
+            id: bookings.id,
+            customerName: bookings.customerName,
+            status: bookings.status,
+            totalPrice: bookings.totalPrice,
+        }).from(bookings)
+          .where(or(ilike(bookings.customerName, `%${query}%`), ilike(bookings.customerEmail, `%${query}%`)))
+          .limit(10);
+
+        // 3. Search Invoices (finance authorized only)
+        let matchedInvoices: any[] = [];
+        if (hasPermission(user.role, "view_financial_analytics")) {
+            matchedInvoices = await db.select({
+                id: invoices.id,
+                invoiceNumber: invoices.invoiceNumber,
+                customerName: invoices.customerName,
+                totalAmount: invoices.totalAmount,
+                status: invoices.status,
+            }).from(invoices)
+              .where(or(ilike(invoices.invoiceNumber, `%${query}%`), ilike(invoices.customerName, `%${query}%`)))
+              .limit(10);
+        }
+
+        // 4. Search Vendors (if vendor role, tenant isolate to own record)
+        let matchedVendors: any[] = [];
+        if (user.role === "vendor" && user.vendorId) {
+            matchedVendors = await db.select({
+                id: vendors.id,
+                companyName: vendors.companyName,
+            }).from(vendors).where(eq(vendors.id, user.vendorId)).limit(1);
+        } else if (hasPermission(user.role, "review_vendor_kyc")) {
+            matchedVendors = await db.select({
+                id: vendors.id,
+                companyName: vendors.companyName,
+            }).from(vendors)
+              .where(ilike(vendors.companyName, `%${query}%`))
+              .limit(10);
+        }
+
+        return NextResponse.json({
+            query,
+            results: {
+                products: matchedProducts,
+                bookings: matchedBookings,
+                invoices: matchedInvoices,
+                vendors: matchedVendors,
+            }
+        });
+    } catch (err: any) {
+        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
     }
 }

@@ -1,28 +1,29 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
+import { requireAuth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { notifications } from "@/lib/db/schema";
-import { eq, desc, and } from "drizzle-orm";
-import { requireAdmin } from "@/lib/requireAdmin";
+import { eq, and, desc, sql } from "drizzle-orm";
 
-export async function GET(req: NextRequest) {
-    const authCheck = await requireAdmin(["super_admin", "admin", "sales_rep", "vendor", "warehouse_manager"]);
-    if (authCheck.error) return authCheck.error;
-    const user = authCheck.user!;
-
-    const { searchParams } = new URL(req.url);
-    const limit = parseInt(searchParams.get("limit") || "20");
-
+export async function GET(req: Request) {
     try {
-        const items = await db.query.notifications.findMany({
-            where: eq(notifications.userId, user.id),
-            orderBy: [desc(notifications.createdAt)],
-            limit,
+        const { user, error } = await requireAuth();
+        if (error || !user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+        // Notifications are strictly recipient-tenant isolated
+        const items = await db.select().from(notifications)
+            .where(eq(notifications.userId, user.id))
+            .orderBy(desc(notifications.createdAt))
+            .limit(50);
+
+        const [unreadRes] = await db.select({ count: sql<number>`count(*)::int` })
+            .from(notifications)
+            .where(and(eq(notifications.userId, user.id), eq(notifications.isRead, false)));
+
+        return NextResponse.json({
+            notifications: items,
+            unreadCount: unreadRes?.count || 0,
         });
-
-        const unreadCount = items.filter(n => !n.isRead).length;
-
-        return NextResponse.json({ notifications: items, unreadCount });
     } catch (err: any) {
-        return NextResponse.json({ error: err.message }, { status: 500 });
+        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
     }
 }
