@@ -65,3 +65,19 @@ export const ASSIGNMENT_STATUS = {
 } as const;
 
 export type AssignmentStatus = typeof ASSIGNMENT_STATUS[keyof typeof ASSIGNMENT_STATUS];
+
+/**
+ * Product Lifecycle Statuses
+ */
+export const PRODUCT_STATUS = {
+    DRAFT: "draft",
+    PENDING_REVIEW: "pending_review",
+    CHANGES_REQUESTED: "changes_requested",
+    APPROVED: "approved",
+    PUBLISHED: "published",
+    UNPUBLISHED: "unpublished",
+    ARCHIVED: "archived",
+} as const;
+
+export type ProductStatus = typeof PRODUCT_STATUS[keyof typeof PRODUCT_STATUS];
+

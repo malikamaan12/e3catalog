@@ -179,6 +179,15 @@ export const products = pgTable("products", {
     averageRating: real("average_rating").default(5.0),
     reviewCount: integer("review_count").default(0),
     isPublished: boolean("is_published").default(false),
+    // Lifecycle Status (draft | pending_review | changes_requested | approved | published | unpublished | archived)
+    status: varchar("status", { length: 50 }).notNull().default("draft"),
+    brand: varchar("brand", { length: 255 }),
+    model: varchar("model", { length: 255 }),
+    replacementValue: real("replacement_value"),
+    // SEO & Discovery
+    metaTitle: varchar("meta_title", { length: 255 }),
+    metaDescription: varchar("meta_description", { length: 500 }),
+    keywords: varchar("keywords", { length: 500 }),
     adminNotes: varchar("admin_notes", { length: 1000 }), // Internal use only
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
@@ -186,6 +195,7 @@ export const products = pgTable("products", {
     return {
         vendorIdIdx: index("products_vendor_id_idx").on(table.vendorId),
         categoryIdIdx: index("products_category_id_idx").on(table.categoryId),
+        statusIdx: index("products_status_idx").on(table.status),
         featuredIdx: index("products_featured_idx").on(table.featured),
         createdAtIdx: index("products_created_at_idx").on(table.createdAt),
         ratingIdx: index("products_rating_idx").on(table.averageRating),

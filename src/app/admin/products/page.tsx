@@ -2,25 +2,47 @@
 
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
-import { Search, Filter } from "lucide-react";
-import * as HoverCard from "@radix-ui/react-hover-card";
-import AvailabilityTimeline from "@/components/admin/AvailabilityTimeline";
+import Image from "next/image";
+import { 
+    Search, 
+    Filter, 
+    Plus, 
+    Edit, 
+    Trash2, 
+    Eye, 
+    Download, 
+    CheckCircle2, 
+    Clock, 
+    AlertCircle, 
+    Layers, 
+    Sparkles, 
+    ArrowUpRight,
+    PackageCheck,
+    Archive,
+    RefreshCw
+} from "lucide-react";
+import { PRODUCT_STATUS, USER_ROLES } from "@/lib/constants";
+import { toast } from "react-hot-toast";
 
 interface Product {
     id: string;
     itemCode: string | null;
     name: string;
     slug: string;
+    brand: string | null;
+    model: string | null;
     pricePerDay: number;
     totalUnits: number;
+    allocatableUnits?: number;
     unit: string;
-    condition: string;
     thumbnailUrl: string | null;
-    category: { name: string; slug: string } | null;
+    category: { id: string; name: string; slug: string } | null;
     vendor: { id: string; companyName: string } | null;
     media: Array<{ id: string; type: string }>;
     safetyCertificates: Array<{ id: string; certName: string }>;
     isPublished: boolean;
+    status: string;
+    createdAt: string;
 }
 
 export default function AdminProductsPage() {
@@ -28,315 +50,465 @@ export default function AdminProductsPage() {
     const [loading, setLoading] = useState(true);
     const [userRole, setUserRole] = useState<string>("admin");
 
-    const canManageProducts = ["admin", "super_admin", "vendor"].includes(userRole);
-
     // Filters
     const [searchQuery, setSearchQuery] = useState("");
     const [categoryFilter, setCategoryFilter] = useState("ALL");
-    const [conditionFilter, setConditionFilter] = useState("ALL");
+    const [statusFilter, setStatusFilter] = useState("ALL");
     const [vendorFilter, setVendorFilter] = useState("ALL");
+    const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+    const fetchProducts = async () => {
+        setLoading(true);
+        try {
+            const res = await fetch("/api/admin/products");
+            const data = await res.json();
+            if (Array.isArray(data)) {
+                setProducts(data);
+            } else {
+                setProducts([]);
+            }
+        } catch (err) {
+            console.error("Fetch Error:", err);
+            toast.error("Failed to load products");
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
-        fetch("/api/admin/products")
-            .then((r) => r.json())
-            .then((data) => {
-                if (Array.isArray(data)) {
-                    setProducts(data);
-                } else {
-                    console.error("Admin API Error or Invalid Data:", data);
-                    setProducts([]);
-                }
-                setLoading(false);
-            })
-            .catch((err) => {
-                console.error("Fetch Error:", err);
-                setLoading(false);
-            });
-
+        fetchProducts();
         fetch("/api/auth/me")
             .then(r => r.json())
             .then(data => { if (data?.user?.role) setUserRole(data.user.role); })
-            .catch(() => { });
+            .catch(() => {});
     }, []);
 
-    const togglePublished = async (id: string, currentStatus: boolean) => {
-        setProducts(prev => prev.map(p => p.id === id ? { ...p, isPublished: !currentStatus } : p));
+    const togglePublished = async (id: string, currentPublished: boolean, currentStatus: string) => {
+        const nextPublished = !currentPublished;
+        const nextStatus = nextPublished ? PRODUCT_STATUS.PUBLISHED : PRODUCT_STATUS.UNPUBLISHED;
+
+        setProducts(prev => prev.map(p => p.id === id ? { ...p, isPublished: nextPublished, status: nextStatus } : p));
+
         try {
-            await fetch(`/api/admin/products`, {
+            const res = await fetch(`/api/admin/products`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ id, isPublished: !currentStatus })
+                body: JSON.stringify({ id, isPublished: nextPublished, status: nextStatus })
             });
+            if (!res.ok) throw new Error("Update failed");
+            toast.success(nextPublished ? "Product published live!" : "Product hidden from catalog");
         } catch (err) {
-            console.error("Toggle Visibility Error:", err);
-            // Revert on error
-            setProducts(prev => prev.map(p => p.id === id ? { ...p, isPublished: currentStatus } : p));
+            toast.error("Failed to update status");
+            fetchProducts();
+        }
+    };
+
+    const handleStatusChange = async (id: string, newStatus: string) => {
+        try {
+            const res = await fetch(`/api/admin/products`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ 
+                    id, 
+                    status: newStatus,
+                    isPublished: newStatus === PRODUCT_STATUS.PUBLISHED
+                })
+            });
+            if (!res.ok) throw new Error("Update failed");
+            toast.success(`Status updated to ${newStatus}`);
+            fetchProducts();
+        } catch (err) {
+            toast.error("Failed to update product");
         }
     };
 
     const deleteProduct = async (id: string) => {
-        if (!confirm("Delete this product and all associated data?")) return;
-        await fetch(`/api/admin/products?id=${id}`, { method: "DELETE" });
-        setProducts((prev) => prev.filter((p) => p.id !== id));
+        if (!confirm("Are you sure you want to remove this product? If historical bookings exist, it will be safely archived.")) return;
+        try {
+            const res = await fetch(`/api/admin/products?id=${id}`, { method: "DELETE" });
+            const data = await res.json();
+            if (data.archived) {
+                toast.success("Product has historical bookings — safely archived!");
+            } else {
+                toast.success("Product draft deleted");
+            }
+            fetchProducts();
+        } catch (err) {
+            toast.error("Failed to delete product");
+        }
+    };
+
+    // Bulk Actions
+    const handleBulkAction = async (action: "publish" | "unpublish" | "archive") => {
+        if (selectedIds.length === 0) return;
+        if (!confirm(`Apply ${action} to ${selectedIds.length} selected items?`)) return;
+
+        try {
+            for (const id of selectedIds) {
+                const isPub = action === "publish";
+                const stat = action === "publish" ? PRODUCT_STATUS.PUBLISHED : action === "unpublish" ? PRODUCT_STATUS.UNPUBLISHED : PRODUCT_STATUS.ARCHIVED;
+                await fetch("/api/admin/products", {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ id, isPublished: isPub, status: stat })
+                });
+            }
+            toast.success(`Bulk ${action} completed successfully`);
+            setSelectedIds([]);
+            fetchProducts();
+        } catch (e) {
+            toast.error("Bulk action failed partially");
+            fetchProducts();
+        }
+    };
+
+    // CSV Export
+    const handleExportCSV = () => {
+        if (products.length === 0) return;
+        const headers = ["ID", "Name", "SKU", "Category", "Vendor", "Daily Price (QAR)", "Total Units", "Status", "Published", "Created At"];
+        const csvRows = [headers.join(",")];
+
+        filteredProducts.forEach(p => {
+            csvRows.push([
+                `"${p.id}"`,
+                `"${p.name.replace(/"/g, '""')}"`,
+                `"${p.itemCode || ''}"`,
+                `"${p.category?.name || 'Unassigned'}"`,
+                `"${p.vendor?.companyName || 'E3 Fleet'}"`,
+                p.pricePerDay,
+                p.totalUnits,
+                `"${p.status || 'draft'}"`,
+                p.isPublished ? "YES" : "NO",
+                `"${new Date(p.createdAt).toISOString()}"`
+            ].join(","));
+        });
+
+        const blob = new Blob([csvRows.join("\n")], { type: "text/csv" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `e3-catalog-export-${new Date().toISOString().slice(0, 10)}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
     };
 
     const uniqueCategories = useMemo(() => {
         const cats = new Set<string>();
-        if (Array.isArray(products)) {
-            products.forEach(p => {
-                if (p.category?.name) cats.add(p.category.name);
-            });
-        }
+        products.forEach(p => { if (p.category?.name) cats.add(p.category.name); });
         return Array.from(cats).sort();
     }, [products]);
 
     const uniqueVendors = useMemo(() => {
         const vens = new Set<string>();
-        if (Array.isArray(products)) {
-            products.forEach(p => {
-                if (p.vendor?.companyName) vens.add(p.vendor.companyName);
-            });
-        }
+        products.forEach(p => { if (p.vendor?.companyName) vens.add(p.vendor.companyName); });
         return Array.from(vens).sort();
     }, [products]);
 
-    const processedProducts = useMemo(() => {
-        if (!Array.isArray(products)) return [];
+    const filteredProducts = useMemo(() => {
         return products.filter(p => {
-            // Search
-            const q = searchQuery.toLowerCase();
-            const matchesSearch = !q ||
-                p.name.toLowerCase().includes(q) ||
-                p.slug.toLowerCase().includes(q) ||
-                (p.itemCode && p.itemCode.toLowerCase().includes(q)) ||
-                (p.vendor?.companyName && p.vendor.companyName.toLowerCase().includes(q));
+            const matchesSearch = 
+                p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                (p.itemCode && p.itemCode.toLowerCase().includes(searchQuery.toLowerCase())) ||
+                (p.brand && p.brand.toLowerCase().includes(searchQuery.toLowerCase()));
 
-            // Category
             const matchesCategory = categoryFilter === "ALL" || p.category?.name === categoryFilter;
+            const matchesVendor = vendorFilter === "ALL" || p.vendor?.companyName === vendorFilter;
+            const matchesStatus = statusFilter === "ALL" || (p.status || (p.isPublished ? PRODUCT_STATUS.PUBLISHED : PRODUCT_STATUS.DRAFT)) === statusFilter;
 
-            // Condition
-            const matchesCondition = conditionFilter === "ALL" || p.condition === conditionFilter;
-
-            // Vendor
-            const matchesVendor = vendorFilter === "ALL" ||
-                (vendorFilter === "PLATFORM" ? !p.vendor : p.vendor?.companyName === vendorFilter);
-
-            return matchesSearch && matchesCategory && matchesCondition && matchesVendor;
+            return matchesSearch && matchesCategory && matchesVendor && matchesStatus;
         });
-    }, [products, searchQuery, categoryFilter, conditionFilter, vendorFilter]);
+    }, [products, searchQuery, categoryFilter, vendorFilter, statusFilter]);
 
     return (
-        <div>
-            <div className="flex items-center justify-between mb-8">
+        <div className="min-h-screen bg-[#070B14] text-white p-6 md:p-12 pb-24">
+            {/* Header */}
+            <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
                 <div>
-                    <h1 className="font-[family-name:var(--font-heading)] text-2xl md:text-3xl font-bold text-[var(--color-warm-white)]">
-                        Products
+                    <div className="flex items-center gap-2 mb-2">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-gold">
+                            E3 Centralized Catalog & Fleet Operations
+                        </span>
+                    </div>
+                    <h1 className="text-3xl font-black text-white uppercase italic tracking-tight">
+                        Product Fleet Management
                     </h1>
-                    <p className="text-[var(--color-slate)] text-sm mt-1">{products.length} items in fleet</p>
+                    <p className="text-slate-400 text-xs font-medium mt-1">
+                        Authoritative product lifecycle, technical specifications, and physical serialized inventory tracking.
+                    </p>
                 </div>
-                {canManageProducts && (
-                    <Link href="/admin/products/add" className="btn-primary text-sm">
-                        + Add Product
+
+                <div className="flex flex-wrap items-center gap-3">
+                    <button 
+                        onClick={handleExportCSV}
+                        className="px-4 py-3 rounded-2xl bg-white/5 border border-white/10 text-slate-300 hover:text-white hover:bg-white/10 text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2"
+                    >
+                        <Download className="w-4 h-4" /> Export CSV
+                    </button>
+                    <Link 
+                        href="/admin/products/add"
+                        className="px-6 py-3 rounded-2xl bg-gold text-navy font-black text-xs uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl shadow-gold/20 flex items-center gap-2"
+                    >
+                        <Plus className="w-4 h-4" /> New Asset Listing
                     </Link>
+                </div>
+            </div>
+
+            {/* Filter Controls */}
+            <div className="max-w-7xl mx-auto mb-8 space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                    <div className="relative lg:col-span-2">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <input 
+                            type="text"
+                            placeholder="Search by name, SKU, brand..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 pl-11 pr-4 text-xs text-white focus:border-gold outline-none"
+                        />
+                    </div>
+
+                    <div>
+                        <select 
+                            value={categoryFilter}
+                            onChange={(e) => setCategoryFilter(e.target.value)}
+                            className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 px-4 text-xs text-white focus:border-gold outline-none"
+                        >
+                            <option value="ALL" className="bg-[#0e1424]">All Categories</option>
+                            {uniqueCategories.map(c => (
+                                <option key={c} value={c} className="bg-[#0e1424]">{c}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div>
+                        <select 
+                            value={statusFilter}
+                            onChange={(e) => setStatusFilter(e.target.value)}
+                            className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 px-4 text-xs text-white focus:border-gold outline-none"
+                        >
+                            <option value="ALL" className="bg-[#0e1424]">All Lifecycle Statuses</option>
+                            <option value={PRODUCT_STATUS.PUBLISHED} className="bg-[#0e1424]">Published (Live)</option>
+                            <option value={PRODUCT_STATUS.PENDING_REVIEW} className="bg-[#0e1424]">Pending Review</option>
+                            <option value={PRODUCT_STATUS.DRAFT} className="bg-[#0e1424]">Drafts</option>
+                            <option value={PRODUCT_STATUS.UNPUBLISHED} className="bg-[#0e1424]">Unpublished (Paused)</option>
+                            <option value={PRODUCT_STATUS.ARCHIVED} className="bg-[#0e1424]">Archived</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <select 
+                            value={vendorFilter}
+                            onChange={(e) => setVendorFilter(e.target.value)}
+                            className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 px-4 text-xs text-white focus:border-gold outline-none"
+                        >
+                            <option value="ALL" className="bg-[#0e1424]">All Vendors / E3 Fleet</option>
+                            {uniqueVendors.map(v => (
+                                <option key={v} value={v} className="bg-[#0e1424]">{v}</option>
+                            ))}
+                        </select>
+                    </div>
+                </div>
+
+                {/* Bulk Actions Bar */}
+                {selectedIds.length > 0 && (
+                    <div className="p-4 rounded-2xl bg-gold/10 border border-gold/30 flex items-center justify-between animate-fade-in">
+                        <span className="text-xs font-bold text-gold">
+                            {selectedIds.length} product(s) selected
+                        </span>
+                        <div className="flex items-center gap-2">
+                            <button 
+                                onClick={() => handleBulkAction("publish")}
+                                className="px-3 py-1.5 rounded-xl bg-emerald-500/20 text-emerald-300 text-xs font-bold uppercase"
+                            >
+                                Publish Selected
+                            </button>
+                            <button 
+                                onClick={() => handleBulkAction("unpublish")}
+                                className="px-3 py-1.5 rounded-xl bg-yellow-500/20 text-yellow-300 text-xs font-bold uppercase"
+                            >
+                                Unpublish Selected
+                            </button>
+                            <button 
+                                onClick={() => handleBulkAction("archive")}
+                                className="px-3 py-1.5 rounded-xl bg-red-500/20 text-red-300 text-xs font-bold uppercase"
+                            >
+                                Archive Selected
+                            </button>
+                        </div>
+                    </div>
                 )}
             </div>
 
-            {/* CONTROL BAR */}
-            <div className="glass rounded-xl p-4 mb-6 flex flex-col md:flex-row gap-4 items-center justify-between border border-white/10">
-                <div className="relative w-full md:max-w-md">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--color-slate)]" />
-                    <input
-                        type="text"
-                        placeholder="Search products by name or slug..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 bg-[var(--color-navy)] border border-[var(--color-border-subtle)] rounded-lg text-sm text-[var(--color-warm-white)] focus:outline-none focus:border-[var(--color-gold)] transition-colors"
-                    />
-                </div>
-                <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
-                    <div className="flex items-center gap-2 bg-[var(--color-navy)] border border-[var(--color-border-subtle)] rounded-lg px-3 py-2">
-                        <Filter className="w-4 h-4 text-[var(--color-gold)]" />
-                        <select
-                            value={categoryFilter}
-                            onChange={(e) => setCategoryFilter(e.target.value)}
-                            className="bg-transparent text-sm text-[var(--color-warm-white)] focus:outline-none appearance-none cursor-pointer"
-                        >
-                            <option value="ALL" className="bg-[#0a0f1e] text-white">All Categories</option>
-                            {uniqueCategories.map(c => (
-                                <option key={c} value={c} className="bg-[#0a0f1e] text-white">{c}</option>
-                            ))}
-                        </select>
-                    </div>
-                    <div className="flex items-center gap-2 bg-[var(--color-navy)] border border-[var(--color-border-subtle)] rounded-lg px-3 py-2">
-                        <Filter className="w-4 h-4 text-[var(--color-gold)]" />
-                        <select
-                            value={vendorFilter}
-                            onChange={(e) => setVendorFilter(e.target.value)}
-                            className="bg-transparent text-sm text-[var(--color-warm-white)] focus:outline-none appearance-none cursor-pointer"
-                        >
-                            <option value="ALL" className="bg-[#0a0f1e] text-white">All Vendors</option>
-                            <option value="PLATFORM" className="bg-[#0a0f1e] text-white">Platform Only</option>
-                            {uniqueVendors.map(v => (
-                                <option key={v} value={v} className="bg-[#0a0f1e] text-white">{v}</option>
-                            ))}
-                        </select>
-                    </div>
-                    <div className="flex items-center gap-2 bg-[var(--color-navy)] border border-[var(--color-border-subtle)] rounded-lg px-3 py-2">
-                        <Filter className="w-4 h-4 text-[var(--color-gold)]" />
-                        <select
-                            value={conditionFilter}
-                            onChange={(e) => setConditionFilter(e.target.value)}
-                            className="bg-transparent text-sm text-[var(--color-warm-white)] focus:outline-none appearance-none cursor-pointer capitalize"
-                        >
-                            <option value="ALL" className="bg-[#0a0f1e] text-white">All Conditions</option>
-                            <option value="excellent" className="bg-[#0a0f1e] text-white">Excellent</option>
-                            <option value="good" className="bg-[#0a0f1e] text-white">Good</option>
-                            <option value="maintenance_required" className="bg-[#0a0f1e] text-white">Maintenance Required</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
-
-            {loading ? (
-                <div className="space-y-3">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                        <div key={i} className="glass rounded-lg p-4 animate-pulse">
-                            <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 bg-[var(--color-navy-lighter)] rounded-lg" />
-                                <div className="flex-1 space-y-2">
-                                    <div className="h-4 bg-[var(--color-navy-lighter)] rounded w-1/3" />
-                                    <div className="h-3 bg-[var(--color-navy-lighter)] rounded w-1/4" />
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            ) : (
-                <div className="glass rounded-xl overflow-hidden">
-                    {processedProducts.length === 0 ? (
-                        <div className="p-8 text-center text-sm text-[var(--color-slate)] border border-dashed border-[var(--color-border-subtle)] m-4 rounded-xl">
-                            No products match your filters.
-                        </div>
-                    ) : (
-                        <table className="w-full">
-                            <thead>
-                                <tr className="border-b border-[var(--color-border-subtle)]">
-                                    <th className="text-left py-3 px-4 text-xs font-semibold text-[var(--color-gold)] tracking-wider whitespace-nowrap">PRODUCT</th>
-                                    <th className="text-left py-3 px-4 text-xs font-semibold text-[var(--color-gold)] tracking-wider whitespace-nowrap">SKU</th>
-                                    <th className="text-left py-3 px-4 text-xs font-semibold text-[var(--color-gold)] tracking-wider whitespace-nowrap">VENDOR</th>
-                                    <th className="text-left py-3 px-4 text-xs font-semibold text-[var(--color-gold)] tracking-wider hidden md:table-cell whitespace-nowrap">CATEGORY</th>
-                                    <th className="text-right py-3 px-4 text-xs font-semibold text-[var(--color-gold)] tracking-wider whitespace-nowrap">PRICE/DAY</th>
-                                    <th className="text-center py-3 px-4 text-xs font-semibold text-[var(--color-gold)] tracking-wider hidden md:table-cell whitespace-nowrap">UNITS</th>
-                                    <th className="text-center py-3 px-4 text-xs font-semibold text-[var(--color-gold)] tracking-wider hidden md:table-cell whitespace-nowrap">CONDITION</th>
-                                    <th className="text-center py-3 px-4 text-xs font-semibold text-[var(--color-gold)] tracking-wider hidden lg:table-cell whitespace-nowrap">MEDIA</th>
-                                    <th className="text-center py-3 px-4 text-xs font-semibold text-[var(--color-gold)] tracking-wider hidden lg:table-cell whitespace-nowrap">CERTS</th>
-                                    <th className="text-center py-3 px-4 text-xs font-semibold text-[var(--color-gold)] tracking-wider whitespace-nowrap">VISIBILITY</th>
-                                    {canManageProducts && (
-                                        <th className="text-right py-3 px-4 text-xs font-semibold text-[var(--color-gold)] tracking-wider whitespace-nowrap">ACTIONS</th>
-                                    )}
+            {/* Products Table */}
+            <div className="max-w-7xl mx-auto glass-dark rounded-3xl border border-white/10 overflow-hidden shadow-2xl">
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                        <thead>
+                            <tr className="border-b border-white/5 bg-white/[0.02] text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                <th className="p-4 w-10 text-center">
+                                    <input 
+                                        type="checkbox"
+                                        checked={selectedIds.length > 0 && selectedIds.length === filteredProducts.length}
+                                        onChange={(e) => {
+                                            if (e.target.checked) setSelectedIds(filteredProducts.map(p => p.id));
+                                            else setSelectedIds([]);
+                                        }}
+                                        className="w-4 h-4 accent-gold rounded"
+                                    />
+                                </th>
+                                <th className="p-4">Asset Details</th>
+                                <th className="p-4">Category / Vendor</th>
+                                <th className="p-4">Rental Rate</th>
+                                <th className="p-4">Fleet Units</th>
+                                <th className="p-4">Lifecycle Status</th>
+                                <th className="p-4 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/5 text-xs font-medium">
+                            {loading ? (
+                                <tr>
+                                    <td colSpan={7} className="p-12 text-center text-slate-500 animate-pulse">
+                                        Loading Authoritative Inventory Records...
+                                    </td>
                                 </tr>
-                            </thead>
-                            <tbody>
-                                {processedProducts.map((product) => {
-                                    const productCondition = product.condition || "excellent"; // Fallback default
-                                    const conditionColor = productCondition === "excellent" ? "text-[var(--color-success)]" : productCondition === "good" ? "text-[var(--color-warning)]" : "text-[var(--color-danger)]";
+                            ) : filteredProducts.length === 0 ? (
+                                <tr>
+                                    <td colSpan={7} className="p-12 text-center text-slate-500">
+                                        No products match the selected criteria.
+                                    </td>
+                                </tr>
+                            ) : (
+                                filteredProducts.map((p) => {
+                                    const isSelected = selectedIds.includes(p.id);
+                                    const effectiveStatus = p.status || (p.isPublished ? PRODUCT_STATUS.PUBLISHED : PRODUCT_STATUS.DRAFT);
+
                                     return (
-                                        <tr key={product.id} className="border-b border-[var(--color-border-subtle)] hover:bg-[var(--color-navy-lighter)] transition-colors">
-                                            <td className="py-3 px-4">
+                                        <tr key={p.id} className={`hover:bg-white/[0.02] transition-colors ${isSelected ? 'bg-gold/5' : ''}`}>
+                                            <td className="p-4 text-center">
+                                                <input 
+                                                    type="checkbox"
+                                                    checked={isSelected}
+                                                    onChange={(e) => {
+                                                        if (e.target.checked) setSelectedIds(prev => [...prev, p.id]);
+                                                        else setSelectedIds(prev => prev.filter(id => id !== p.id));
+                                                    }}
+                                                    className="w-4 h-4 accent-gold rounded"
+                                                />
+                                            </td>
+
+                                            {/* Name & Thumbnail */}
+                                            <td className="p-4">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="w-10 h-10 rounded-lg bg-[var(--color-navy-lighter)] overflow-hidden shrink-0">
-                                                        {product.thumbnailUrl && (
-                                                            <div className="w-full h-full bg-cover bg-center" style={{ backgroundImage: `url(${product.thumbnailUrl})` }} />
+                                                    <div className="w-12 h-12 rounded-xl bg-navy-dark overflow-hidden relative border border-white/10 shrink-0">
+                                                        {p.thumbnailUrl ? (
+                                                            <Image src={p.thumbnailUrl} alt={p.name} fill className="object-cover" />
+                                                        ) : (
+                                                            <div className="w-full h-full flex items-center justify-center text-[10px] text-slate-600 font-bold">N/A</div>
                                                         )}
                                                     </div>
                                                     <div>
-                                                        <p className="text-sm font-medium text-[var(--color-warm-white)]">{product.name}</p>
-                                                        <p className="text-xs text-[var(--color-slate)]">{product.slug}</p>
+                                                        <div className="font-bold text-white flex items-center gap-2">
+                                                            {p.name}
+                                                            {p.media?.some(m => m.type === "model3d") && (
+                                                                <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 font-bold">3D</span>
+                                                            )}
+                                                        </div>
+                                                        <div className="text-[10px] text-slate-400 font-mono flex items-center gap-2 mt-0.5">
+                                                            <span>{p.itemCode || "NO-SKU"}</span>
+                                                            {p.brand && <span>• {p.brand}</span>}
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td className="py-3 px-4 whitespace-nowrap min-w-[100px]">
-                                                <span className="text-[10px] font-mono bg-[var(--color-navy-lighter)] px-2 py-1 rounded border border-white/5 text-[var(--color-gold)] block w-fit">
-                                                    {product.itemCode || "—"}
-                                                </span>
+
+                                            {/* Category & Vendor */}
+                                            <td className="p-4">
+                                                <div className="font-bold text-slate-300">{p.category?.name || "Unassigned"}</div>
+                                                <div className="text-[10px] text-gold font-bold">{p.vendor?.companyName || "E3 Platform Fleet"}</div>
                                             </td>
-                                            <td className="py-3 px-4 whitespace-nowrap min-w-[150px]">
-                                                {product.vendor ? (
-                                                    <span className="text-[10px] font-medium text-[var(--color-gold)] bg-[var(--color-gold)]/10 px-2 py-1 rounded-full border border-[var(--color-gold)]/20">
-                                                        {product.vendor.companyName}
-                                                    </span>
-                                                ) : (
-                                                    <span className="text-[10px] font-medium text-[var(--color-slate)] bg-white/5 px-2 py-1 rounded-full border border-white/10 uppercase tracking-widest">
-                                                        Platform
-                                                    </span>
-                                                )}
+
+                                            {/* Pricing */}
+                                            <td className="p-4">
+                                                <div className="font-black text-white">
+                                                    {p.pricePerDay ? `${p.pricePerDay.toLocaleString()} QAR` : "POR"}
+                                                </div>
+                                                <div className="text-[10px] text-slate-500">per {p.unit}</div>
                                             </td>
-                                            <td className="py-3 px-4 text-sm text-[var(--color-slate)] hidden md:table-cell whitespace-nowrap">{product.category?.name || "—"}</td>
-                                            <td className="py-3 px-4 text-sm text-[var(--color-slate)] hidden md:table-cell text-right font-medium text-[var(--color-gold)] whitespace-nowrap">{product.pricePerDay.toLocaleString()} QAR</td>
-                                            <td className="py-3 px-4 text-sm text-center text-[var(--color-warm-white)] hidden md:table-cell">
-                                                <HoverCard.Root openDelay={200} closeDelay={100}>
-                                                    <HoverCard.Trigger asChild>
-                                                        <span className="cursor-help underline dotted decoration-[var(--color-slate)] underline-offset-4 font-semibold hover:text-[var(--color-gold)] transition-colors">
-                                                            {product.totalUnits} {product.unit}
+
+                                            {/* Physical Units */}
+                                            <td className="p-4">
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className="font-bold text-white">{p.totalUnits} Units</span>
+                                                    {p.allocatableUnits !== undefined && p.allocatableUnits < p.totalUnits && (
+                                                        <span className="text-[9px] text-yellow-400 font-bold" title="Some units offline">
+                                                            ({p.allocatableUnits} ready)
                                                         </span>
-                                                    </HoverCard.Trigger>
-                                                    <HoverCard.Portal>
-                                                        <HoverCard.Content
-                                                            className="w-[32rem] z-50 bg-[var(--color-surface)] border border-[var(--color-border-subtle)] rounded-xl shadow-2xl p-0 overflow-hidden outline-none animate-in fade-in zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out data-[state=closed]:zoom-out-95"
-                                                            side="left"
-                                                            align="center"
-                                                            sideOffset={16}
+                                                    )}
+                                                </div>
+                                            </td>
+
+                                            {/* Lifecycle Status */}
+                                            <td className="p-4">
+                                                <div className="flex items-center gap-2">
+                                                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                                                        effectiveStatus === PRODUCT_STATUS.PUBLISHED
+                                                            ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                                                            : effectiveStatus === PRODUCT_STATUS.PENDING_REVIEW
+                                                            ? 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20'
+                                                            : effectiveStatus === PRODUCT_STATUS.ARCHIVED
+                                                            ? 'bg-red-500/10 text-red-400 border border-red-500/20'
+                                                            : 'bg-slate-500/10 text-slate-400 border border-slate-500/20'
+                                                    }`}>
+                                                        {effectiveStatus}
+                                                    </span>
+
+                                                    {/* Quick Approve button for review */}
+                                                    {effectiveStatus === PRODUCT_STATUS.PENDING_REVIEW && (
+                                                        <button 
+                                                            onClick={() => handleStatusChange(p.id, PRODUCT_STATUS.PUBLISHED)}
+                                                            className="px-2 py-0.5 rounded bg-gold text-navy text-[10px] font-black uppercase hover:scale-105 transition-all"
                                                         >
-                                                            {/* Reuse the interactive timeline component, but strip the outer padding */}
-                                                            <div className="-m-6">
-                                                                <AvailabilityTimeline productId={product.id} />
-                                                            </div>
-                                                        </HoverCard.Content>
-                                                    </HoverCard.Portal>
-                                                </HoverCard.Root>
-                                            </td>
-                                            <td className="py-3 px-4 text-sm text-center hidden md:table-cell">
-                                                <span className={`capitalize font-medium ${conditionColor}`}>
-                                                    {productCondition.replace("_", " ")}
-                                                </span>
-                                            </td>
-                                            <td className="py-3 px-4 text-sm text-center text-[var(--color-slate)] hidden lg:table-cell">{product.media?.length || 0}</td>
-                                            <td className="py-3 px-4 text-sm text-center text-[var(--color-slate)] hidden lg:table-cell whitespace-nowrap">{product.safetyCertificates?.length || 0}</td>
-                                            <td className="py-3 px-4 text-center whitespace-nowrap">
-                                                <button 
-                                                    onClick={() => togglePublished(product.id, product.isPublished)}
-                                                    className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all border ${
-                                                        product.isPublished 
-                                                            ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20 hover:bg-emerald-500/20" 
-                                                            : "bg-slate-500/10 text-slate-400 border-white/5 hover:bg-white/10"
-                                                    }`}
-                                                >
-                                                    {product.isPublished ? "Live" : "Hidden"}
-                                                </button>
-                                            </td>
-                                            {canManageProducts && (
-                                                <td className="py-3 px-4 text-right whitespace-nowrap">
-                                                    <div className="flex items-center justify-end gap-2">
-                                                        <Link href={`/admin/products/edit/${product.id}`} className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-slate)] hover:text-[var(--color-gold)] transition-colors px-2 py-1 rounded border border-white/5 hover:border-[var(--color-gold)]/20">
-                                                            Edit
-                                                        </Link>
-                                                        <button
-                                                            onClick={() => deleteProduct(product.id)}
-                                                            className="text-[10px] font-bold uppercase tracking-widest text-red-400/70 hover:text-red-400 transition-colors px-2 py-1 rounded border border-white/5 hover:border-red-400/20"
-                                                        >
-                                                            Delete
+                                                            Approve
                                                         </button>
-                                                    </div>
-                                                </td>
-                                            )}
+                                                    )}
+                                                </div>
+                                            </td>
+
+                                            {/* Actions */}
+                                            <td className="p-4 text-right">
+                                                <div className="flex items-center justify-end gap-2">
+                                                    <Link 
+                                                        href={`/catalog/${p.slug}`} 
+                                                        target="_blank"
+                                                        className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+                                                        title="View PDP Storefront"
+                                                    >
+                                                        <ArrowUpRight className="w-3.5 h-3.5" />
+                                                    </Link>
+                                                    <Link 
+                                                        href={`/admin/products/edit/${p.id}`}
+                                                        className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-gold hover:text-white transition-colors"
+                                                        title="Edit Product"
+                                                    >
+                                                        <Edit className="w-3.5 h-3.5" />
+                                                    </Link>
+                                                    <button 
+                                                        onClick={() => deleteProduct(p.id)}
+                                                        className="p-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-colors"
+                                                        title="Archive / Delete"
+                                                    >
+                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                    </button>
+                                                </div>
+                                            </td>
                                         </tr>
                                     );
-                                })}
-                            </tbody>
-                        </table>
-                    )}
+                                })
+                            )}
+                        </tbody>
+                    </table>
                 </div>
-            )}
+            </div>
         </div>
     );
 }

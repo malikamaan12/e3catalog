@@ -25,6 +25,11 @@ export async function GET(
             return NextResponse.json({ error: "Product not found" }, { status: 404 });
         }
 
+        // Unapproved / Archived check for public requests
+        if (product.status === "archived" || (!product.isPublished && product.status !== "published")) {
+            return NextResponse.json({ error: "Product unavailable or archived" }, { status: 404 });
+        }
+
         // Increment View Count asynchronously
         db.update(products)
             .set({ viewCount: sql`${products.viewCount} + 1` })
@@ -37,6 +42,8 @@ export async function GET(
             id: product.id,
             name: product.name,
             slug: product.slug,
+            brand: product.brand,
+            model: product.model,
             shortDescription: product.shortDescription,
             description: product.description,
             dimensions: product.dimensions,

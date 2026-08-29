@@ -241,6 +241,9 @@ export async function GET(req: NextRequest) {
             }
         }
 
+        const minPrice = searchParams.get("minPrice") ? Number(searchParams.get("minPrice")) : null;
+        const maxPrice = searchParams.get("maxPrice") ? Number(searchParams.get("maxPrice")) : null;
+
         // Combine all where clauses
         const filters = [
             vendorFilter,
@@ -248,7 +251,10 @@ export async function GET(req: NextRequest) {
             searchFilter,
             cursorFilter,
             featured ? eq(products.featured, true) : undefined,
+            minPrice !== null ? gte(products.pricePerDay, minPrice) : undefined,
+            maxPrice !== null ? lte(products.pricePerDay, maxPrice) : undefined,
             eq(products.isPublished, true),
+            or(eq(products.status, "published"), isNull(products.status)),
         ].filter(Boolean);
 
         const whereClause = filters.length > 0 ? and(...(filters as any)) : undefined;

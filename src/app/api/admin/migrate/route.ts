@@ -9,11 +9,39 @@ export async function POST() {
     const migrations = [
         {
             name: "bookings.added_by_admin",
-            sql: `ALTER TABLE bookings ADD COLUMN added_by_admin INTEGER DEFAULT 0`,
+            sql: `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS added_by_admin INTEGER DEFAULT 0`,
         },
         {
             name: "bookings.admin_item_note",
-            sql: `ALTER TABLE bookings ADD COLUMN admin_item_note TEXT`,
+            sql: `ALTER TABLE bookings ADD COLUMN IF NOT EXISTS admin_item_note TEXT`,
+        },
+        {
+            name: "products.status",
+            sql: `ALTER TABLE products ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'draft'`,
+        },
+        {
+            name: "products.brand",
+            sql: `ALTER TABLE products ADD COLUMN IF NOT EXISTS brand VARCHAR(255)`,
+        },
+        {
+            name: "products.model",
+            sql: `ALTER TABLE products ADD COLUMN IF NOT EXISTS model VARCHAR(255)`,
+        },
+        {
+            name: "products.replacement_value",
+            sql: `ALTER TABLE products ADD COLUMN IF NOT EXISTS replacement_value REAL`,
+        },
+        {
+            name: "products.meta_title",
+            sql: `ALTER TABLE products ADD COLUMN IF NOT EXISTS meta_title VARCHAR(255)`,
+        },
+        {
+            name: "products.meta_description",
+            sql: `ALTER TABLE products ADD COLUMN IF NOT EXISTS meta_description VARCHAR(500)`,
+        },
+        {
+            name: "products.keywords",
+            sql: `ALTER TABLE products ADD COLUMN IF NOT EXISTS keywords VARCHAR(500)`,
         },
     ];
 
