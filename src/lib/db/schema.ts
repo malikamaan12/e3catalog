@@ -768,6 +768,14 @@ export const bookingsRelations = relations(bookings, ({ one, many }) => ({
         fields: [bookings.productId],
         references: [products.id],
     }),
+    vendor: one(vendors, {
+        fields: [bookings.vendorId],
+        references: [vendors.id],
+    }),
+    user: one(users, {
+        fields: [bookings.userId],
+        references: [users.id],
+    }),
     review: one(reviews, {
         fields: [bookings.id],
         references: [reviews.bookingId]
@@ -1015,3 +1023,282 @@ export const stagingInventoryRelations = relations(stagingInventory, ({ one }) =
         references: [products.id],
     }),
 }));
+
+// ─── Customer Invoices ───
+export const invoices = pgTable("invoices", {
+    id: varchar("id", { length: 255 }).primaryKey(),
+    invoiceNumber: varchar("invoice_number", { length: 100 }).notNull().unique(), // e.g. INV-2026-0001
+    bookingId: varchar("booking_id", { length: 255 }).references(() => bookings.id),
+    projectId: varchar("project_id", { length: 255 }),
+    userId: varchar("user_id", { length: 255 }).references(() => users.id),
+    customerName: varchar("customer_name", { length: 255 }).notNull(),
+    customerEmail: varchar("customer_email", { length: 255 }),
+    customerPhone: varchar("customer_phone", { length: 100 }),
+    invoiceType: varchar("invoice_type", { length: 50 }).notNull().default("deposit"), // deposit | progress | final | standard
+    currency: varchar("currency", { length: 10 }).notNull().default("QAR"),
+    subtotal: real("subtotal").notNull().default(0),
+    discount: real("discount").notNull().default(0),
+    logisticsCost: real("logistics_cost").notNull().default(0),
+    laborCost: real("labor_cost").notNull().default(0),
+    additionalCharges: real("additional_charges").notNull().default(0),
+    taxAmount: real("tax_amount").notNull().default(0),
+    totalAmount: real("total_amount").notNull().default(0),
+    amountPaid: real("amount_paid").notNull().default(0),
+    amountDue: real("amount_due").notNull().default(0),
+    status: varchar("status", { length: 50 }).notNull().default("draft"), // draft | issued | partially_paid | paid | cancelled | credited
+    issueDate: timestamp("issue_date").notNull().defaultNow(),
+    dueDate: timestamp("due_date").notNull(),
+    paymentTerms: varchar("payment_terms", { length: 255 }).default("50% Advance, 50% on Delivery"),
+    notes: text("notes"),
+    pdfUrl: varchar("pdf_url", { length: 500 }),
+    metadata: jsonb("metadata"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => {
+    return {
+        invoiceNumberIdx: index("invoices_invoice_number_idx").on(table.invoiceNumber),
+        bookingIdIdx: index("invoices_booking_id_idx").on(table.bookingId),
+        projectIdIdx: index("invoices_project_id_idx").on(table.projectId),
+        userIdIdx: index("invoices_user_id_idx").on(table.userId),
+        statusIdx: index("invoices_status_idx").on(table.status),
+        dueDateIdx: index("invoices_due_date_idx").on(table.dueDate),
+    };
+});
+
+// ─── Invoice Items ───
+export const invoiceItems = pgTable("invoice_items", {
+    id: varchar("id", { length: 255 }).primaryKey(),
+    invoiceId: varchar("invoice_id", { length: 255 }).notNull().references(() => invoices.id),
+    bookingId: varchar("booking_id", { length: 255 }).references(() => bookings.id),
+    productId: varchar("product_id", { length: 255 }).references(() => products.id),
+    description: varchar("description", { length: 500 }).notNull(),
+    units: integer("units").notNull().default(1),
+    days: integer("days").notNull().default(1),
+    unitPrice: real("unit_price").notNull().default(0),
+    lineTotal: real("line_total").notNull().default(0),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => {
+    return {
+        invoiceIdIdx: index("invoice_items_invoice_id_idx").on(table.invoiceId),
+        productIdIdx: index("invoice_items_product_id_idx").on(table.productId),
+    };
+});
+
+// ─── Client Payments ───
+export const clientPayments = pgTable("client_payments", {
+    id: varchar("id", { length: 255 }).primaryKey(),
+    paymentNumber: varchar("payment_number", { length: 100 }).notNull().unique(), // e.g. PAY-2026-0001
+    invoiceId: varchar("invoice_id", { length: 255 }).references(() => invoices.id),
+    bookingId: varchar("booking_id", { length: 255 }).references(() => bookings.id),
+    projectId: varchar("project_id", { length: 255 }),
+    userId: varchar("user_id", { length: 255 }).references(() => users.id),
+    amount: real("amount").notNull(),
+    currency: varchar("currency", { length: 10 }).notNull().default("QAR"),
+    paymentMethod: varchar("payment_method", { length: 50 }).notNull().default("bank_transfer"), // bank_transfer | credit_card | cheque | cash
+    transactionRef: varchar("transaction_ref", { length: 255 }),
+    paymentProofUrl: varchar("payment_proof_url", { length: 500 }),
+    status: varchar("status", { length: 50 }).notNull().default("pending_verification"), // pending_verification | verified | rejected
+    verifiedBy: varchar("verified_by", { length: 255 }).references(() => users.id),
+    verifiedAt: timestamp("verified_at"),
+    rejectionReason: varchar("rejection_reason", { length: 500 }),
+    notes: text("notes"),
+    paymentDate: timestamp("payment_date").notNull().defaultNow(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => {
+    return {
+        paymentNumberIdx: index("client_payments_payment_number_idx").on(table.paymentNumber),
+        invoiceIdIdx: index("client_payments_invoice_id_idx").on(table.invoiceId),
+        projectIdIdx: index("client_payments_project_id_idx").on(table.projectId),
+        userIdIdx: index("client_payments_user_id_idx").on(table.userId),
+        statusIdx: index("client_payments_status_idx").on(table.status),
+    };
+});
+
+// ─── Credit Notes ───
+export const creditNotes = pgTable("credit_notes", {
+    id: varchar("id", { length: 255 }).primaryKey(),
+    creditNoteNumber: varchar("credit_note_number", { length: 100 }).notNull().unique(), // e.g. CN-2026-0001
+    invoiceId: varchar("invoice_id", { length: 255 }).notNull().references(() => invoices.id),
+    bookingId: varchar("booking_id", { length: 255 }).references(() => bookings.id),
+    userId: varchar("user_id", { length: 255 }).references(() => users.id),
+    amount: real("amount").notNull(),
+    currency: varchar("currency", { length: 10 }).notNull().default("QAR"),
+    reason: varchar("reason", { length: 500 }).notNull(),
+    status: varchar("status", { length: 50 }).notNull().default("draft"), // draft | issued | applied | refunded
+    issuedBy: varchar("issued_by", { length: 255 }).references(() => users.id),
+    issuedAt: timestamp("issued_at"),
+    notes: text("notes"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => {
+    return {
+        creditNoteNumberIdx: index("credit_notes_credit_note_number_idx").on(table.creditNoteNumber),
+        invoiceIdIdx: index("credit_notes_invoice_id_idx").on(table.invoiceId),
+        userIdIdx: index("credit_notes_user_id_idx").on(table.userId),
+        statusIdx: index("credit_notes_status_idx").on(table.status),
+    };
+});
+
+// ─── Refunds ───
+export const refunds = pgTable("refunds", {
+    id: varchar("id", { length: 255 }).primaryKey(),
+    refundNumber: varchar("refund_number", { length: 100 }).notNull().unique(), // e.g. REF-2026-0001
+    creditNoteId: varchar("credit_note_id", { length: 255 }).references(() => creditNotes.id),
+    paymentId: varchar("payment_id", { length: 255 }).references(() => clientPayments.id),
+    userId: varchar("user_id", { length: 255 }).references(() => users.id),
+    amount: real("amount").notNull(),
+    currency: varchar("currency", { length: 10 }).notNull().default("QAR"),
+    refundMethod: varchar("refund_method", { length: 50 }).notNull().default("bank_transfer"),
+    transactionRef: varchar("transaction_ref", { length: 255 }),
+    reason: varchar("reason", { length: 500 }).notNull(),
+    status: varchar("status", { length: 50 }).notNull().default("pending"), // pending | processed | failed
+    processedBy: varchar("processed_by", { length: 255 }).references(() => users.id),
+    processedAt: timestamp("processed_at"),
+    notes: text("notes"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => {
+    return {
+        refundNumberIdx: index("refunds_refund_number_idx").on(table.refundNumber),
+        creditNoteIdIdx: index("refunds_credit_note_id_idx").on(table.creditNoteId),
+        statusIdx: index("refunds_status_idx").on(table.status),
+    };
+});
+
+// ─── Financial Journals (Double-Entry General Ledger) ───
+export const financialJournals = pgTable("financial_journals", {
+    id: varchar("id", { length: 255 }).primaryKey(),
+    journalNumber: varchar("journal_number", { length: 100 }).notNull().unique(), // e.g. JRN-2026-0001
+    referenceType: varchar("reference_type", { length: 50 }).notNull(), // invoice | payment | credit_note | payout | settlement | reversal
+    referenceId: varchar("reference_id", { length: 255 }).notNull(),
+    description: varchar("description", { length: 500 }).notNull(),
+    isReversed: boolean("is_reversed").default(false),
+    reversalJournalId: varchar("reversal_journal_id", { length: 255 }),
+    postedAt: timestamp("posted_at").notNull().defaultNow(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => {
+    return {
+        journalNumberIdx: index("financial_journals_journal_number_idx").on(table.journalNumber),
+        referenceIdx: index("financial_journals_reference_idx").on(table.referenceType, table.referenceId),
+        postedAtIdx: index("financial_journals_posted_at_idx").on(table.postedAt),
+    };
+});
+
+// ─── Journal Entries (Balanced Debits and Credits) ───
+export const journalEntries = pgTable("journal_entries", {
+    id: varchar("id", { length: 255 }).primaryKey(),
+    journalId: varchar("journal_id", { length: 255 }).notNull().references(() => financialJournals.id),
+    accountCode: varchar("account_code", { length: 100 }).notNull(), // e.g. 1100_ACCOUNTS_RECEIVABLE
+    accountName: varchar("account_name", { length: 255 }).notNull(),
+    debit: real("debit").notNull().default(0),
+    credit: real("credit").notNull().default(0),
+    memo: varchar("memo", { length: 500 }),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => {
+    return {
+        journalIdIdx: index("journal_entries_journal_id_idx").on(table.journalId),
+        accountCodeIdx: index("journal_entries_account_code_idx").on(table.accountCode),
+    };
+});
+
+// ─── Financial Relations ───
+export const invoicesRelations = relations(invoices, ({ one, many }) => ({
+    booking: one(bookings, {
+        fields: [invoices.bookingId],
+        references: [bookings.id],
+    }),
+    user: one(users, {
+        fields: [invoices.userId],
+        references: [users.id],
+    }),
+    items: many(invoiceItems),
+    payments: many(clientPayments),
+    creditNotes: many(creditNotes),
+}));
+
+export const invoiceItemsRelations = relations(invoiceItems, ({ one }) => ({
+    invoice: one(invoices, {
+        fields: [invoiceItems.invoiceId],
+        references: [invoices.id],
+    }),
+    booking: one(bookings, {
+        fields: [invoiceItems.bookingId],
+        references: [bookings.id],
+    }),
+    product: one(products, {
+        fields: [invoiceItems.productId],
+        references: [products.id],
+    }),
+}));
+
+export const clientPaymentsRelations = relations(clientPayments, ({ one, many }) => ({
+    invoice: one(invoices, {
+        fields: [clientPayments.invoiceId],
+        references: [invoices.id],
+    }),
+    booking: one(bookings, {
+        fields: [clientPayments.bookingId],
+        references: [bookings.id],
+    }),
+    user: one(users, {
+        fields: [clientPayments.userId],
+        references: [users.id],
+    }),
+    verifier: one(users, {
+        fields: [clientPayments.verifiedBy],
+        references: [users.id],
+    }),
+    refunds: many(refunds),
+}));
+
+export const creditNotesRelations = relations(creditNotes, ({ one, many }) => ({
+    invoice: one(invoices, {
+        fields: [creditNotes.invoiceId],
+        references: [invoices.id],
+    }),
+    booking: one(bookings, {
+        fields: [creditNotes.bookingId],
+        references: [bookings.id],
+    }),
+    user: one(users, {
+        fields: [creditNotes.userId],
+        references: [users.id],
+    }),
+    issuer: one(users, {
+        fields: [creditNotes.issuedBy],
+        references: [users.id],
+    }),
+    refunds: many(refunds),
+}));
+
+export const refundsRelations = relations(refunds, ({ one }) => ({
+    creditNote: one(creditNotes, {
+        fields: [refunds.creditNoteId],
+        references: [creditNotes.id],
+    }),
+    payment: one(clientPayments, {
+        fields: [refunds.paymentId],
+        references: [clientPayments.id],
+    }),
+    user: one(users, {
+        fields: [refunds.userId],
+        references: [users.id],
+    }),
+    processor: one(users, {
+        fields: [refunds.processedBy],
+        references: [users.id],
+    }),
+}));
+
+export const financialJournalsRelations = relations(financialJournals, ({ many }) => ({
+    entries: many(journalEntries),
+}));
+
+export const journalEntriesRelations = relations(journalEntries, ({ one }) => ({
+    journal: one(financialJournals, {
+        fields: [journalEntries.journalId],
+        references: [financialJournals.id],
+    }),
+}));
+
