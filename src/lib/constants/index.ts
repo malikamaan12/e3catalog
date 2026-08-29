@@ -119,4 +119,52 @@ export const MAINTENANCE_STATUS = {
 
 export type MaintenanceStatus = typeof MAINTENANCE_STATUS[keyof typeof MAINTENANCE_STATUS];
 
+/**
+ * Authoritative Vendor Lifecycle Statuses
+ */
+export const VENDOR_STATUS = {
+    APPLICATION_DRAFT: "application_draft",
+    SUBMITTED: "submitted",
+    KYC_INCOMPLETE: "kyc_incomplete",
+    UNDER_REVIEW: "under_review",
+    CHANGES_REQUESTED: "changes_requested",
+    RESUBMITTED: "resubmitted",
+    APPROVED: "approved",
+    ACTIVE: "active",
+    SUSPENDED: "suspended",
+    REJECTED: "rejected",
+    OFFBOARDED: "offboarded",
+} as const;
+
+export type VendorStatus = typeof VENDOR_STATUS[keyof typeof VENDOR_STATUS];
+
+/**
+ * Vendor Tenant Team Roles
+ */
+export const VENDOR_ROLE = {
+    OWNER: "owner",
+    ADMIN: "admin",
+    CATALOG_MANAGER: "catalog_manager",
+    OPERATIONS_MANAGER: "operations_manager",
+    FINANCE_VIEWER: "finance_viewer",
+    VIEWER: "viewer",
+} as const;
+
+export type VendorRole = typeof VENDOR_ROLE[keyof typeof VENDOR_ROLE];
+
+/**
+ * KYC & Compliance Document Verification Statuses
+ */
+export const DOCUMENT_STATUS = {
+    UPLOADED: "uploaded",
+    UNDER_REVIEW: "under_review",
+    VERIFIED: "verified",
+    REJECTED: "rejected",
+    EXPIRED: "expired",
+    SUPERSEDED: "superseded",
+} as const;
+
+export type DocumentStatus = typeof DOCUMENT_STATUS[keyof typeof DOCUMENT_STATUS];
+
+
 

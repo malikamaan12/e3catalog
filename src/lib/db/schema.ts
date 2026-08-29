@@ -60,22 +60,46 @@ export const vendors = pgTable("vendors", {
     id: varchar("id", { length: 255 }).primaryKey(),
     userId: varchar("user_id", { length: 255 }).notNull().references(() => users.id).unique(),
     companyName: varchar("company_name", { length: 255 }).notNull(),
+    tradingName: varchar("trading_name", { length: 255 }),
+    crNumber: varchar("cr_number", { length: 255 }),
+    tradeLicenseNumber: varchar("trade_license_number", { length: 255 }),
+    companyType: varchar("company_type", { length: 100 }),
+    country: varchar("country", { length: 100 }).default("Qatar"),
+    address: varchar("address", { length: 500 }),
+    city: varchar("city", { length: 100 }).default("Doha"),
+    phone: varchar("phone", { length: 50 }),
+    email: varchar("email", { length: 255 }),
+    yearEstablished: integer("year_established"),
+
+    // Lifecycle Status
+    lifecycleStatus: varchar("lifecycle_status", { length: 50 }).notNull().default("application_draft"),
     kycStatus: varchar("kyc_status", { length: 50 }).notNull().default("pending"),
     agreementStatus: varchar("agreement_status", { length: 50 }).notNull().default("unsigned"),
+    rejectionReason: varchar("rejection_reason", { length: 1000 }),
+    changesRequestedReason: varchar("changes_requested_reason", { length: 1000 }),
+    suspensionReason: varchar("suspension_reason", { length: 1000 }),
+    approvedAt: timestamp("approved_at"),
+    approvedBy: varchar("approved_by", { length: 255 }).references(() => users.id),
+
+    // Commercial & Reliability
     payoutDetails: varchar("payout_details", { length: 500 }),
-    commissionRate: real("commission_rate"), // Legacy flat rate (optional now)
+    commissionRate: real("commission_rate"), // Legacy flat rate
+    commissionType: varchar("commission_type", { length: 50 }).notNull().default("percentage"),
+    commissionValue: real("commission_value").notNull().default(20), // 20% default
+    paymentTerms: varchar("payment_terms", { length: 255 }),
+    storeStatus: varchar("store_status", { length: 50 }).notNull().default("active"),
 
-    // Advanced Commission Engine
-    commissionType: varchar("commission_type", { length: 50 }).notNull().default("percentage"), // percentage | fixed_per_item | per_project_fee | fixed_monthly
-    commissionValue: real("commission_value").notNull().default(20), // 20% default markup
+    // Capabilities
+    equipmentCategories: jsonb("equipment_categories").$type<string[]>(),
+    warehouseLocations: jsonb("warehouse_locations").$type<string[]>(),
+    fleetSize: varchar("fleet_size", { length: 100 }),
+    operatingRegions: jsonb("operating_regions").$type<string[]>(),
 
-
-    // Extended KYC & Profile
+    // Extended Profile & Branding
     website: varchar("website", { length: 255 }),
     taxId: varchar("tax_id", { length: 255 }),
     taxCardUrl: varchar("tax_card_url", { length: 500 }),
     companyRegistrationUrl: varchar("company_registration_url", { length: 500 }),
-    // Added for PDF Generation
     letterheadHeaderUrl: varchar("letterhead_header_url", { length: 500 }),
     letterheadFooterUrl: varchar("letterhead_footer_url", { length: 500 }),
     taxCardExpiry: timestamp("tax_card_expiry"),
@@ -85,6 +109,8 @@ export const vendors = pgTable("vendors", {
     alternatePocName: varchar("alternate_poc_name", { length: 255 }),
     alternatePocPhone: varchar("alternate_poc_phone", { length: 255 }),
     logoUrl: varchar("logo_url", { length: 500 }),
+    bannerUrl: varchar("banner_url", { length: 500 }),
+    brandStory: text("brand_story"),
 
     // Banking Details for Payouts
     bankName: varchar("bank_name", { length: 255 }),
@@ -92,10 +118,6 @@ export const vendors = pgTable("vendors", {
     accountNumber: varchar("account_number", { length: 255 }),
     iban: varchar("iban", { length: 255 }),
     swift: varchar("swift", { length: 255 }),
-
-    // Super Admin Control
-    paymentTerms: varchar("payment_terms", { length: 255 }),
-    storeStatus: varchar("store_status", { length: 50 }).notNull().default("active"),
 
     // Reliability Scores
     scoreDelivery: integer("score_delivery").default(100),
@@ -107,8 +129,76 @@ export const vendors = pgTable("vendors", {
 }, (table) => {
     return {
         userIdIdx: index("vendors_user_id_idx").on(table.userId),
+        lifecycleStatusIdx: index("vendors_lifecycle_status_idx").on(table.lifecycleStatus),
         storeStatusIdx: index("vendors_store_status_idx").on(table.storeStatus),
         scoreRatingIdx: index("vendors_score_rating_idx").on(table.scoreRating),
+    };
+});
+
+// ─── Vendor Compliance Documents (KYC) ───
+export const vendorDocuments = pgTable("vendor_documents", {
+    id: varchar("id", { length: 255 }).primaryKey(),
+    vendorId: varchar("vendor_id", { length: 255 }).notNull().references(() => vendors.id),
+    documentType: varchar("document_type", { length: 100 }).notNull(), // commercial_registration | trade_license | tax_certificate | insurance | bank_proof | safety_cert | other
+    fileName: varchar("file_name", { length: 255 }).notNull(),
+    fileUrl: varchar("file_url", { length: 500 }).notNull(),
+    fileSize: integer("file_size"),
+    mimeType: varchar("mime_type", { length: 100 }),
+    issueDate: timestamp("issue_date"),
+    expiryDate: timestamp("expiry_date"),
+    issuingAuthority: varchar("issuing_authority", { length: 255 }),
+    status: varchar("status", { length: 50 }).notNull().default("uploaded"), // uploaded | under_review | verified | rejected | expired | superseded
+    reviewerId: varchar("reviewer_id", { length: 255 }).references(() => users.id),
+    reviewerNotes: varchar("reviewer_notes", { length: 1000 }),
+    rejectionReason: varchar("rejection_reason", { length: 1000 }),
+    verifiedAt: timestamp("verified_at"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => {
+    return {
+        vendorIdIdx: index("vendor_documents_vendor_id_idx").on(table.vendorId),
+        statusIdx: index("vendor_documents_status_idx").on(table.status),
+    };
+});
+
+// ─── Vendor Tenant Team Members ───
+export const vendorTeamMembers = pgTable("vendor_team_members", {
+    id: varchar("id", { length: 255 }).primaryKey(),
+    vendorId: varchar("vendor_id", { length: 255 }).notNull().references(() => vendors.id),
+    userId: varchar("user_id", { length: 255 }).references(() => users.id),
+    invitedEmail: varchar("invited_email", { length: 255 }).notNull(),
+    invitationToken: varchar("invitation_token", { length: 255 }).unique(),
+    role: varchar("role", { length: 50 }).notNull().default("viewer"), // owner | admin | catalog_manager | operations_manager | finance_viewer | viewer
+    status: varchar("status", { length: 50 }).notNull().default("pending"), // pending | active | disabled | revoked
+    tokenExpiresAt: timestamp("token_expires_at"),
+    acceptedAt: timestamp("accepted_at"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => {
+    return {
+        vendorIdIdx: index("vendor_team_members_vendor_id_idx").on(table.vendorId),
+        userIdIdx: index("vendor_team_members_user_id_idx").on(table.userId),
+        tokenIdx: index("vendor_team_members_token_idx").on(table.invitationToken),
+    };
+});
+
+// ─── Vendor Commercial Terms (Versioned) ───
+export const vendorCommercialTerms = pgTable("vendor_commercial_terms", {
+    id: varchar("id", { length: 255 }).primaryKey(),
+    vendorId: varchar("vendor_id", { length: 255 }).notNull().references(() => vendors.id),
+    version: integer("version").notNull().default(1),
+    commissionType: varchar("commission_type", { length: 50 }).notNull().default("percentage"),
+    commissionValue: real("commission_value").notNull().default(20),
+    effectiveDate: timestamp("effective_date").notNull().defaultNow(),
+    payoutTerms: varchar("payout_terms", { length: 255 }),
+    specialConditions: varchar("special_conditions", { length: 1000 }),
+    approvedBy: varchar("approved_by", { length: 255 }).references(() => users.id),
+    status: varchar("status", { length: 50 }).notNull().default("active"), // draft | proposed | active | superseded
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => {
+    return {
+        vendorIdIdx: index("vendor_commercial_terms_vendor_id_idx").on(table.vendorId),
+        statusIdx: index("vendor_commercial_terms_status_idx").on(table.status),
     };
 });
 
@@ -549,6 +639,55 @@ export const productTagsRelations = relations(productTags, ({ one }) => ({
     }),
 }));
 
+export const vendorsRelations = relations(vendors, ({ one, many }) => ({
+    user: one(users, {
+        fields: [vendors.userId],
+        references: [users.id],
+    }),
+    products: many(products),
+    documents: many(vendorDocuments),
+    teamMembers: many(vendorTeamMembers),
+    commercialTerms: many(vendorCommercialTerms),
+    warehouses: many(vendorWarehouses),
+    inventoryUnits: many(inventoryUnits),
+    ledgers: many(vendorLedgers),
+    settlements: many(commissionSettlements),
+    reviews: many(reviews),
+}));
+
+export const vendorDocumentsRelations = relations(vendorDocuments, ({ one }) => ({
+    vendor: one(vendors, {
+        fields: [vendorDocuments.vendorId],
+        references: [vendors.id],
+    }),
+    reviewer: one(users, {
+        fields: [vendorDocuments.reviewerId],
+        references: [users.id],
+    }),
+}));
+
+export const vendorTeamMembersRelations = relations(vendorTeamMembers, ({ one }) => ({
+    vendor: one(vendors, {
+        fields: [vendorTeamMembers.vendorId],
+        references: [vendors.id],
+    }),
+    user: one(users, {
+        fields: [vendorTeamMembers.userId],
+        references: [users.id],
+    }),
+}));
+
+export const vendorCommercialTermsRelations = relations(vendorCommercialTerms, ({ one }) => ({
+    vendor: one(vendors, {
+        fields: [vendorCommercialTerms.vendorId],
+        references: [vendors.id],
+    }),
+    approver: one(users, {
+        fields: [vendorCommercialTerms.approvedBy],
+        references: [users.id],
+    }),
+}));
+
 export const vendorWarehousesRelations = relations(vendorWarehouses, ({ one, many }) => ({
     vendor: one(vendors, {
         fields: [vendorWarehouses.vendorId],
@@ -700,18 +839,6 @@ export const usersRelations = relations(users, ({ many }) => ({
     systemLogs: many(systemLogs),
     vendorProfile: many(vendors),
     reviews: many(reviews),
-}));
-
-export const vendorsRelations = relations(vendors, ({ one, many }) => ({
-    user: one(users, {
-        fields: [vendors.userId],
-        references: [users.id]
-    }),
-    products: many(products),
-    ledgers: many(vendorLedgers),
-    settlements: many(commissionSettlements),
-    reviews: many(reviews),
-    warehouses: many(vendorWarehouses),
 }));
 
 export const systemLogsRelations = relations(systemLogs, ({ one }) => ({

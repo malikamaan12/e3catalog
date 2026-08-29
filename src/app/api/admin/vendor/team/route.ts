@@ -1,30 +1,25 @@
 import { db } from "@/lib/db";
-import { users } from "@/lib/db/schema";
+import { users, vendorTeamMembers, systemLogs } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/requireAdmin";
-import { v4 as uuidv4 } from "uuid";
-import { USER_ROLES } from "@/lib/constants";
+import { v4 as uuid } from "uuid";
+import { hash } from "bcryptjs";
+import { USER_ROLES, VENDOR_ROLE } from "@/lib/constants";
 
 export async function GET() {
     try {
-        const { user, error } = await requireAdmin([USER_ROLES.VENDOR]);
+        const { user, error } = await requireAdmin([USER_ROLES.VENDOR, USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN]);
         if (error) return error;
 
         const targetVendorId = (user as any).vendorId;
 
         if (!targetVendorId) {
-            return NextResponse.json({ error: "User is not associated with a vendor." }, { status: 403 });
+            return NextResponse.json({ error: "User is not associated with a vendor tenant." }, { status: 403 });
         }
 
-        const teamMembers = await db.query.users.findMany({
-            where: and(
-                eq(users.vendorId, targetVendorId),
-                // Exclude the vendor root account from the team list itself
-                // (assuming the root vendor has the role 'vendor' and sub-accounts have other roles)
-                // Actually, let's just return all users under this vendorId for clarity, 
-                // but the front-end can highlight the owner.
-            ),
+        const teamUsers = await db.query.users.findMany({
+            where: eq(users.vendorId, targetVendorId),
             columns: {
                 id: true,
                 name: true,
@@ -33,13 +28,20 @@ export async function GET() {
                 role: true,
                 status: true,
                 createdAt: true,
-                lastLoginIp: true,
                 lastActive: true,
             },
-            orderBy: (users, { desc }) => [desc(users.createdAt)]
+            orderBy: (users, { desc }) => [desc(users.createdAt)],
         });
 
-        return NextResponse.json(teamMembers);
+        const invites = await db.query.vendorTeamMembers.findMany({
+            where: eq(vendorTeamMembers.vendorId, targetVendorId),
+            orderBy: (invites, { desc }) => [desc(invites.createdAt)],
+        });
+
+        return NextResponse.json({
+            members: teamUsers,
+            invitations: invites,
+        });
     } catch (e: any) {
         return NextResponse.json({ error: e.message }, { status: 500 });
     }
@@ -47,109 +49,143 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
     try {
-        const { user, error } = await requireAdmin([USER_ROLES.VENDOR]);
+        const { user, error } = await requireAdmin([USER_ROLES.VENDOR, USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN]);
         if (error) return error;
 
         const targetVendorId = (user as any).vendorId;
 
         if (!targetVendorId) {
-            return NextResponse.json({ error: "User is not associated with a vendor." }, { status: 403 });
+            return NextResponse.json({ error: "User is not associated with a vendor tenant." }, { status: 403 });
         }
 
         const body = await req.json();
-        const { name, email, password, role, phoneNumber } = body;
+        const { name, email, password, role = "catalog_manager", phoneNumber } = body;
 
-        if (!name || !email || !password || !role) {
-            return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+        if (!name || !email || !password) {
+            return NextResponse.json({ error: "Name, email, and password are required." }, { status: 400 });
         }
 
-        if (![USER_ROLES.SALES_REP, USER_ROLES.WAREHOUSE_MANAGER].includes(role as any)) {
-            return NextResponse.json({ error: "Invalid role. Only Sales Rep or Warehouse Manager are allowed." }, { status: 400 });
-        }
+        const normalizedEmail = email.trim().toLowerCase();
 
-        // Check for existing email across the platform
+        // Check for existing email across platform
         const existingUser = await db.query.users.findFirst({
-            where: eq(users.email, email.toLowerCase())
+            where: eq(users.email, normalizedEmail),
         });
 
         if (existingUser) {
-            return NextResponse.json({ error: "Email is already in use by another account." }, { status: 400 });
+            return NextResponse.json({ error: "An account with this email address already exists." }, { status: 409 });
         }
 
-        const newUserId = uuidv4();
-        await db.insert(users).values({
-            id: newUserId,
-            name,
-            email: email.toLowerCase(),
-            password, // Store as plaintext per current platform behavior (no bcrypt installed)
-            phoneNumber: phoneNumber || null,
-            role,
-            vendorId: targetVendorId,
-            status: "active",
-            createdAt: new Date(),
-            updatedAt: new Date(),
+        const hashedPassword = await hash(password, 10);
+        const newUserId = uuid();
+        const inviteId = uuid();
+        const now = new Date();
+
+        await db.transaction(async (tx) => {
+            await tx.insert(users).values({
+                id: newUserId,
+                name,
+                email: normalizedEmail,
+                password: hashedPassword,
+                phoneNumber: phoneNumber || null,
+                role: USER_ROLES.VENDOR, // Platform level role
+                vendorId: targetVendorId,
+                status: "active",
+                createdAt: now,
+                updatedAt: now,
+            });
+
+            await tx.insert(vendorTeamMembers).values({
+                id: inviteId,
+                vendorId: targetVendorId,
+                userId: newUserId,
+                invitedEmail: normalizedEmail,
+                role: role as any,
+                status: "active",
+                acceptedAt: now,
+                createdAt: now,
+                updatedAt: now,
+            });
+
+            await tx.insert(systemLogs).values({
+                id: uuid(),
+                adminId: user.id,
+                action: "VENDOR_TEAM:MEMBER_ADDED",
+                targetId: newUserId,
+                targetType: "user",
+                details: JSON.stringify({
+                    vendorId: targetVendorId,
+                    email: normalizedEmail,
+                    role,
+                }),
+                createdAt: now,
+            });
         });
 
-        const createdUser = await db.query.users.findFirst({
-            where: eq(users.id, newUserId),
-            columns: {
-                id: true,
-                name: true,
-                email: true,
-                role: true,
-                status: true,
-                createdAt: true,
-            }
-        });
+        return NextResponse.json({ 
+            success: true, 
+            message: `Team member ${name} added successfully.` 
+        }, { status: 201 });
 
-        return NextResponse.json(createdUser, { status: 201 });
     } catch (e: any) {
-        return NextResponse.json({ error: e.message }, { status: 500 });
+        console.error("Failed to add vendor team member:", e);
+        return NextResponse.json({ error: e.message || "Failed to add team member" }, { status: 500 });
     }
 }
 
 export async function PATCH(req: NextRequest) {
     try {
-        const { user, error } = await requireAdmin([USER_ROLES.VENDOR]);
+        const { user, error } = await requireAdmin([USER_ROLES.VENDOR, USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN]);
         if (error) return error;
 
         const targetVendorId = (user as any).vendorId;
-
-        if (!targetVendorId) {
-            return NextResponse.json({ error: "User is not associated with a vendor." }, { status: 403 });
-        }
+        if (!targetVendorId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
         const body = await req.json();
-        const { userId, status } = body;
+        const { userId, role, status } = body;
 
-        if (!userId || !status) {
-            return NextResponse.json({ error: "User ID and Status are required" }, { status: 400 });
+        if (!userId) {
+            return NextResponse.json({ error: "userId is required." }, { status: 400 });
         }
 
-        // Ensure the vendor isn't trying to modify the root owner's status or another vendor's user
-        const targetUser = await db.query.users.findFirst({
-            where: and(eq(users.id, userId), eq(users.vendorId, targetVendorId))
+        // Verify user belongs to this vendor tenant
+        const targetMember = await db.query.users.findFirst({
+            where: and(
+                eq(users.id, userId),
+                eq(users.vendorId, targetVendorId)
+            ),
         });
 
-        if (!targetUser) {
-            return NextResponse.json({ error: "User not found or you do not have permission to modify them." }, { status: 404 });
+        if (!targetMember) {
+            return NextResponse.json({ error: "Team member not found in your organization." }, { status: 404 });
         }
 
-        if (targetUser.role === USER_ROLES.VENDOR) {
-            return NextResponse.json({ error: "You cannot modify the root vendor account status from here." }, { status: 403 });
+        // Protect last owner
+        if (targetMember.id === user.id && status === "disabled") {
+            return NextResponse.json({ error: "You cannot disable your own active account." }, { status: 400 });
         }
 
-        if (!["active", "frozen", "blocked"].includes(status)) {
-            return NextResponse.json({ error: "Invalid status" }, { status: 400 });
-        }
+        const now = new Date();
+        const updates: any = { updatedAt: now };
+        if (status) updates.status = status;
 
-        await db.update(users).set({
-            status,
-            updatedAt: new Date()
-        }).where(eq(users.id, userId));
+        await db.transaction(async (tx) => {
+            await tx.update(users)
+                .set(updates)
+                .where(eq(users.id, userId));
 
-        return NextResponse.json({ success: true, id: userId, status });
+            if (role) {
+                await tx.update(vendorTeamMembers)
+                    .set({ role, updatedAt: now })
+                    .where(and(
+                        eq(vendorTeamMembers.vendorId, targetVendorId),
+                        eq(vendorTeamMembers.userId, userId)
+                    ));
+            }
+        });
+
+        return NextResponse.json({ success: true, message: "Team member updated successfully." });
     } catch (e: any) {
-        return NextResponse.json({ error: e.message }, { status: 500 });
+        return NextResponse.json({ error: e.message || "Update failed" }, { status: 500 });
     }
 }

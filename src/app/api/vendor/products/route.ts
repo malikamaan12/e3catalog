@@ -4,7 +4,7 @@ import { eq, and, desc, sql } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { v4 as uuid } from "uuid";
-import { USER_ROLES, PRODUCT_STATUS } from "@/lib/constants";
+import { USER_ROLES, PRODUCT_STATUS, VENDOR_STATUS } from "@/lib/constants";
 import { logProductLifecycleEvent } from "@/lib/product-lifecycle";
 import { isUnitAllocatable } from "@/lib/availability";
 
@@ -81,6 +81,10 @@ export async function POST(req: NextRequest) {
     const vendor = vendorData[0];
     if (!vendor) {
         return NextResponse.json({ error: "Vendor profile not found" }, { status: 404 });
+    }
+
+    if (vendor.lifecycleStatus === VENDOR_STATUS.SUSPENDED || vendor.storeStatus === "offline") {
+        return NextResponse.json({ error: "Suspended or inactive vendors cannot submit catalog listings." }, { status: 403 });
     }
 
     try {
@@ -203,6 +207,10 @@ export async function PATCH(req: NextRequest) {
     const vendor = vendorData[0];
     if (!vendor) {
         return NextResponse.json({ error: "Vendor profile not found" }, { status: 404 });
+    }
+
+    if (vendor.lifecycleStatus === VENDOR_STATUS.SUSPENDED || vendor.storeStatus === "offline") {
+        return NextResponse.json({ error: "Suspended or inactive vendors cannot modify catalog listings." }, { status: 403 });
     }
 
     try {

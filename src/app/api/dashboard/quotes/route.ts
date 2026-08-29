@@ -1,8 +1,9 @@
 import { db } from "@/lib/db";
 import { bookings, products, vendors } from "@/lib/db/schema";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, or } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
+import { USER_ROLES } from "@/lib/constants";
 
 export async function GET() {
     try {
@@ -11,9 +12,24 @@ export async function GET() {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        // Fetch all bookings belonging to this user
-        const userBookings = await db.query.bookings.findMany({
-            where: eq(bookings.userId, user.id),
+        let whereCondition: any = undefined;
+
+        if (user.role === USER_ROLES.VENDOR) {
+            const vendorId = (user as any).vendorId;
+            if (!vendorId) {
+                return NextResponse.json({ error: "Vendor profile not attached." }, { status: 403 });
+            }
+            // Multi-tenant isolation: Vendor only sees bookings with their vendorId or their owned products
+            whereCondition = eq(bookings.vendorId, vendorId);
+        } else if (user.role === USER_ROLES.CLIENT) {
+            // Customer only sees bookings they created
+            whereCondition = eq(bookings.userId, user.id);
+        }
+        // Super Admin & Admin see all bookings (whereCondition remains undefined)
+
+        // Fetch bookings
+        const rawBookings = await db.query.bookings.findMany({
+            where: whereCondition,
             with: {
                 product: {
                     columns: {
@@ -23,6 +39,7 @@ export async function GET() {
                         thumbnailUrl: true,
                         pricePerDay: true,
                         showPrice: true,
+                        vendorId: true,
                     },
                     with: {
                         vendor: {
@@ -40,7 +57,7 @@ export async function GET() {
         // Group by projectId (or fallback to id)
         const groupedProjects = new Map<string, any>();
 
-        for (const item of userBookings) {
+        for (const item of rawBookings) {
             const projectKey = item.projectId || item.id;
             if (!groupedProjects.has(projectKey)) {
                 groupedProjects.set(projectKey, {
