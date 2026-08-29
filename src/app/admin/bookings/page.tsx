@@ -250,12 +250,14 @@ export default function AdminBookingsPage() {
                             <div className="flex bg-[var(--color-navy-dark)] border border-white/10 rounded-lg p-1">
                                 <button
                                     onClick={() => setViewMode("grid")}
+                                    aria-label="Grid view"
                                     className={`p-1.5 rounded-md transition-colors ${viewMode === "grid" ? "bg-white/10 text-[var(--color-warm-white)]" : "text-[var(--color-slate)] hover:text-[var(--color-warm-white)]"}`}
                                 >
                                     <LayoutGrid className="w-4 h-4" />
                                 </button>
                                 <button
                                     onClick={() => setViewMode("list")}
+                                    aria-label="List view"
                                     className={`p-1.5 rounded-md transition-colors ${viewMode === "list" ? "bg-white/10 text-[var(--color-warm-white)]" : "text-[var(--color-slate)] hover:text-[var(--color-warm-white)]"}`}
                                 >
                                     <List className="w-4 h-4" />
@@ -370,6 +372,7 @@ export default function AdminBookingsPage() {
                                             {booking.userId && (
                                                 <Link
                                                     href={`/admin/chat?userId=${booking.userId}&quoteId=${booking.id}`}
+                                                    aria-label="Open chat for this booking"
                                                     className="p-2 rounded-lg glass border border-[var(--color-gold)]/30 text-[var(--color-gold)] hover:bg-[var(--color-gold)]/10 transition-colors"
                                                     onClick={(e) => e.stopPropagation()}
                                                 >
@@ -445,6 +448,7 @@ export default function AdminBookingsPage() {
                                                     {booking.userId && (
                                                         <Link
                                                             href={`/admin/chat?userId=${booking.userId}&quoteId=${booking.id}`}
+                                                            aria-label="Open chat for this booking"
                                                             className="p-1.5 rounded glass border border-[var(--color-gold)]/30 text-[var(--color-gold)] hover:bg-[var(--color-gold)]/10 transition-colors"
                                                             onClick={(e) => e.stopPropagation()}
                                                         >

@@ -55,7 +55,11 @@ export async function getCurrentUser() {
             .where(eq(users.id, session.id))
             .limit(1);
 
-        return user || null;
+        if (!user || user.status === "suspended" || user.status === "inactive") {
+            return null;
+        }
+
+        return user;
     } catch (dbErr) {
         console.error("[DB] getCurrentUser failed — returning null:", (dbErr as Error).message);
         return null;

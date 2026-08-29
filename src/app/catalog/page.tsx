@@ -244,6 +244,7 @@ function CatalogContent() {
                         <select
                             value={selectedVendor}
                             onChange={(e) => setSelectedVendor(e.target.value)}
+                            aria-label="Filter products by vendor"
                             className="bg-[var(--color-surface)] border border-[var(--color-border-subtle)] text-[var(--color-warm-white)] rounded-xl px-4 py-3 focus:border-[var(--color-gold)] focus:outline-none transition-colors"
                         >
                             <option value="">All Vendors</option>
@@ -260,6 +261,7 @@ function CatalogContent() {
                                     type="date"
                                     value={startDate}
                                     onChange={(e) => setStartDate(e.target.value)}
+                                    aria-label="Rental start date"
                                     className="bg-transparent text-[var(--color-warm-white)] focus:outline-none text-sm w-full color-scheme-dark"
                                 />
                             </div>
@@ -274,6 +276,7 @@ function CatalogContent() {
                                     value={endDate}
                                     min={startDate || undefined}
                                     onChange={(e) => setEndDate(e.target.value)}
+                                    aria-label="Rental end date"
                                     className="bg-transparent text-[var(--color-warm-white)] focus:outline-none text-sm w-full color-scheme-dark"
                                 />
                             </div>

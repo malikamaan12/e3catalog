@@ -71,8 +71,8 @@ export default function ComplianceFeed({ alerts }: ComplianceFeedProps) {
                                                 {alert.title}
                                             </p>
                                             {alert.date && (
-                                                <span className="text-[8px] font-bold text-[var(--color-slate)] uppercase">
-                                                    {new Date(alert.date).toLocaleDateString()}
+                                                <span suppressHydrationWarning className="text-[8px] font-bold text-[var(--color-slate)] uppercase">
+                                                    {new Date(alert.date).toISOString().split("T")[0]}
                                                 </span>
                                             )}
                                         </div>

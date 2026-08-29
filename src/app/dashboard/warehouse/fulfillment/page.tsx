@@ -238,6 +238,7 @@ export default function FulfillmentPage() {
                         <select
                             value={bookingId}
                             onChange={e => setBookingId(e.target.value)}
+                            aria-label="Select deployment target booking"
                             className="w-full appearance-none bg-[var(--color-navy)]/40 border border-white/10 text-[var(--color-warm-white)] rounded-xl px-5 py-4 pr-12 text-sm font-bold uppercase tracking-tight focus:outline-none focus:border-[var(--color-gold)]/50 focus:bg-white/[0.05] transition-all"
                         >
                             <option value="" className="bg-[var(--color-navy)]">— Select active project —</option>
@@ -278,17 +279,16 @@ export default function FulfillmentPage() {
                 <div className="flex flex-col gap-5 p-5 glass border border-sky-500/20 rounded-xl bg-sky-500/5 shadow-inner">
                     <div className="flex flex-col gap-3">
                         <label className="text-[10px] font-black text-sky-400 uppercase tracking-[0.2em] opacity-80">Audit: Resource Condition</label>
-                        <div className="flex gap-2 flex-wrap">
-                            {CONDITION_OPTIONS.map(c => (
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                            {(["excellent", "good", "needs_service", "damaged"] as const).map(c => (
                                 <button
                                     key={c}
+                                    type="button"
                                     onClick={() => setReturnCondition(c)}
-                                    className={`px-4 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-[0.1em] border transition-all ${
+                                    className={`py-3 px-2 rounded-lg text-[10px] font-black uppercase tracking-wider border transition-all ${
                                         returnCondition === c
-                                            ? c === "maintenance_required"
-                                                ? "bg-red-500 border-red-500 text-white shadow-lg shadow-red-500/20"
-                                                : "bg-sky-500 border-sky-500 text-white shadow-lg shadow-sky-500/20"
-                                            : "bg-black/20 border-white/10 text-[var(--color-slate)] hover:text-white hover:border-white/20"
+                                            ? "bg-sky-500 border-sky-400 text-white shadow-lg shadow-sky-500/20"
+                                            : "glass border-white/5 text-[var(--color-slate)] hover:border-white/20"
                                     }`}
                                 >
                                     {c.replace("_", " ")}
@@ -335,6 +335,7 @@ export default function FulfillmentPage() {
 
                     <button
                         onClick={() => setScannerOpen(true)}
+                        aria-label="Open camera scanner"
                         className={`px-6 rounded-xl border-2 flex items-center justify-center transition-all shadow-xl ${
                             action === "dispatch"
                                 ? "border-[var(--color-gold)]/30 bg-[var(--color-gold)]/5 text-[var(--color-gold)] hover:bg-[var(--color-gold)]/20"

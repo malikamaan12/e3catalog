@@ -271,6 +271,7 @@ export default function AdminProductsPage() {
                         <select 
                             value={categoryFilter}
                             onChange={(e) => setCategoryFilter(e.target.value)}
+                            aria-label="Filter products by category"
                             className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 px-4 text-xs text-white focus:border-gold outline-none"
                         >
                             <option value="ALL" className="bg-[#0e1424]">All Categories</option>
@@ -284,6 +285,7 @@ export default function AdminProductsPage() {
                         <select 
                             value={statusFilter}
                             onChange={(e) => setStatusFilter(e.target.value)}
+                            aria-label="Filter products by lifecycle status"
                             className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 px-4 text-xs text-white focus:border-gold outline-none"
                         >
                             <option value="ALL" className="bg-[#0e1424]">All Lifecycle Statuses</option>
@@ -299,6 +301,7 @@ export default function AdminProductsPage() {
                         <select 
                             value={vendorFilter}
                             onChange={(e) => setVendorFilter(e.target.value)}
+                            aria-label="Filter products by vendor"
                             className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 px-4 text-xs text-white focus:border-gold outline-none"
                         >
                             <option value="ALL" className="bg-[#0e1424]">All Vendors / E3 Fleet</option>
@@ -348,6 +351,7 @@ export default function AdminProductsPage() {
                                 <th className="p-4 w-10 text-center">
                                     <input 
                                         type="checkbox"
+                                        aria-label="Select all products"
                                         checked={selectedIds.length > 0 && selectedIds.length === filteredProducts.length}
                                         onChange={(e) => {
                                             if (e.target.checked) setSelectedIds(filteredProducts.map(p => p.id));
@@ -387,6 +391,7 @@ export default function AdminProductsPage() {
                                             <td className="p-4 text-center">
                                                 <input 
                                                     type="checkbox"
+                                                    aria-label={`Select product ${p.name}`}
                                                     checked={isSelected}
                                                     onChange={(e) => {
                                                         if (e.target.checked) setSelectedIds(prev => [...prev, p.id]);

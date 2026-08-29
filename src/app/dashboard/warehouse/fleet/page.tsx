@@ -80,7 +80,7 @@ export default function WarehouseFleetPage() {
                 </div>
                 
                 <div className="flex items-center gap-3">
-                    <button onClick={fetchFleet} className="p-3 rounded-xl glass border border-white/10 hover:text-white transition-all text-[var(--color-slate)] shadow-xl">
+                    <button onClick={fetchFleet} aria-label="Refresh fleet index" className="p-3 rounded-xl glass border border-white/10 hover:text-white transition-all text-[var(--color-slate)] shadow-xl">
                         <RefreshCcw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                     </button>
                     <button className="flex items-center gap-3 px-6 py-3 rounded-xl bg-[var(--color-gold)] text-[var(--color-navy)] font-black text-[10px] uppercase tracking-[0.2em] hover:scale-105 active:scale-95 transition-all shadow-2xl shadow-[var(--color-gold)]/20">
@@ -96,6 +96,7 @@ export default function WarehouseFleetPage() {
                     <input 
                         type="text" 
                         placeholder="FILTER BY ASSET TAG, SKU IDENTITY, OR SERIAL PROTOCOL..."
+                        aria-label="Filter fleet by asset tag, SKU, or serial"
                         className="w-full bg-black/40 border border-white/5 rounded-2xl pl-12 pr-4 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-[var(--color-warm-white)] placeholder:text-white/5 focus:outline-none focus:border-[var(--color-gold)]/50 transition-all shadow-inner"
                         value={searchQuery} 
                         onChange={e => setSearchQuery(e.target.value)} 
@@ -180,10 +181,10 @@ export default function WarehouseFleetPage() {
                         </div>
 
                         <div className="flex md:flex-col items-center justify-end gap-3 pt-4 md:pt-0 md:pl-6 border-t md:border-t-0 md:border-l border-white/5">
-                            <button className="flex-1 md:flex-none flex items-center justify-center gap-2 p-3 rounded-xl glass border border-white/10 hover:border-[var(--color-gold)]/40 hover:text-[var(--color-gold)] transition-all h-12 w-full md:w-12">
+                            <button aria-label="Scan barcode" className="flex-1 md:flex-none flex items-center justify-center gap-2 p-3 rounded-xl glass border border-white/10 hover:border-[var(--color-gold)]/40 hover:text-[var(--color-gold)] transition-all h-12 w-full md:w-12">
                                 <ScanLine className="w-5 h-5 shadow-inner" />
                             </button>
-                            <button className="flex-1 md:flex-none flex items-center justify-center gap-2 p-3 rounded-xl glass border border-white/10 hover:bg-white/5 transition-all h-12 w-full md:w-12">
+                            <button aria-label="View asset history" className="flex-1 md:flex-none flex items-center justify-center gap-2 p-3 rounded-xl glass border border-white/10 hover:bg-white/5 transition-all h-12 w-full md:w-12">
                                 <HistoryIcon className="w-5 h-5 opacity-40" />
                             </button>
                         </div>

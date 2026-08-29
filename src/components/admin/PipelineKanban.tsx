@@ -81,9 +81,9 @@ export default function PipelineKanban({ bookings }: PipelineKanbanProps) {
                                             {booking.customerName}
                                         </p>
                                         <div className="flex items-center justify-between mt-auto pt-2 border-t border-white/5">
-                                            <div className="flex items-center gap-1.5 text-[10px] text-[var(--color-slate)]">
+                                            <div suppressHydrationWarning className="flex items-center gap-1.5 text-[10px] text-[var(--color-slate)]">
                                                 <Clock className="w-3 h-3" />
-                                                {new Date(booking.createdAt).toLocaleDateString()}
+                                                {booking.createdAt ? new Date(booking.createdAt).toISOString().split("T")[0] : ""}
                                             </div>
                                             <p className="text-[10px] font-bold gradient-text-gold">
                                                 {booking.totalPrice?.toLocaleString() || "0"} QAR
