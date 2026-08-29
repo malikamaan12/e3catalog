@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
-import { commissionSettlements } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { commissionSettlements, vendorLedgers } from "@/lib/db/schema";
+import { eq, and } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/requireAdmin";
 
@@ -16,6 +16,14 @@ export async function PATCH(request: Request) {
             return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
         }
 
+        const settlement = await db.query.commissionSettlements.findFirst({
+            where: eq(commissionSettlements.id, settlementId)
+        });
+
+        if (!settlement) {
+            return NextResponse.json({ error: "Settlement not found" }, { status: 404 });
+        }
+
         await db.update(commissionSettlements)
             .set({
                 status,
@@ -24,6 +32,18 @@ export async function PATCH(request: Request) {
                 updatedAt: new Date()
             })
             .where(eq(commissionSettlements.id, settlementId));
+
+        if (status === "approved_paid") {
+            await db.update(vendorLedgers)
+                .set({
+                    status: "paid",
+                    updatedAt: new Date(),
+                })
+                .where(and(
+                    eq(vendorLedgers.bookingId, settlement.bookingId),
+                    eq(vendorLedgers.vendorId, settlement.vendorId)
+                ));
+        }
 
         return NextResponse.json({ success: true });
     } catch (e) {

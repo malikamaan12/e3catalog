@@ -7,16 +7,30 @@ import { CreditCard, DollarSign, Download, Calendar, Activity, TrendingUp, Alert
 
 export default function VendorPayouts() {
     const [stats, setStats] = useState<any>(null);
+    const [ledgers, setLedgers] = useState<any[]>([]);
+    const [settlements, setSettlements] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        fetch("/api/vendors/me")
-            .then(res => res.json())
-            .then(data => {
-                if (data.stats) setStats(data.stats);
-                setLoading(false);
-            })
-            .catch(console.error);
+        Promise.all([
+            fetch("/api/vendors/me").then(res => res.json()).catch(() => ({})),
+            fetch("/api/vendor/settlements").then(res => res.json()).catch(() => ({})),
+        ]).then(([meData, settlementData]) => {
+            if (meData.stats) setStats(meData.stats);
+            if (settlementData.ledgers) setLedgers(settlementData.ledgers);
+            if (settlementData.settlements) setSettlements(settlementData.settlements);
+            if (settlementData.totals && meData.stats) {
+                setStats({
+                    ...meData.stats,
+                    totalRevenue: settlementData.totals.grossEarnings,
+                    pendingPayouts: settlementData.totals.pendingPayouts,
+                });
+            }
+            setLoading(false);
+        }).catch(err => {
+            console.error(err);
+            setLoading(false);
+        });
     }, []);
 
     if (loading) {
@@ -27,7 +41,7 @@ export default function VendorPayouts() {
         );
     }
 
-    const { totalRevenue = 0, pendingPayouts = 0, commissionRate = 15 } = stats || {};
+    const { totalRevenue = 0, pendingPayouts = 0, commissionRate = 20 } = stats || {};
 
     return (
         <div className="max-w-6xl mx-auto space-y-8 animate-fade-in">
@@ -36,13 +50,10 @@ export default function VendorPayouts() {
                 <div>
                     <h1 className="font-[family-name:var(--font-heading)] text-2xl md:text-3xl font-bold text-[var(--color-warm-white)] flex items-center gap-3">
                         <CreditCard className="w-8 h-8 text-[var(--color-gold)]" />
-                        Financial Ledger
+                        Financial Ledger & Settlements
                     </h1>
                     <p className="text-[var(--color-slate)] mt-1">Track your revenue, platform commissions, and pending payouts.</p>
                 </div>
-                <button className="flex items-center gap-2 px-4 py-2 bg-[var(--color-navy-dark)] border border-white/10 hover:border-white/30 rounded-xl text-sm font-medium transition-colors">
-                    <Download className="w-4 h-4" /> Download Statement
-                </button>
             </div>
 
             {/* Core Stats Overview */}
@@ -92,14 +103,62 @@ export default function VendorPayouts() {
             <div className="glass rounded-2xl border border-white/5 overflow-hidden">
                 <div className="px-6 py-5 border-b border-white/5 bg-[var(--color-navy-dark)] flex items-center justify-between">
                     <h2 className="font-[family-name:var(--font-heading)] font-semibold tracking-wider text-[var(--color-warm-white)]">
-                        RECENT PAYMENTS
+                        COMMERCIAL LEDGER & TRANSACTION BREAKDOWN
                     </h2>
+                    <span className="text-xs text-[var(--color-slate)] font-mono">{ledgers.length} records</span>
                 </div>
-                <div className="p-8 text-center text-[var(--color-slate)] bg-[var(--color-navy)]/30">
-                    <DollarSign className="w-8 h-8 mx-auto mb-3 opacity-20" />
-                    <p>No recent payouts found.</p>
-                    <p className="text-xs mt-1 opacity-70">Your ledger will populate once bookings involving your products are completed and cleared.</p>
-                </div>
+                {ledgers.length === 0 ? (
+                    <div className="p-8 text-center text-[var(--color-slate)] bg-[var(--color-navy)]/30">
+                        <DollarSign className="w-8 h-8 mx-auto mb-3 opacity-20" />
+                        <p>No recent payouts found.</p>
+                        <p className="text-xs mt-1 opacity-70">Your ledger will populate once bookings involving your products are confirmed and approved.</p>
+                    </div>
+                ) : (
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left text-xs">
+                            <thead className="bg-white/5 text-[var(--color-slate)] uppercase tracking-wider font-semibold">
+                                <tr>
+                                    <th className="px-6 py-3">Project / Item</th>
+                                    <th className="px-6 py-3">Gross Amount</th>
+                                    <th className="px-6 py-3">Platform Cut</th>
+                                    <th className="px-6 py-3">Net Payout</th>
+                                    <th className="px-6 py-3">Status</th>
+                                    <th className="px-6 py-3">Date</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-white/5">
+                                {ledgers.map((l: any) => (
+                                    <tr key={l.id} className="hover:bg-white/[0.02] transition-colors">
+                                        <td className="px-6 py-4 font-medium text-white">
+                                            {l.booking?.projectName || `#${(l.bookingId || "").slice(0, 8)}`}
+                                        </td>
+                                        <td className="px-6 py-4 font-mono text-[var(--color-warm-white)]">
+                                            QAR {(l.amount || 0).toLocaleString()}
+                                        </td>
+                                        <td className="px-6 py-4 font-mono text-rose-400">
+                                            -QAR {(l.platformFee || 0).toLocaleString()} ({l.commissionRate}%)
+                                        </td>
+                                        <td className="px-6 py-4 font-mono text-emerald-400 font-bold">
+                                            QAR {(l.vendorPayout || 0).toLocaleString()}
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
+                                                l.status === 'paid' 
+                                                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
+                                                    : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                                            }`}>
+                                                {l.status === 'paid' ? 'Paid / Settled' : 'Pending Payout'}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 text-[var(--color-slate)]">
+                                            {l.createdAt ? new Date(l.createdAt).toLocaleDateString() : '—'}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
             </div>
         </div>
     );

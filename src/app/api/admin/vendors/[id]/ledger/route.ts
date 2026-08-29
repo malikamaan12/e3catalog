@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
-import { bookings, products, commissionSettlements } from "@/lib/db/schema";
-import { eq, desc, and } from "drizzle-orm";
+import { bookings, products, commissionSettlements, vendorLedgers } from "@/lib/db/schema";
+import { eq, desc } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/requireAdmin";
 
@@ -19,26 +19,45 @@ export async function GET(
             where: eq(bookings.vendorId, vendorId),
             with: {
                 product: true,
-                // We'll also try to find the associated settlement for each booking if it exists
             },
             orderBy: [desc(bookings.createdAt)],
         });
 
-        // Fetch settlements to link them manually if needed (or use 'with' if relations are set up)
+        // Fetch settlements
         const settlements = await db.query.commissionSettlements.findMany({
-            where: eq(commissionSettlements.vendorId, vendorId)
+            where: eq(commissionSettlements.vendorId, vendorId),
+            orderBy: [desc(commissionSettlements.createdAt)],
         });
 
-        // Map settlements for quick lookup
-        const settlementMap = Buffer.from(JSON.stringify(settlements)).toJSON(); // Dummy check
-        const sMap = new Map(settlements.map(s => [s.bookingId, s]));
+        // Fetch ledgers
+        const ledgers = await db.query.vendorLedgers.findMany({
+            where: eq(vendorLedgers.vendorId, vendorId),
+            orderBy: [desc(vendorLedgers.createdAt)],
+        });
 
-        const ledger = vendorBookings.map(b => ({
+        const sMap = new Map(settlements.map(s => [s.bookingId, s]));
+        const lMap = new Map(ledgers.map(l => [l.bookingId, l]));
+
+        const detailedBookings = vendorBookings.map(b => ({
             ...b,
-            settlement: sMap.get(b.id) || null
+            settlement: sMap.get(b.id) || null,
+            ledger: lMap.get(b.id) || null,
         }));
 
-        return NextResponse.json({ ledger });
+        const totals = {
+            grossEarnings: ledgers.reduce((acc, l) => acc + (l.amount || 0), 0),
+            platformFees: ledgers.reduce((acc, l) => acc + (l.platformFee || 0), 0),
+            netPayouts: ledgers.reduce((acc, l) => acc + (l.vendorPayout || 0), 0),
+            pendingPayouts: ledgers.filter(l => l.status === "pending_payout").reduce((acc, l) => acc + (l.vendorPayout || 0), 0),
+            settledPayouts: ledgers.filter(l => l.status === "paid").reduce((acc, l) => acc + (l.vendorPayout || 0), 0),
+        };
+
+        return NextResponse.json({ 
+            ledger: detailedBookings,
+            settlements,
+            ledgers,
+            totals,
+        });
     } catch (e) {
         console.error("Vendor Ledger GET Error:", e);
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });

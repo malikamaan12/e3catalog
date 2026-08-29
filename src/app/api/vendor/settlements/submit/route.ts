@@ -17,12 +17,16 @@ export async function PATCH(request: Request) {
             return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
         }
 
-        // Get vendor id
-        const vendorRec = await db.query.vendors.findFirst({
-            where: eq(vendors.userId, user.id)
-        });
+        // Get vendor id from session or query
+        let vendorId = user.vendorId;
+        if (!vendorId) {
+            const vendorRec = await db.query.vendors.findFirst({
+                where: eq(vendors.userId, user.id)
+            });
+            if (vendorRec) vendorId = vendorRec.id;
+        }
 
-        if (!vendorRec) return NextResponse.json({ error: "Vendor profile not found" }, { status: 404 });
+        if (!vendorId) return NextResponse.json({ error: "Vendor profile not found" }, { status: 404 });
 
         // Update settlement
         const result = await db.update(commissionSettlements)
@@ -34,7 +38,7 @@ export async function PATCH(request: Request) {
             })
             .where(and(
                 eq(commissionSettlements.id, settlementId),
-                eq(commissionSettlements.vendorId, vendorRec.id)
+                eq(commissionSettlements.vendorId, vendorId)
             ));
 
         return NextResponse.json({ success: true });

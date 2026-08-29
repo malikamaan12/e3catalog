@@ -9,14 +9,21 @@ export async function GET(request: Request) {
         const { error } = await requireAdmin();
         if (error) return error;
 
-        // Fetch all settlements submitted for review
+        const url = new URL(request.url);
+        const statusParam = url.searchParams.get("status");
+
+        const whereClause = statusParam && statusParam !== "all"
+            ? eq(commissionSettlements.status, statusParam)
+            : undefined;
+
+        // Fetch settlements
         const settlements = await db.query.commissionSettlements.findMany({
-            where: eq(commissionSettlements.status, "submitted_for_review"),
+            where: whereClause,
             with: {
                 vendor: true,
                 booking: true
             },
-            orderBy: [desc(commissionSettlements.submittedAt)],
+            orderBy: [desc(commissionSettlements.createdAt)],
         });
 
         return NextResponse.json({ settlements });
