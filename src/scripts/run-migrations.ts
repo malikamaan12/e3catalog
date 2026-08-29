@@ -1,183 +1,179 @@
-import { db } from "../lib/db";
-import { sql } from "drizzle-orm";
+import { pool } from "../lib/db";
+import * as fs from "fs";
+import * as path from "path";
+import * as crypto from "crypto";
 
-async function applyDurableMigrations() {
-    console.log("Applying durable migrations to database...");
-    
-    // Create new tables and columns if not existing
-    await db.execute(sql`
-        -- Invoices Table
-        CREATE TABLE IF NOT EXISTS "invoices" (
-            "id" varchar(255) PRIMARY KEY NOT NULL,
-            "invoice_number" varchar(100) NOT NULL UNIQUE,
-            "booking_id" varchar(255) REFERENCES "bookings"("id"),
-            "project_id" varchar(255),
-            "user_id" varchar(255) REFERENCES "users"("id"),
-            "customer_name" varchar(255) NOT NULL,
-            "customer_email" varchar(255),
-            "customer_phone" varchar(100),
-            "invoice_type" varchar(50) DEFAULT 'deposit' NOT NULL,
-            "currency" varchar(10) DEFAULT 'QAR' NOT NULL,
-            "subtotal" real DEFAULT 0 NOT NULL,
-            "discount" real DEFAULT 0 NOT NULL,
-            "logistics_cost" real DEFAULT 0 NOT NULL,
-            "labor_cost" real DEFAULT 0 NOT NULL,
-            "additional_charges" real DEFAULT 0 NOT NULL,
-            "tax_amount" real DEFAULT 0 NOT NULL,
-            "total_amount" real DEFAULT 0 NOT NULL,
-            "amount_paid" real DEFAULT 0 NOT NULL,
-            "amount_due" real DEFAULT 0 NOT NULL,
-            "status" varchar(50) DEFAULT 'draft' NOT NULL,
-            "issue_date" timestamp DEFAULT now() NOT NULL,
-            "due_date" timestamp NOT NULL,
-            "payment_terms" varchar(255) DEFAULT '50% Advance, 50% on Delivery',
-            "notes" text,
-            "pdf_url" varchar(500),
-            "metadata" jsonb,
-            "created_at" timestamp DEFAULT now() NOT NULL,
-            "updated_at" timestamp DEFAULT now() NOT NULL
-        );
-
-        -- Invoice Items Table
-        CREATE TABLE IF NOT EXISTS "invoice_items" (
-            "id" varchar(255) PRIMARY KEY NOT NULL,
-            "invoice_id" varchar(255) NOT NULL REFERENCES "invoices"("id") ON DELETE CASCADE,
-            "booking_id" varchar(255) REFERENCES "bookings"("id"),
-            "product_id" varchar(255) REFERENCES "products"("id"),
-            "description" varchar(500) NOT NULL,
-            "units" integer DEFAULT 1 NOT NULL,
-            "days" integer DEFAULT 1 NOT NULL,
-            "unit_price" real DEFAULT 0 NOT NULL,
-            "line_total" real DEFAULT 0 NOT NULL,
-            "created_at" timestamp DEFAULT now() NOT NULL
-        );
-
-        -- Client Payments Table
-        CREATE TABLE IF NOT EXISTS "client_payments" (
-            "id" varchar(255) PRIMARY KEY NOT NULL,
-            "payment_number" varchar(100) NOT NULL UNIQUE,
-            "invoice_id" varchar(255) REFERENCES "invoices"("id"),
-            "booking_id" varchar(255) REFERENCES "bookings"("id"),
-            "project_id" varchar(255),
-            "user_id" varchar(255) REFERENCES "users"("id"),
-            "amount" real NOT NULL,
-            "currency" varchar(10) DEFAULT 'QAR' NOT NULL,
-            "payment_method" varchar(50) DEFAULT 'bank_transfer' NOT NULL,
-            "transaction_ref" varchar(255),
-            "payment_proof_url" varchar(500),
-            "status" varchar(50) DEFAULT 'pending_verification' NOT NULL,
-            "verified_by" varchar(255) REFERENCES "users"("id"),
-            "verified_at" timestamp,
-            "rejection_reason" varchar(500),
-            "notes" text,
-            "payment_date" timestamp DEFAULT now() NOT NULL,
-            "created_at" timestamp DEFAULT now() NOT NULL,
-            "updated_at" timestamp DEFAULT now() NOT NULL
-        );
-
-        -- Credit Notes Table
-        CREATE TABLE IF NOT EXISTS "credit_notes" (
-            "id" varchar(255) PRIMARY KEY NOT NULL,
-            "credit_note_number" varchar(100) NOT NULL UNIQUE,
-            "invoice_id" varchar(255) NOT NULL REFERENCES "invoices"("id"),
-            "booking_id" varchar(255) REFERENCES "bookings"("id"),
-            "user_id" varchar(255) REFERENCES "users"("id"),
-            "amount" real NOT NULL,
-            "currency" varchar(10) DEFAULT 'QAR' NOT NULL,
-            "reason" varchar(500) NOT NULL,
-            "status" varchar(50) DEFAULT 'draft' NOT NULL,
-            "issued_by" varchar(255) REFERENCES "users"("id"),
-            "issued_at" timestamp,
-            "notes" text,
-            "created_at" timestamp DEFAULT now() NOT NULL,
-            "updated_at" timestamp DEFAULT now() NOT NULL
-        );
-
-        -- Refunds Table
-        CREATE TABLE IF NOT EXISTS "refunds" (
-            "id" varchar(255) PRIMARY KEY NOT NULL,
-            "refund_number" varchar(100) NOT NULL UNIQUE,
-            "credit_note_id" varchar(255) REFERENCES "credit_notes"("id"),
-            "payment_id" varchar(255) REFERENCES "client_payments"("id"),
-            "user_id" varchar(255) REFERENCES "users"("id"),
-            "amount" real NOT NULL,
-            "currency" varchar(10) DEFAULT 'QAR' NOT NULL,
-            "refund_method" varchar(50) DEFAULT 'bank_transfer' NOT NULL,
-            "transaction_ref" varchar(255),
-            "reason" varchar(500) NOT NULL,
-            "status" varchar(50) DEFAULT 'pending' NOT NULL,
-            "processed_by" varchar(255) REFERENCES "users"("id"),
-            "processed_at" timestamp,
-            "notes" text,
-            "created_at" timestamp DEFAULT now() NOT NULL,
-            "updated_at" timestamp DEFAULT now() NOT NULL
-        );
-
-        -- Financial Journals Table
-        CREATE TABLE IF NOT EXISTS "financial_journals" (
-            "id" varchar(255) PRIMARY KEY NOT NULL,
-            "journal_number" varchar(100) NOT NULL UNIQUE,
-            "reference_type" varchar(50) NOT NULL,
-            "reference_id" varchar(255) NOT NULL,
-            "description" varchar(500) NOT NULL,
-            "is_reversed" boolean DEFAULT false,
-            "reversal_journal_id" varchar(255),
-            "posted_at" timestamp DEFAULT now() NOT NULL,
-            "created_at" timestamp DEFAULT now() NOT NULL
-        );
-
-        -- Journal Entries Table
-        CREATE TABLE IF NOT EXISTS "journal_entries" (
-            "id" varchar(255) PRIMARY KEY NOT NULL,
-            "journal_id" varchar(255) NOT NULL REFERENCES "financial_journals"("id") ON DELETE CASCADE,
-            "account_code" varchar(100) NOT NULL,
-            "account_name" varchar(255) NOT NULL,
-            "debit" real DEFAULT 0 NOT NULL,
-            "credit" real DEFAULT 0 NOT NULL,
-            "memo" varchar(500),
-            "created_at" timestamp DEFAULT now() NOT NULL
-        );
-
-        -- Performance and Integrity Indexes
-        CREATE INDEX IF NOT EXISTS "invoices_invoice_number_idx" ON "invoices" ("invoice_number");
-        CREATE INDEX IF NOT EXISTS "invoices_booking_id_idx" ON "invoices" ("booking_id");
-        CREATE INDEX IF NOT EXISTS "invoices_project_id_idx" ON "invoices" ("project_id");
-        CREATE INDEX IF NOT EXISTS "invoices_user_id_idx" ON "invoices" ("user_id");
-        CREATE INDEX IF NOT EXISTS "invoices_status_idx" ON "invoices" ("status");
-        CREATE INDEX IF NOT EXISTS "invoices_due_date_idx" ON "invoices" ("due_date");
-
-        CREATE INDEX IF NOT EXISTS "invoice_items_invoice_id_idx" ON "invoice_items" ("invoice_id");
-        CREATE INDEX IF NOT EXISTS "invoice_items_product_id_idx" ON "invoice_items" ("product_id");
-
-        CREATE INDEX IF NOT EXISTS "client_payments_payment_number_idx" ON "client_payments" ("payment_number");
-        CREATE INDEX IF NOT EXISTS "client_payments_invoice_id_idx" ON "client_payments" ("invoice_id");
-        CREATE INDEX IF NOT EXISTS "client_payments_project_id_idx" ON "client_payments" ("project_id");
-        CREATE INDEX IF NOT EXISTS "client_payments_user_id_idx" ON "client_payments" ("user_id");
-        CREATE INDEX IF NOT EXISTS "client_payments_status_idx" ON "client_payments" ("status");
-
-        CREATE INDEX IF NOT EXISTS "credit_notes_credit_note_number_idx" ON "credit_notes" ("credit_note_number");
-        CREATE INDEX IF NOT EXISTS "credit_notes_invoice_id_idx" ON "credit_notes" ("invoice_id");
-        CREATE INDEX IF NOT EXISTS "credit_notes_user_id_idx" ON "credit_notes" ("user_id");
-        CREATE INDEX IF NOT EXISTS "credit_notes_status_idx" ON "credit_notes" ("status");
-
-        CREATE INDEX IF NOT EXISTS "refunds_refund_number_idx" ON "refunds" ("refund_number");
-        CREATE INDEX IF NOT EXISTS "refunds_credit_note_id_idx" ON "refunds" ("credit_note_id");
-        CREATE INDEX IF NOT EXISTS "refunds_status_idx" ON "refunds" ("status");
-
-        CREATE INDEX IF NOT EXISTS "financial_journals_journal_number_idx" ON "financial_journals" ("journal_number");
-        CREATE INDEX IF NOT EXISTS "financial_journals_reference_idx" ON "financial_journals" ("reference_type", "reference_id");
-        CREATE INDEX IF NOT EXISTS "financial_journals_posted_at_idx" ON "financial_journals" ("posted_at");
-
-        CREATE INDEX IF NOT EXISTS "journal_entries_journal_id_idx" ON "journal_entries" ("journal_id");
-        CREATE INDEX IF NOT EXISTS "journal_entries_account_code_idx" ON "journal_entries" ("account_code");
-    `);
-
-    console.log("Durable migrations successfully applied to database.");
+export interface MigrationJournalEntry {
+    idx: number;
+    version: string;
+    when: number;
+    tag: string;
+    breakpoints: boolean;
 }
 
-applyDurableMigrations()
-    .then(() => process.exit(0))
-    .catch((err) => {
-        console.error("Migration failed:", err);
-        process.exit(1);
-    });
+export interface MigrationJournal {
+    version: string;
+    dialect: string;
+    entries: MigrationJournalEntry[];
+}
+
+export async function runDrizzleMigrations(customSchema?: string) {
+    const targetSchema = customSchema || "public";
+    console.log(`[Drizzle Migrator] Starting migrations for target schema: "${targetSchema}"...`);
+
+    const client = await pool.connect();
+
+    try {
+        if (customSchema) {
+            await client.query(`CREATE SCHEMA IF NOT EXISTS ${customSchema};`);
+            await client.query(`SET search_path TO ${customSchema}, public;`);
+        }
+
+        // 1. Ensure official __drizzle_migrations table exists
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS "__drizzle_migrations" (
+                id SERIAL PRIMARY KEY,
+                hash text NOT NULL,
+                created_at bigint NOT NULL
+            );
+        `);
+
+        // 2. Read migration journal
+        const drizzleDir = path.resolve(process.cwd(), "drizzle");
+        const journalPath = path.join(drizzleDir, "meta", "_journal.json");
+        if (!fs.existsSync(journalPath)) {
+            throw new Error(`Migration journal not found at ${journalPath}`);
+        }
+
+        const journal: MigrationJournal = JSON.parse(fs.readFileSync(journalPath, "utf-8"));
+        
+        // 3. Fetch already applied migrations
+        let appliedRes = await client.query(`SELECT created_at, hash FROM "__drizzle_migrations" ORDER BY id;`);
+        if (appliedRes.rows.length === 0) {
+            // Check if this is an existing database schema with legacy tables
+            const checkTable = await client.query(`
+                SELECT table_name FROM information_schema.tables 
+                WHERE table_schema = $1 AND table_name = 'admin_settings';
+            `, [targetSchema]);
+
+            if (checkTable.rows.length > 0) {
+                // Seed historical migrations that are already present in existing database
+                console.log(`[Drizzle Migrator] Existing database schema detected in "${targetSchema}". Synchronizing migration journal...`);
+                await client.query(`
+                    INSERT INTO "__drizzle_migrations" (hash, created_at) VALUES 
+                    ('baseline_0000', 1773003815807),
+                    ('baseline_0001', 1774298548295),
+                    ('baseline_0002', 1788004533773);
+                `);
+                appliedRes = await client.query(`SELECT created_at, hash FROM "__drizzle_migrations" ORDER BY id;`);
+            }
+        }
+        const appliedWhenSet = new Set<string>(appliedRes.rows.map((r: any) => String(r.created_at)));
+
+        let appliedCount = 0;
+
+        // 4. Apply pending migrations in strict journal sequence
+        for (const entry of journal.entries) {
+            const entryWhenStr = String(entry.when);
+            if (appliedWhenSet.has(entryWhenStr)) {
+                // Already applied
+                continue;
+            }
+
+            const sqlFilePath = path.join(drizzleDir, `${entry.tag}.sql`);
+            if (!fs.existsSync(sqlFilePath)) {
+                throw new Error(`SQL migration file not found for tag: ${entry.tag} at ${sqlFilePath}`);
+            }
+
+            const sqlContent = fs.readFileSync(sqlFilePath, "utf-8");
+            const hash = crypto.createHash("sha256").update(sqlContent).digest("hex");
+
+            // Split into individual SQL statements by Drizzle statement-breakpoint
+            const rawStatements = sqlContent.split(/-->\s*statement-breakpoint/g);
+            const statements = rawStatements
+                .map(s => s.trim())
+                .filter(s => s.length > 0);
+
+            console.log(`[Drizzle Migrator] Applying migration [${entry.idx}]: ${entry.tag} (${statements.length} statements)...`);
+
+            await client.query("BEGIN;");
+            try {
+                for (const stmt of statements) {
+                    await client.query(stmt);
+                }
+
+                // Record in migration journal table
+                await client.query(
+                    `INSERT INTO "__drizzle_migrations" (hash, created_at) VALUES ($1, $2);`,
+                    [hash, entry.when]
+                );
+
+                await client.query("COMMIT;");
+                appliedCount++;
+                console.log(`[Drizzle Migrator] Successfully applied ${entry.tag}.`);
+            } catch (migrationErr: any) {
+                await client.query("ROLLBACK;");
+                console.error(`[Drizzle Migrator] FAILED applying ${entry.tag}:`, migrationErr.message);
+                throw migrationErr;
+            }
+        }
+
+        // 5. Synchronize document sequences with any existing historical table rows
+        const currentYear = new Date().getFullYear();
+        const sequenceTargets = [
+            { type: "invoice", table: "invoices", col: "invoice_number" },
+            { type: "payment", table: "client_payments", col: "payment_number" },
+            { type: "credit_note", table: "credit_notes", col: "credit_note_number" },
+            { type: "refund", table: "refunds", col: "refund_number" },
+            { type: "journal", table: "financial_journals", col: "journal_number" },
+            { type: "payout", table: "vendor_payouts", col: "payout_number" },
+            { type: "remittance", table: "vendor_remittances", col: "remittance_number" }
+        ];
+
+        for (const target of sequenceTargets) {
+            try {
+                const maxRes = await client.query(`
+                    SELECT MAX(NULLIF(SPLIT_PART(${target.col}, '-', 3), '')::integer) AS max_val 
+                    FROM ${target.table} 
+                    WHERE ${target.col} LIKE '%${currentYear}%';
+                `);
+                const maxVal = maxRes.rows[0]?.max_val || 0;
+                if (maxVal > 0) {
+                    await client.query(`
+                        INSERT INTO "document_sequences" ("document_type", "year", "current_value", "updated_at")
+                        VALUES ($1, $2, $3, NOW())
+                        ON CONFLICT ("document_type", "year")
+                        DO UPDATE SET "current_value" = GREATEST("document_sequences"."current_value", EXCLUDED."current_value"), "updated_at" = NOW();
+                    `, [target.type, currentYear, maxVal]);
+                }
+            } catch {
+                // Table might not have records yet, safely ignore
+            }
+        }
+
+        if (appliedCount === 0) {
+            console.log("[Drizzle Migrator] Database is already up to date. No new migrations applied.");
+        } else {
+            console.log(`[Drizzle Migrator] Successfully applied ${appliedCount} new migration(s).`);
+        }
+
+        return { appliedCount, totalInJournal: journal.entries.length };
+    } finally {
+        if (customSchema) {
+            await client.query(`SET search_path TO public;`);
+        }
+        client.release();
+    }
+}
+
+if (require.main === module) {
+    runDrizzleMigrations()
+        .then(() => {
+            console.log("[Drizzle Migrator] Completed migration process successfully.");
+            process.exit(0);
+        })
+        .catch((err) => {
+            console.error("[Drizzle Migrator] Fatal migration error:", err);
+            process.exit(1);
+        });
+}

@@ -1,4 +1,4 @@
-import { pgTable, varchar, integer, real, boolean, timestamp, jsonb, index, text } from "drizzle-orm/pg-core";
+import { pgTable, varchar, integer, real, boolean, timestamp, jsonb, index, text, primaryKey } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
 // ─── Users ───
@@ -1202,6 +1202,87 @@ export const journalEntries = pgTable("journal_entries", {
     };
 });
 
+// ─── Document Sequences (Concurrency-Safe Counter Table) ───
+export const documentSequences = pgTable("document_sequences", {
+    documentType: varchar("document_type", { length: 50 }).notNull(),
+    year: integer("year").notNull(),
+    currentValue: integer("current_value").notNull().default(0),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => {
+    return {
+        pk: primaryKey({ columns: [table.documentType, table.year] }),
+    };
+});
+
+// ─── Payment Allocations (One-to-Many & Many-to-One Invoice Allocation) ───
+export const paymentAllocations = pgTable("payment_allocations", {
+    id: varchar("id", { length: 255 }).primaryKey(),
+    paymentId: varchar("payment_id", { length: 255 }).notNull().references(() => clientPayments.id),
+    invoiceId: varchar("invoice_id", { length: 255 }).notNull().references(() => invoices.id),
+    amount: real("amount").notNull(),
+    status: varchar("status", { length: 50 }).notNull().default("active"), // active | reversed
+    allocatedAt: timestamp("allocated_at").notNull().defaultNow(),
+    allocatedBy: varchar("allocated_by", { length: 255 }).references(() => users.id),
+    notes: varchar("notes", { length: 1000 }),
+    reversedAt: timestamp("reversed_at"),
+    reversedBy: varchar("reversed_by", { length: 255 }).references(() => users.id),
+}, (table) => {
+    return {
+        paymentIdIdx: index("payment_allocations_payment_id_idx").on(table.paymentId),
+        invoiceIdIdx: index("payment_allocations_invoice_id_idx").on(table.invoiceId),
+        statusIdx: index("payment_allocations_status_idx").on(table.status),
+    };
+});
+
+// ─── Vendor Payouts (E3-to-Vendor Disbursement) ───
+export const vendorPayouts = pgTable("vendor_payouts", {
+    id: varchar("id", { length: 255 }).primaryKey(),
+    payoutNumber: varchar("payout_number", { length: 100 }).notNull().unique(), // e.g. PO-2026-0001
+    vendorId: varchar("vendor_id", { length: 255 }).notNull().references(() => vendors.id),
+    ledgerId: varchar("ledger_id", { length: 255 }).references(() => vendorLedgers.id),
+    amount: real("amount").notNull(),
+    currency: varchar("currency", { length: 10 }).notNull().default("QAR"),
+    payoutMethod: varchar("payout_method", { length: 50 }).notNull().default("bank_transfer"),
+    transactionRef: varchar("transaction_ref", { length: 255 }),
+    payoutProofUrl: varchar("payout_proof_url", { length: 500 }),
+    status: varchar("status", { length: 50 }).notNull().default("approved_paid"), // pending | approved_paid | failed
+    processedBy: varchar("processed_by", { length: 255 }).references(() => users.id),
+    processedAt: timestamp("processed_at").notNull().defaultNow(),
+    notes: text("notes"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => {
+    return {
+        payoutNumberIdx: index("vendor_payouts_payout_number_idx").on(table.payoutNumber),
+        vendorIdIdx: index("vendor_payouts_vendor_id_idx").on(table.vendorId),
+        ledgerIdIdx: index("vendor_payouts_ledger_id_idx").on(table.ledgerId),
+    };
+});
+
+// ─── Vendor Remittances (Vendor-to-E3 Collection Remittance) ───
+export const vendorRemittances = pgTable("vendor_remittances", {
+    id: varchar("id", { length: 255 }).primaryKey(),
+    remittanceNumber: varchar("remittance_number", { length: 100 }).notNull().unique(), // e.g. REM-2026-0001
+    vendorId: varchar("vendor_id", { length: 255 }).notNull().references(() => vendors.id),
+    bookingId: varchar("booking_id", { length: 255 }).references(() => bookings.id),
+    amountCollected: real("amount_collected").notNull(),
+    platformCommissionOwed: real("platform_commission_owed").notNull(),
+    remittanceEvidenceUrl: varchar("remittance_evidence_url", { length: 500 }),
+    status: varchar("status", { length: 50 }).notNull().default("pending"), // pending | submitted_for_review | approved_verified | rejected
+    verifiedBy: varchar("verified_by", { length: 255 }).references(() => users.id),
+    verifiedAt: timestamp("verified_at"),
+    notes: text("notes"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => {
+    return {
+        remittanceNumberIdx: index("vendor_remittances_remittance_number_idx").on(table.remittanceNumber),
+        vendorIdIdx: index("vendor_remittances_vendor_id_idx").on(table.vendorId),
+        bookingIdIdx: index("vendor_remittances_booking_id_idx").on(table.bookingId),
+        statusIdx: index("vendor_remittances_status_idx").on(table.status),
+    };
+});
+
 // ─── Financial Relations ───
 export const invoicesRelations = relations(invoices, ({ one, many }) => ({
     booking: one(bookings, {
@@ -1214,6 +1295,7 @@ export const invoicesRelations = relations(invoices, ({ one, many }) => ({
     }),
     items: many(invoiceItems),
     payments: many(clientPayments),
+    allocations: many(paymentAllocations),
     creditNotes: many(creditNotes),
 }));
 
@@ -1249,7 +1331,23 @@ export const clientPaymentsRelations = relations(clientPayments, ({ one, many })
         fields: [clientPayments.verifiedBy],
         references: [users.id],
     }),
+    allocations: many(paymentAllocations),
     refunds: many(refunds),
+}));
+
+export const paymentAllocationsRelations = relations(paymentAllocations, ({ one }) => ({
+    payment: one(clientPayments, {
+        fields: [paymentAllocations.paymentId],
+        references: [clientPayments.id],
+    }),
+    invoice: one(invoices, {
+        fields: [paymentAllocations.invoiceId],
+        references: [invoices.id],
+    }),
+    allocator: one(users, {
+        fields: [paymentAllocations.allocatedBy],
+        references: [users.id],
+    }),
 }));
 
 export const creditNotesRelations = relations(creditNotes, ({ one, many }) => ({
@@ -1291,6 +1389,36 @@ export const refundsRelations = relations(refunds, ({ one }) => ({
     }),
 }));
 
+export const vendorPayoutsRelations = relations(vendorPayouts, ({ one }) => ({
+    vendor: one(vendors, {
+        fields: [vendorPayouts.vendorId],
+        references: [vendors.id],
+    }),
+    ledger: one(vendorLedgers, {
+        fields: [vendorPayouts.ledgerId],
+        references: [vendorLedgers.id],
+    }),
+    processor: one(users, {
+        fields: [vendorPayouts.processedBy],
+        references: [users.id],
+    }),
+}));
+
+export const vendorRemittancesRelations = relations(vendorRemittances, ({ one }) => ({
+    vendor: one(vendors, {
+        fields: [vendorRemittances.vendorId],
+        references: [vendors.id],
+    }),
+    booking: one(bookings, {
+        fields: [vendorRemittances.bookingId],
+        references: [bookings.id],
+    }),
+    verifier: one(users, {
+        fields: [vendorRemittances.verifiedBy],
+        references: [users.id],
+    }),
+}));
+
 export const financialJournalsRelations = relations(financialJournals, ({ many }) => ({
     entries: many(journalEntries),
 }));
@@ -1301,4 +1429,5 @@ export const journalEntriesRelations = relations(journalEntries, ({ one }) => ({
         references: [financialJournals.id],
     }),
 }));
+
 

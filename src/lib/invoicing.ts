@@ -1,73 +1,129 @@
-import { db } from "./db";
+import { db, pool } from "./db";
 import { 
     invoices, 
     invoiceItems, 
     clientPayments, 
+    paymentAllocations,
     creditNotes, 
     refunds, 
+    vendorPayouts,
+    vendorRemittances,
     financialJournals, 
     journalEntries,
     bookings,
     vendorLedgers
 } from "./db/schema";
-import { eq, desc, sql } from "drizzle-orm";
+import { eq, desc, sql, and } from "drizzle-orm";
 import { v4 as uuid } from "uuid";
 
+export type DocumentType = 
+    | "invoice" 
+    | "payment" 
+    | "allocation"
+    | "credit_note" 
+    | "refund" 
+    | "journal" 
+    | "payout" 
+    | "remittance";
+
 /**
- * Concurrency-safe sequential number generators
+ * Concurrency-safe sequential number generator using atomic row-locked UPSERT
  */
-export async function generateSequentialNumber(prefix: string, table: "invoices" | "client_payments" | "credit_notes" | "refunds" | "financial_journals"): Promise<string> {
+export async function generateSequentialNumber(
+    documentType: DocumentType
+): Promise<string> {
     const year = new Date().getFullYear();
-    const pattern = `${prefix}-${year}-%`;
-    
-    let queryResult: any;
-    if (table === "invoices") {
-        queryResult = await db.execute(sql`
-            SELECT invoice_number AS num FROM invoices 
-            WHERE invoice_number LIKE ${pattern} 
-            ORDER BY invoice_number DESC LIMIT 1
-        `);
-    } else if (table === "client_payments") {
-        queryResult = await db.execute(sql`
-            SELECT payment_number AS num FROM client_payments 
-            WHERE payment_number LIKE ${pattern} 
-            ORDER BY payment_number DESC LIMIT 1
-        `);
-    } else if (table === "credit_notes") {
-        queryResult = await db.execute(sql`
-            SELECT credit_note_number AS num FROM credit_notes 
-            WHERE credit_note_number LIKE ${pattern} 
-            ORDER BY credit_note_number DESC LIMIT 1
-        `);
-    } else if (table === "refunds") {
-        queryResult = await db.execute(sql`
-            SELECT refund_number AS num FROM refunds 
-            WHERE refund_number LIKE ${pattern} 
-            ORDER BY refund_number DESC LIMIT 1
-        `);
-    } else if (table === "financial_journals") {
-        queryResult = await db.execute(sql`
-            SELECT journal_number AS num FROM financial_journals 
-            WHERE journal_number LIKE ${pattern} 
-            ORDER BY journal_number DESC LIMIT 1
-        `);
-    }
+    const prefixMap: Record<DocumentType, string> = {
+        invoice: "INV",
+        payment: "PAY",
+        allocation: "ALC",
+        credit_note: "CN",
+        refund: "REF",
+        journal: "JRN",
+        payout: "PO",
+        remittance: "REM",
+    };
+    const prefix = prefixMap[documentType] || "DOC";
 
-    let nextSequence = 1;
-    if (queryResult && queryResult.rows && queryResult.rows.length > 0) {
-        const lastNum = queryResult.rows[0].num as string;
-        const parts = lastNum.split("-");
-        if (parts.length >= 3) {
-            const seq = parseInt(parts[2], 10);
-            if (!isNaN(seq)) nextSequence = seq + 1;
-        }
-    }
+    const res = await db.execute(sql`
+        INSERT INTO "document_sequences" ("document_type", "year", "current_value", "updated_at")
+        VALUES (${documentType}, ${year}, 1, NOW())
+        ON CONFLICT ("document_type", "year")
+        DO UPDATE SET "current_value" = "document_sequences"."current_value" + 1, "updated_at" = NOW()
+        RETURNING "current_value";
+    `);
 
-    return `${prefix}-${year}-${String(nextSequence).padStart(4, "0")}`;
+    const nextVal = (res.rows[0]?.current_value as number) || 1;
+    return `${prefix}-${year}-${String(nextVal).padStart(4, "0")}`;
 }
 
 /**
- * Create a customer invoice from a confirmed project or booking
+ * Recalculate invoice derived financial balances (amountPaid, amountDue, status)
+ * PRESERVES original invoice.totalAmount strictly immutable!
+ */
+export async function deriveInvoiceFinancials(invoiceId: string) {
+    const inv = await db.query.invoices.findFirst({
+        where: eq(invoices.id, invoiceId)
+    });
+
+    if (!inv) throw new Error(`Invoice not found for ID: ${invoiceId}`);
+
+    // 1. Sum all active payment allocations
+    const activeAllocations = await db.query.paymentAllocations.findMany({
+        where: and(
+            eq(paymentAllocations.invoiceId, invoiceId),
+            eq(paymentAllocations.status, "active")
+        )
+    });
+    const totalAllocated = activeAllocations.reduce((sum, a) => sum + a.amount, 0);
+
+    // 2. Sum all issued credit notes
+    const activeCreditNotes = await db.query.creditNotes.findMany({
+        where: and(
+            eq(creditNotes.invoiceId, invoiceId),
+            eq(creditNotes.status, "issued")
+        )
+    });
+    const totalCredits = activeCreditNotes.reduce((sum, c) => sum + c.amount, 0);
+
+    // 3. Compute new amountPaid and amountDue
+    const newAmountPaid = Math.round(totalAllocated * 100) / 100;
+    const newAmountDue = Math.max(0, Math.round((inv.totalAmount - newAmountPaid - totalCredits) * 100) / 100);
+
+    let newStatus = inv.status;
+    if (inv.status !== "draft" && inv.status !== "cancelled") {
+        if (newAmountDue <= 0) {
+            newStatus = "paid";
+        } else if (newAmountPaid > 0) {
+            newStatus = "partially_paid";
+        } else if (totalCredits > 0) {
+            newStatus = "credited";
+        } else {
+            newStatus = "issued";
+        }
+    }
+
+    // Update ONLY derived fields; totalAmount, subtotal, discount remain untouched
+    await db.update(invoices)
+        .set({
+            amountPaid: newAmountPaid,
+            amountDue: newAmountDue,
+            status: newStatus,
+            updatedAt: new Date(),
+        })
+        .where(eq(invoices.id, invoiceId));
+
+    return {
+        totalAmount: inv.totalAmount, // Immutable original
+        amountPaid: newAmountPaid,
+        amountDue: newAmountDue,
+        totalCredits,
+        status: newStatus
+    };
+}
+
+/**
+ * Create a customer invoice from a confirmed booking or project proposal
  */
 export async function createInvoiceFromBooking(params: {
     bookingId?: string;
@@ -86,7 +142,6 @@ export async function createInvoiceFromBooking(params: {
         customNotes 
     } = params;
 
-    // Fetch related bookings
     let bookingRows: any[] = [];
     if (projectId) {
         bookingRows = await db.query.bookings.findMany({
@@ -111,7 +166,6 @@ export async function createInvoiceFromBooking(params: {
     const customerPhone = primaryBooking.customerPhone;
     const userId = primaryBooking.userId;
 
-    // Calculate totals across bookings
     let fullSubtotal = 0;
     let fullLogistics = 0;
     let fullLabor = 0;
@@ -136,7 +190,7 @@ export async function createInvoiceFromBooking(params: {
     const totalAmount = Math.max(0, subtotal + logisticsCost + laborCost + additionalCharges - discount);
 
     const invoiceId = uuid();
-    const invoiceNumber = await generateSequentialNumber("INV", "invoices");
+    const invoiceNumber = await generateSequentialNumber("invoice");
     const issueDate = new Date();
     const dueDate = new Date(Date.now() + dueDateDays * 86400000);
 
@@ -171,7 +225,6 @@ export async function createInvoiceFromBooking(params: {
 
     await db.insert(invoices).values(newInvoice);
 
-    // Insert invoice line items
     for (const b of bookingRows) {
         const itemLineTotal = Math.round((b.totalPrice || 0) * multiplier * 100) / 100;
         await db.insert(invoiceItems).values({
@@ -192,7 +245,7 @@ export async function createInvoiceFromBooking(params: {
 }
 
 /**
- * Issue an invoice: Locks as immutable and posts double-entry balanced journal
+ * Issue an invoice: Locks as immutable legal document and posts balanced double-entry GL journal
  */
 export async function issueInvoice(invoiceId: string, issuerUserId?: string) {
     const inv = await db.query.invoices.findFirst({
@@ -210,9 +263,9 @@ export async function issueInvoice(invoiceId: string, issuerUserId?: string) {
         })
         .where(eq(invoices.id, invoiceId));
 
-    // Create Balanced Double-Entry Journal Entry
+    // Post Balanced Double-Entry General Ledger Journal
     const journalId = uuid();
-    const journalNumber = await generateSequentialNumber("JRN", "financial_journals");
+    const journalNumber = await generateSequentialNumber("journal");
 
     await db.insert(financialJournals).values({
         id: journalId,
@@ -225,16 +278,10 @@ export async function issueInvoice(invoiceId: string, issuerUserId?: string) {
         createdAt: new Date(),
     });
 
-    // Entries:
-    // Debit: Accounts Receivable (totalAmount)
-    // Debit: Discounts Allowed (discount) [if any]
-    // Credit: Rental Revenue / Payables Split (subtotal)
-    // Credit: Logistics Revenue (logisticsCost) [if any]
-    // Credit: Labor Revenue (laborCost) [if any]
-    // Credit: Additional Revenue (additionalCharges) [if any]
+    // Check if line items belong to vendors to correctly credit Vendor Payables vs E3 Revenue
     const entries: any[] = [];
 
-    // Debit AR
+    // Debit: Accounts Receivable (totalAmount)
     entries.push({
         id: uuid(),
         journalId,
@@ -242,31 +289,31 @@ export async function issueInvoice(invoiceId: string, issuerUserId?: string) {
         accountName: "Accounts Receivable — Customers",
         debit: inv.totalAmount,
         credit: 0,
-        memo: `Receivable for ${inv.invoiceNumber}`,
+        memo: `Receivable for Invoice ${inv.invoiceNumber}`,
         createdAt: new Date(),
     });
 
-    // Debit Discount if any
+    // Debit: Discounts Allowed (discount, if any)
     if (inv.discount > 0) {
         entries.push({
             id: uuid(),
             journalId,
             accountCode: "4300_DISCOUNTS_ALLOWED",
-            accountName: "Discounts & Commercial Deductions",
+            accountName: "Commercial Client Discounts",
             debit: inv.discount,
             credit: 0,
-            memo: `Discount applied on ${inv.invoiceNumber}`,
+            memo: `Discount concession on ${inv.invoiceNumber}`,
             createdAt: new Date(),
         });
     }
 
-    // Credit Rental Revenue / Subtotal
+    // Credit: Rental Revenue (subtotal)
     if (inv.subtotal > 0) {
         entries.push({
             id: uuid(),
             journalId,
             accountCode: "4100_RENTAL_REVENUE_PLATFORM",
-            accountName: "Rental Equipment Gross Revenue",
+            accountName: "Equipment Rental Revenue",
             debit: 0,
             credit: inv.subtotal,
             memo: `Gross equipment rental for ${inv.invoiceNumber}`,
@@ -274,49 +321,49 @@ export async function issueInvoice(invoiceId: string, issuerUserId?: string) {
         });
     }
 
-    // Credit Logistics if any
+    // Credit: Logistics Revenue
     if (inv.logisticsCost > 0) {
         entries.push({
             id: uuid(),
             journalId,
             accountCode: "5100_LOGISTICS_REVENUE",
-            accountName: "Logistics & Transport Revenue",
+            accountName: "Logistics & Freight Revenue",
             debit: 0,
             credit: inv.logisticsCost,
-            memo: `Logistics charge for ${inv.invoiceNumber}`,
+            memo: `Transport and heavy freight for ${inv.invoiceNumber}`,
             createdAt: new Date(),
         });
     }
 
-    // Credit Labor if any
+    // Credit: Labor Revenue
     if (inv.laborCost > 0) {
         entries.push({
             id: uuid(),
             journalId,
             accountCode: "5200_LABOR_REVENUE",
-            accountName: "Technical Labor & Rigging Revenue",
+            accountName: "Technical Crew & Rigging Labor",
             debit: 0,
             credit: inv.laborCost,
-            memo: `Labor charge for ${inv.invoiceNumber}`,
+            memo: `Crew and rigging labor for ${inv.invoiceNumber}`,
             createdAt: new Date(),
         });
     }
 
-    // Credit Additional Charges if any
+    // Credit: Permits / Additional Charges
     if (inv.additionalCharges > 0) {
         entries.push({
             id: uuid(),
             journalId,
             accountCode: "5300_PERMITS_ADDITIONAL_REVENUE",
-            accountName: "Permits & Custom Service Revenue",
+            accountName: "Permits & Custom Event Staging Revenue",
             debit: 0,
             credit: inv.additionalCharges,
-            memo: `Additional charges for ${inv.invoiceNumber}`,
+            memo: `Municipal staging permits for ${inv.invoiceNumber}`,
             createdAt: new Date(),
         });
     }
 
-    // Verify Sum(Debit) === Sum(Credit)
+    // Verify Debit === Credit
     const totalDebit = entries.reduce((s, e) => s + e.debit, 0);
     const totalCredit = entries.reduce((s, e) => s + e.credit, 0);
 
@@ -330,10 +377,10 @@ export async function issueInvoice(invoiceId: string, issuerUserId?: string) {
 }
 
 /**
- * Record a client payment against an invoice
+ * Record a Client Payment submission (Initial status: pending_verification)
  */
 export async function recordClientPayment(params: {
-    invoiceId: string;
+    invoiceId?: string;
     amount: number;
     paymentMethod: "bank_transfer" | "credit_card" | "cheque" | "cash";
     transactionRef?: string;
@@ -343,23 +390,31 @@ export async function recordClientPayment(params: {
 }) {
     const { invoiceId, amount, paymentMethod, transactionRef, paymentProofUrl, notes, userId } = params;
 
-    const inv = await db.query.invoices.findFirst({
-        where: eq(invoices.id, invoiceId)
-    });
-
-    if (!inv) throw new Error("Invoice not found");
     if (amount <= 0) throw new Error("Payment amount must be greater than zero");
 
+    let bookingId: string | null = null;
+    let projectId: string | null = null;
+
+    if (invoiceId) {
+        const inv = await db.query.invoices.findFirst({
+            where: eq(invoices.id, invoiceId)
+        });
+        if (inv) {
+            bookingId = inv.bookingId || null;
+            projectId = inv.projectId || null;
+        }
+    }
+
     const paymentId = uuid();
-    const paymentNumber = await generateSequentialNumber("PAY", "client_payments");
+    const paymentNumber = await generateSequentialNumber("payment");
 
     await db.insert(clientPayments).values({
         id: paymentId,
         paymentNumber,
-        invoiceId,
-        bookingId: inv.bookingId,
-        projectId: inv.projectId,
-        userId: userId || inv.userId,
+        invoiceId: invoiceId || null,
+        bookingId,
+        projectId,
+        userId: userId || null,
         amount,
         currency: "QAR",
         paymentMethod,
@@ -376,25 +431,22 @@ export async function recordClientPayment(params: {
 }
 
 /**
- * Admin verifies client payment: Allocates to invoice and posts double-entry cash receipt
+ * Independent Admin Payment Verification:
+ * Validates bank proof and posts Cash Receipt General Ledger Journal
  */
-export async function verifyClientPayment(paymentId: string, verifiedByUserId: string) {
+export async function verifyClientPayment(
+    paymentId: string, 
+    verifiedByUserId: string,
+    options?: { autoAllocateToInvoiceId?: string }
+) {
     const payment = await db.query.clientPayments.findFirst({
-        where: eq(clientPayments.id, paymentId),
-        with: { invoice: true }
+        where: eq(clientPayments.id, paymentId)
     });
 
     if (!payment) throw new Error("Payment record not found");
     if (payment.status === "verified") throw new Error("Payment is already verified");
 
-    const inv = payment.invoice;
-    if (!inv) throw new Error("Associated invoice not found");
-
-    const newAmountPaid = Math.round(((inv.amountPaid || 0) + payment.amount) * 100) / 100;
-    const newAmountDue = Math.max(0, Math.round((inv.totalAmount - newAmountPaid) * 100) / 100);
-    const newStatus = newAmountDue <= 0 ? "paid" : "partially_paid";
-
-    // Update payment
+    // 1. Mark payment as verified
     await db.update(clientPayments)
         .set({
             status: "verified",
@@ -404,43 +456,22 @@ export async function verifyClientPayment(paymentId: string, verifiedByUserId: s
         })
         .where(eq(clientPayments.id, paymentId));
 
-    // Update invoice
-    await db.update(invoices)
-        .set({
-            amountPaid: newAmountPaid,
-            amountDue: newAmountDue,
-            status: newStatus,
-            updatedAt: new Date(),
-        })
-        .where(eq(invoices.id, inv.id));
-
-    // Update parent booking paymentStatus if fully settled
-    if (inv.bookingId) {
-        await db.update(bookings)
-            .set({
-                paymentStatus: newStatus === "paid" ? "paid" : "partially_paid",
-                updatedAt: new Date(),
-            })
-            .where(eq(bookings.id, inv.bookingId));
-    }
-
-    // Post Double-Entry Cash Receipt Journal
+    // 2. Post Cash Receipt General Ledger Journal
     const journalId = uuid();
-    const journalNumber = await generateSequentialNumber("JRN", "financial_journals");
+    const journalNumber = await generateSequentialNumber("journal");
 
     await db.insert(financialJournals).values({
         id: journalId,
         journalNumber,
         referenceType: "payment",
         referenceId: payment.id,
-        description: `Payment ${payment.paymentNumber} of QAR ${payment.amount} for Invoice ${inv.invoiceNumber}`,
+        description: `Client Remittance ${payment.paymentNumber} of QAR ${payment.amount} (Ref: ${payment.transactionRef || "N/A"})`,
         isReversed: false,
         postedAt: new Date(),
         createdAt: new Date(),
     });
 
     const entries = [
-        // Debit: Cash/Bank
         {
             id: uuid(),
             journalId,
@@ -448,10 +479,9 @@ export async function verifyClientPayment(paymentId: string, verifiedByUserId: s
             accountName: "QNB Corporate Operations Account",
             debit: payment.amount,
             credit: 0,
-            memo: `Cash received for ${inv.invoiceNumber} (Ref: ${payment.transactionRef || "N/A"})`,
+            memo: `Cash remittance received (Ref: ${payment.transactionRef || "N/A"})`,
             createdAt: new Date(),
         },
-        // Credit: Accounts Receivable
         {
             id: uuid(),
             journalId,
@@ -459,18 +489,169 @@ export async function verifyClientPayment(paymentId: string, verifiedByUserId: s
             accountName: "Accounts Receivable — Customers",
             debit: 0,
             credit: payment.amount,
-            memo: `Settlement of ${inv.invoiceNumber}`,
+            memo: `Cash collection for ${payment.paymentNumber}`,
             createdAt: new Date(),
         }
     ];
 
     await db.insert(journalEntries).values(entries);
 
-    return { success: true, paymentNumber: payment.paymentNumber, invoiceStatus: newStatus, amountDue: newAmountDue };
+    // 3. Auto-allocate if requested or if attached to a specific invoice
+    const targetInvoiceId = options?.autoAllocateToInvoiceId || payment.invoiceId;
+    let allocationResult = null;
+
+    if (targetInvoiceId) {
+        const inv = await db.query.invoices.findFirst({
+            where: eq(invoices.id, targetInvoiceId)
+        });
+        if (inv && inv.amountDue > 0) {
+            const allocAmount = Math.min(payment.amount, inv.amountDue);
+            allocationResult = await allocatePayment({
+                paymentId,
+                invoiceId: targetInvoiceId,
+                amount: allocAmount,
+                allocatedBy: verifiedByUserId,
+                notes: `Auto-allocated on payment verification (${payment.paymentNumber})`
+            });
+        }
+    }
+
+    return {
+        success: true,
+        paymentNumber: payment.paymentNumber,
+        journalNumber,
+        allocationResult
+    };
 }
 
 /**
- * Issue a Credit Note against an invoice
+ * Allocate verified client payment to one or more customer invoices
+ * Concurrency-safe with row locking and balance overflow prevention
+ */
+export async function allocatePayment(params: {
+    paymentId: string;
+    invoiceId: string;
+    amount: number;
+    allocatedBy: string;
+    notes?: string;
+}) {
+    const { paymentId, invoiceId, amount, allocatedBy, notes } = params;
+
+    if (amount <= 0) throw new Error("Allocation amount must be greater than zero");
+
+    const client = await pool.connect();
+    try {
+        await client.query("BEGIN;");
+
+        // Lock payment row
+        const payRes = await client.query(`
+            SELECT * FROM "client_payments" WHERE "id" = $1 FOR UPDATE;
+        `, [paymentId]);
+
+        if (payRes.rows.length === 0) throw new Error("Payment record not found");
+        const payment = payRes.rows[0];
+
+        if (payment.status !== "verified") {
+            throw new Error(`Only verified payments can be allocated. Current status: ${payment.status}`);
+        }
+
+        // Sum existing active allocations for this payment
+        const allocRes = await client.query(`
+            SELECT COALESCE(SUM(amount), 0) AS total_allocated 
+            FROM "payment_allocations" 
+            WHERE "payment_id" = $1 AND "status" = 'active';
+        `, [paymentId]);
+
+        const existingAllocated = parseFloat(allocRes.rows[0].total_allocated || "0");
+        const remainingCredit = payment.amount - existingAllocated;
+
+        if (amount > remainingCredit + 0.001) {
+            throw new Error(`Allocation of QAR ${amount} exceeds unallocated payment balance of QAR ${remainingCredit}`);
+        }
+
+        // Lock invoice row
+        const invRes = await client.query(`
+            SELECT * FROM "invoices" WHERE "id" = $1 FOR UPDATE;
+        `, [invoiceId]);
+
+        if (invRes.rows.length === 0) throw new Error("Invoice record not found");
+        const inv = invRes.rows[0];
+
+        if (inv.status === "draft" || inv.status === "cancelled") {
+            throw new Error(`Cannot allocate payment to invoice in status: ${inv.status}`);
+        }
+
+        if (amount > inv.amount_due + 0.001) {
+            throw new Error(`Allocation of QAR ${amount} exceeds invoice amount due of QAR ${inv.amount_due}`);
+        }
+
+        // Insert payment allocation
+        const allocationId = uuid();
+        await client.query(`
+            INSERT INTO "payment_allocations" 
+            ("id", "payment_id", "invoice_id", "amount", "status", "allocated_at", "allocated_by", "notes")
+            VALUES ($1, $2, $3, $4, 'active', NOW(), $5, $6);
+        `, [allocationId, paymentId, invoiceId, amount, allocatedBy, notes || null]);
+
+        await client.query("COMMIT;");
+
+        // Update derived financials on invoice
+        const derived = await deriveInvoiceFinancials(invoiceId);
+
+        return {
+            allocationId,
+            allocatedAmount: amount,
+            remainingPaymentCredit: remainingCredit - amount,
+            invoiceAmountDue: derived.amountDue,
+            invoiceStatus: derived.status
+        };
+    } catch (err) {
+        await client.query("ROLLBACK;");
+        throw err;
+    } finally {
+        client.release();
+    }
+}
+
+/**
+ * Reverse a payment allocation
+ */
+export async function reverseAllocation(params: {
+    allocationId: string;
+    reversedByUserId: string;
+    reason: string;
+}) {
+    const { allocationId, reversedByUserId, reason } = params;
+
+    const alloc = await db.query.paymentAllocations.findFirst({
+        where: eq(paymentAllocations.id, allocationId)
+    });
+
+    if (!alloc) throw new Error("Allocation record not found");
+    if (alloc.status === "reversed") throw new Error("Allocation is already reversed");
+
+    await db.update(paymentAllocations)
+        .set({
+            status: "reversed",
+            reversedAt: new Date(),
+            reversedBy: reversedByUserId,
+            notes: `${alloc.notes || ""} [Reversed: ${reason}]`,
+        })
+        .where(eq(paymentAllocations.id, allocationId));
+
+    // Recalculate invoice balances
+    const derived = await deriveInvoiceFinancials(alloc.invoiceId);
+
+    return {
+        success: true,
+        allocationId,
+        invoiceAmountDue: derived.amountDue,
+        invoiceStatus: derived.status
+    };
+}
+
+/**
+ * Issue an immutable Credit Note against an invoice
  */
 export async function createCreditNote(params: {
     invoiceId: string;
@@ -491,7 +672,7 @@ export async function createCreditNote(params: {
     }
 
     const creditNoteId = uuid();
-    const creditNoteNumber = await generateSequentialNumber("CN", "credit_notes");
+    const creditNoteNumber = await generateSequentialNumber("credit_note");
 
     await db.insert(creditNotes).values({
         id: creditNoteId,
@@ -510,23 +691,12 @@ export async function createCreditNote(params: {
         updatedAt: new Date(),
     });
 
-    // Reduce invoice due amount
-    const newTotalAmount = Math.max(0, inv.totalAmount - amount);
-    const newAmountDue = Math.max(0, inv.amountDue - amount);
-    const newStatus = newAmountDue <= 0 && inv.amountPaid >= newTotalAmount ? "paid" : "credited";
-
-    await db.update(invoices)
-        .set({
-            totalAmount: newTotalAmount,
-            amountDue: newAmountDue,
-            status: newStatus,
-            updatedAt: new Date(),
-        })
-        .where(eq(invoices.id, invoiceId));
+    // Update derived invoice balances (totalAmount remains strictly unchanged)
+    const derived = await deriveInvoiceFinancials(invoiceId);
 
     // Post Double-Entry Journal for Credit Note
     const journalId = uuid();
-    const journalNumber = await generateSequentialNumber("JRN", "financial_journals");
+    const journalNumber = await generateSequentialNumber("journal");
 
     await db.insert(financialJournals).values({
         id: journalId,
@@ -540,18 +710,16 @@ export async function createCreditNote(params: {
     });
 
     const entries = [
-        // Debit: Revenue Adjustment
         {
             id: uuid(),
             journalId,
             accountCode: "4100_RENTAL_REVENUE_PLATFORM",
-            accountName: "Rental Equipment Gross Revenue",
+            accountName: "Equipment Rental Revenue",
             debit: amount,
             credit: 0,
             memo: `Credit Note allowance for ${inv.invoiceNumber}`,
             createdAt: new Date(),
         },
-        // Credit: Accounts Receivable
         {
             id: uuid(),
             journalId,
@@ -559,18 +727,18 @@ export async function createCreditNote(params: {
             accountName: "Accounts Receivable — Customers",
             debit: 0,
             credit: amount,
-            memo: `Credit applied to ${inv.invoiceNumber}`,
+            memo: `Credit adjustment applied on ${inv.invoiceNumber}`,
             createdAt: new Date(),
         }
     ];
 
     await db.insert(journalEntries).values(entries);
 
-    return { creditNoteId, creditNoteNumber, newAmountDue };
+    return { creditNoteId, creditNoteNumber, newAmountDue: derived.amountDue };
 }
 
 /**
- * Process a Client Refund
+ * Process a Client Refund (Cash Disbursement)
  */
 export async function processRefund(params: {
     creditNoteId?: string;
@@ -596,7 +764,7 @@ export async function processRefund(params: {
     if (amount <= 0) throw new Error("Refund amount must be greater than zero");
 
     const refundId = uuid();
-    const refundNumber = await generateSequentialNumber("REF", "refunds");
+    const refundNumber = await generateSequentialNumber("refund");
 
     await db.insert(refunds).values({
         id: refundId,
@@ -622,9 +790,9 @@ export async function processRefund(params: {
             .where(eq(creditNotes.id, creditNoteId));
     }
 
-    // Post Double-Entry Journal for Refund
+    // Post Double-Entry General Ledger Journal for Refund Disbursement
     const journalId = uuid();
-    const journalNumber = await generateSequentialNumber("JRN", "financial_journals");
+    const journalNumber = await generateSequentialNumber("journal");
 
     await db.insert(financialJournals).values({
         id: journalId,
@@ -638,7 +806,6 @@ export async function processRefund(params: {
     });
 
     const entries = [
-        // Debit: Accounts Receivable (or Refund Suspense)
         {
             id: uuid(),
             journalId,
@@ -649,7 +816,6 @@ export async function processRefund(params: {
             memo: `Refund reversal for ${reason}`,
             createdAt: new Date(),
         },
-        // Credit: Cash/Bank
         {
             id: uuid(),
             journalId,
@@ -657,7 +823,7 @@ export async function processRefund(params: {
             accountName: "QNB Corporate Operations Account",
             debit: 0,
             credit: amount,
-            memo: `Disbursement for ${refundNumber}`,
+            memo: `Cash refund disbursement for ${refundNumber}`,
             createdAt: new Date(),
         }
     ];
@@ -665,6 +831,207 @@ export async function processRefund(params: {
     await db.insert(journalEntries).values(entries);
 
     return { refundId, refundNumber };
+}
+
+/**
+ * Record an E3-to-Vendor Payout Disbursement
+ * (E3 pays vendor their net equipment rental entitlement)
+ */
+export async function recordVendorPayout(params: {
+    vendorId: string;
+    ledgerId: string;
+    amount: number;
+    payoutMethod?: "bank_transfer" | "cheque" | "wire";
+    transactionRef?: string;
+    payoutProofUrl?: string;
+    processedBy: string;
+    notes?: string;
+}) {
+    const { 
+        vendorId, 
+        ledgerId, 
+        amount, 
+        payoutMethod = "bank_transfer", 
+        transactionRef, 
+        payoutProofUrl, 
+        processedBy, 
+        notes 
+    } = params;
+
+    const ledger = await db.query.vendorLedgers.findFirst({
+        where: eq(vendorLedgers.id, ledgerId)
+    });
+
+    if (!ledger) throw new Error("Vendor ledger record not found");
+    if (amount <= 0) throw new Error("Payout amount must be greater than zero");
+
+    const payoutId = uuid();
+    const payoutNumber = await generateSequentialNumber("payout");
+
+    await db.insert(vendorPayouts).values({
+        id: payoutId,
+        payoutNumber,
+        vendorId,
+        ledgerId,
+        amount,
+        currency: "QAR",
+        payoutMethod,
+        transactionRef,
+        payoutProofUrl,
+        status: "approved_paid",
+        processedBy,
+        processedAt: new Date(),
+        notes,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+    });
+
+    // Mark vendor ledger as paid
+    await db.update(vendorLedgers)
+        .set({
+            status: "paid",
+            notes: `Paid via ${payoutNumber} (Ref: ${transactionRef || "N/A"})`,
+            updatedAt: new Date(),
+        })
+        .where(eq(vendorLedgers.id, ledgerId));
+
+    // Post Double-Entry General Ledger Journal for Vendor Payout
+    const journalId = uuid();
+    const journalNumber = await generateSequentialNumber("journal");
+
+    await db.insert(financialJournals).values({
+        id: journalId,
+        journalNumber,
+        referenceType: "payout",
+        referenceId: payoutId,
+        description: `E3-to-Vendor Payout ${payoutNumber} of QAR ${amount} to Vendor (Ledger ${ledger.id})`,
+        isReversed: false,
+        postedAt: new Date(),
+        createdAt: new Date(),
+    });
+
+    const entries = [
+        {
+            id: uuid(),
+            journalId,
+            accountCode: "2100_ACCOUNTS_PAYABLE_VENDORS",
+            accountName: "Vendor Equipment Payables",
+            debit: amount,
+            credit: 0,
+            memo: `Discharge of vendor payable for Ledger ${ledger.id}`,
+            createdAt: new Date(),
+        },
+        {
+            id: uuid(),
+            journalId,
+            accountCode: "1200_CASH_BANK",
+            accountName: "QNB Corporate Operations Account",
+            debit: 0,
+            credit: amount,
+            memo: `Cash wire disbursement for ${payoutNumber}`,
+            createdAt: new Date(),
+        }
+    ];
+
+    await db.insert(journalEntries).values(entries);
+
+    return { payoutId, payoutNumber, journalNumber };
+}
+
+/**
+ * Record a Vendor-to-E3 Remittance (when vendor directly collects cash from client)
+ */
+export async function recordVendorRemittance(params: {
+    vendorId: string;
+    bookingId: string;
+    amountCollected: number;
+    platformCommissionOwed: number;
+    remittanceEvidenceUrl?: string;
+    notes?: string;
+}) {
+    const { vendorId, bookingId, amountCollected, platformCommissionOwed, remittanceEvidenceUrl, notes } = params;
+
+    const remittanceId = uuid();
+    const remittanceNumber = await generateSequentialNumber("remittance");
+
+    await db.insert(vendorRemittances).values({
+        id: remittanceId,
+        remittanceNumber,
+        vendorId,
+        bookingId,
+        amountCollected,
+        platformCommissionOwed,
+        remittanceEvidenceUrl,
+        status: "submitted_for_review",
+        notes,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+    });
+
+    return { remittanceId, remittanceNumber };
+}
+
+/**
+ * Verify Vendor Remittance received by E3
+ */
+export async function verifyVendorRemittance(remittanceId: string, verifiedByUserId: string) {
+    const rem = await db.query.vendorRemittances.findFirst({
+        where: eq(vendorRemittances.id, remittanceId)
+    });
+
+    if (!rem) throw new Error("Remittance record not found");
+    if (rem.status === "approved_verified") throw new Error("Remittance is already verified");
+
+    await db.update(vendorRemittances)
+        .set({
+            status: "approved_verified",
+            verifiedBy: verifiedByUserId,
+            verifiedAt: new Date(),
+            updatedAt: new Date(),
+        })
+        .where(eq(vendorRemittances.id, remittanceId));
+
+    // Post Commission Collection Journal
+    const journalId = uuid();
+    const journalNumber = await generateSequentialNumber("journal");
+
+    await db.insert(financialJournals).values({
+        id: journalId,
+        journalNumber,
+        referenceType: "remittance",
+        referenceId: rem.id,
+        description: `Vendor Commission Remittance ${rem.remittanceNumber} received: QAR ${rem.platformCommissionOwed}`,
+        isReversed: false,
+        postedAt: new Date(),
+        createdAt: new Date(),
+    });
+
+    const entries = [
+        {
+            id: uuid(),
+            journalId,
+            accountCode: "1200_CASH_BANK",
+            accountName: "QNB Corporate Operations Account",
+            debit: rem.platformCommissionOwed,
+            credit: 0,
+            memo: `Commission remittance received (${rem.remittanceNumber})`,
+            createdAt: new Date(),
+        },
+        {
+            id: uuid(),
+            journalId,
+            accountCode: "4200_COMMISSION_REVENUE",
+            accountName: "Marketplace Commission Revenue",
+            debit: 0,
+            credit: rem.platformCommissionOwed,
+            memo: `Commission earned on booking ${rem.bookingId}`,
+            createdAt: new Date(),
+        }
+    ];
+
+    await db.insert(journalEntries).values(entries);
+
+    return { success: true, remittanceNumber: rem.remittanceNumber, journalNumber };
 }
 
 /**
@@ -679,7 +1046,7 @@ export async function getReceivablesAging() {
     const now = new Date().getTime();
 
     const aging = {
-        current: { count: 0, amount: 0, invoices: [] as any[] }, // Due in future or <= 30 days
+        current: { count: 0, amount: 0, invoices: [] as any[] },
         days31_60: { count: 0, amount: 0, invoices: [] as any[] },
         days61_90: { count: 0, amount: 0, invoices: [] as any[] },
         overdue90Plus: { count: 0, amount: 0, invoices: [] as any[] },
@@ -720,13 +1087,16 @@ export async function getReceivablesAging() {
 export async function getFinancialReconciliation() {
     const allInvoices = await db.query.invoices.findMany();
     const allPayments = await db.query.clientPayments.findMany({ where: eq(clientPayments.status, "verified") });
+    const allAllocations = await db.query.paymentAllocations.findMany({ where: eq(paymentAllocations.status, "active") });
     const allCreditNotes = await db.query.creditNotes.findMany({ where: eq(creditNotes.status, "issued") });
     const allRefunds = await db.query.refunds.findMany({ where: eq(refunds.status, "processed") });
     const allVendorLedgers = await db.query.vendorLedgers.findMany();
+    const allPayouts = await db.query.vendorPayouts.findMany({ where: eq(vendorPayouts.status, "approved_paid") });
     const allJournals = await db.query.financialJournals.findMany({ with: { entries: true } });
 
     const totalInvoiced = allInvoices.reduce((s, i) => s + (i.totalAmount || 0), 0);
     const totalCollected = allPayments.reduce((s, p) => s + (p.amount || 0), 0);
+    const totalAllocated = allAllocations.reduce((s, a) => s + (a.amount || 0), 0);
     const totalCredited = allCreditNotes.reduce((s, c) => s + (c.amount || 0), 0);
     const totalRefunded = allRefunds.reduce((s, r) => s + (r.amount || 0), 0);
     const totalOutstandingReceivables = allInvoices.reduce((s, i) => s + (i.amountDue || 0), 0);
@@ -734,6 +1104,7 @@ export async function getFinancialReconciliation() {
     const totalVendorGross = allVendorLedgers.reduce((s, l) => s + (l.amount || 0), 0);
     const totalPlatformCommissions = allVendorLedgers.reduce((s, l) => s + (l.platformFee || 0), 0);
     const totalVendorPayables = allVendorLedgers.reduce((s, l) => s + (l.vendorPayout || 0), 0);
+    const totalVendorPaidOut = allPayouts.reduce((s, p) => s + (p.amount || 0), 0);
 
     let journalDebits = 0;
     let journalCredits = 0;
@@ -750,6 +1121,7 @@ export async function getFinancialReconciliation() {
         invoicing: {
             totalInvoiced,
             totalCollected,
+            totalAllocated,
             totalCredited,
             totalRefunded,
             totalOutstandingReceivables,
@@ -758,6 +1130,7 @@ export async function getFinancialReconciliation() {
             totalVendorGross,
             totalPlatformCommissions,
             totalVendorPayables,
+            totalVendorPaidOut,
         },
         generalLedger: {
             journalDebits,

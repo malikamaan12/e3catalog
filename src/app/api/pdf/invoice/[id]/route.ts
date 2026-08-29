@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { invoices } from "@/lib/db/schema";
+import { invoices, siteSettings } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { requireAuth } from "@/lib/auth";
 import { USER_ROLES } from "@/lib/constants";
@@ -30,10 +30,26 @@ export async function GET(
             return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
         }
 
-        const isStaff = user.role === USER_ROLES.SUPER_ADMIN || user.role === USER_ROLES.ADMIN || user.role === USER_ROLES.SALES_REP;
-        if (!isStaff && invoice.userId !== user.id) {
-            return NextResponse.json({ error: "Unauthorized access to invoice" }, { status: 403 });
+        // Object-level permission enforcement:
+        // - Super Admin and Admin: Full access
+        // - Sales Representative: Assigned client/deal scope only
+        // - Client: Own organization's invoices only
+        // - Warehouse & Vendor: Strictly Denied (403)
+        const isSuperOrAdmin = user.role === USER_ROLES.SUPER_ADMIN || user.role === USER_ROLES.ADMIN;
+        const isAssignedSalesRep = user.role === USER_ROLES.SALES_REP && (invoice.userId === user.id || invoice.booking?.userId === user.id);
+        const isInvoiceOwner = invoice.userId === user.id;
+
+        if (!isSuperOrAdmin && !isAssignedSalesRep && !isInvoiceOwner) {
+            return NextResponse.json({ 
+                error: "Access Denied: You do not have permission to access or download this invoice PDF." 
+            }, { status: 403 });
         }
+
+        // Fetch dynamic billing settings
+        const bankSetting = await db.query.siteSettings.findFirst({
+            where: eq(siteSettings.key, "billing_payment_methods")
+        });
+        const companyDetails = (bankSetting?.value as any)?.bankDetails || undefined;
 
         const templateProps = {
             invoice: {
@@ -64,7 +80,8 @@ export async function GET(
                     unitPrice: it.unitPrice,
                     lineTotal: it.lineTotal,
                 }))
-            }
+            },
+            companyDetails
         };
 
         const stream = await renderToStream(React.createElement(InvoicePDFTemplate, templateProps as any) as any);

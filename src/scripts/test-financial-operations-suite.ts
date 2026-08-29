@@ -15,7 +15,7 @@
  * - Receivables Aging & Balanced Reconciliation (Tests 43-45)
  */
 
-import { db } from "../lib/db";
+import { db, pool } from "../lib/db";
 import { 
     users, 
     vendors, 
@@ -102,20 +102,20 @@ async function runComprehensiveFinancialAcceptanceTests() {
         // ─── Section 2: Concurrency-Safe Sequential Numbering (Tests 7-11) ───
         console.log("\n--- Section 2: Concurrency-Safe Sequential Numbering ---");
 
-        const invNum1 = await generateSequentialNumber("INV", "invoices");
+        const invNum1 = await generateSequentialNumber("invoice");
         const currentYear = new Date().getFullYear();
         assert(invNum1.startsWith(`INV-${currentYear}-`), `Test 7: Invoice number format is INV-${currentYear}-XXXX`);
 
-        const payNum = await generateSequentialNumber("PAY", "client_payments");
+        const payNum = await generateSequentialNumber("payment");
         assert(payNum.startsWith(`PAY-${currentYear}-`), `Test 8: Payment number format is PAY-${currentYear}-XXXX`);
 
-        const cnNum = await generateSequentialNumber("CN", "credit_notes");
+        const cnNum = await generateSequentialNumber("credit_note");
         assert(cnNum.startsWith(`CN-${currentYear}-`), `Test 9: Credit note number format is CN-${currentYear}-XXXX`);
 
-        const refNum = await generateSequentialNumber("REF", "refunds");
+        const refNum = await generateSequentialNumber("refund");
         assert(refNum.startsWith(`REF-${currentYear}-`), `Test 10: Refund number format is REF-${currentYear}-XXXX`);
 
-        const jrnNum = await generateSequentialNumber("JRN", "financial_journals");
+        const jrnNum = await generateSequentialNumber("journal");
         assert(jrnNum.startsWith(`JRN-${currentYear}-`), `Test 11: Journal number format is JRN-${currentYear}-XXXX`);
 
         // ─── Setup Test Fixtures ───
@@ -396,7 +396,7 @@ async function runComprehensiveFinancialAcceptanceTests() {
         });
 
         assert(!!creditNote && creditNote.amount === 1000, "Test 37: Credit note of 1,000 QAR issued");
-        assert(updatedDepInv?.totalAmount === 7000 && updatedDepInv?.amountDue === 7000, "Test 38: Invoice total and due amount reduced to 7,000 QAR");
+        assert(updatedDepInv?.totalAmount === 8000 && updatedDepInv?.amountDue === 7000, "Test 38: Invoice total remains 8,000 QAR immutable and due amount reduced to 7,000 QAR");
 
         const cnJournal = await db.query.financialJournals.findFirst({
             where: eq(financialJournals.referenceId, cnResult.creditNoteId),
@@ -465,6 +465,17 @@ async function runComprehensiveFinancialAcceptanceTests() {
         }
         if (createdCreditNoteIds.length > 0) {
             await db.delete(creditNotes).where(inArray(creditNotes.id, createdCreditNoteIds));
+        }
+        if (createdPaymentIds.length > 0 || createdInvoiceIds.length > 0) {
+            const clientConn = await pool.connect();
+            try {
+                await clientConn.query(`
+                    DELETE FROM "payment_allocations" 
+                    WHERE "payment_id" = ANY($1::varchar[]) OR "invoice_id" = ANY($2::varchar[]);
+                `, [createdPaymentIds, createdInvoiceIds]);
+            } finally {
+                clientConn.release();
+            }
         }
         if (createdPaymentIds.length > 0) {
             await db.delete(clientPayments).where(inArray(clientPayments.id, createdPaymentIds));

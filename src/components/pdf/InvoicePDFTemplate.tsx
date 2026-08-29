@@ -208,22 +208,19 @@ interface InvoicePDFTemplateProps {
         }>;
     };
     companyDetails?: {
-        name: string;
-        address: string;
-        crNumber: string;
-        iban: string;
-        bankName: string;
+        name?: string;
+        address?: string;
+        crNumber?: string;
+        iban?: string;
+        bankName?: string;
+        accountNumber?: string;
     };
 }
 
 export function InvoicePDFTemplate({ invoice, companyDetails }: InvoicePDFTemplateProps) {
-    const company = companyDetails || {
-        name: "E3 Rentals & Event Production W.L.L.",
-        address: "Lusail Marina Tower, Floor 14, Doha, State of Qatar",
-        crNumber: "CR-194820-QA",
-        iban: "QA98QNBA0000000000123456789",
-        bankName: "Qatar National Bank (QNB)",
-    };
+    const isDev = process.env.NODE_ENV === "development";
+    const company = companyDetails || {};
+    const hasBankDetails = Boolean(company.bankName || company.iban || company.accountNumber);
 
     return (
         <Document>
@@ -233,8 +230,8 @@ export function InvoicePDFTemplate({ invoice, companyDetails }: InvoicePDFTempla
                     <View>
                         <Text style={styles.brandTitle}>E3 RENTALS</Text>
                         <Text style={styles.brandSubtitle}>Premier Event Production & Fleet Rentals</Text>
-                        <Text style={styles.brandSubtitle}>{company.address}</Text>
-                        <Text style={styles.brandSubtitle}>CR: {company.crNumber}</Text>
+                        {company.address ? <Text style={styles.brandSubtitle}>{company.address}</Text> : null}
+                        {company.crNumber ? <Text style={styles.brandSubtitle}>CR: {company.crNumber}</Text> : null}
                     </View>
                     <View style={styles.invoiceMeta}>
                         <Text style={styles.invoiceTitle}>TAX INVOICE</Text>
@@ -252,14 +249,31 @@ export function InvoicePDFTemplate({ invoice, companyDetails }: InvoicePDFTempla
                         <Text style={styles.partyName}>{invoice.customerName}</Text>
                         {invoice.customerEmail && <Text style={styles.partyText}>Email: {invoice.customerEmail}</Text>}
                         {invoice.customerPhone && <Text style={styles.partyText}>Phone: {invoice.customerPhone}</Text>}
-                        <Text style={styles.partyText}>Payment Terms: {invoice.paymentTerms || "Standard Net 14"}</Text>
+                        <Text style={styles.partyText}>Payment Terms: {invoice.paymentTerms || "Standard Commercial Terms"}</Text>
                     </View>
                     <View style={styles.partyBox}>
                         <Text style={styles.partyLabel}>Remittance & Bank Details</Text>
-                        <Text style={styles.partyName}>{company.bankName}</Text>
-                        <Text style={styles.partyText}>Account: {company.name}</Text>
-                        <Text style={styles.partyText}>IBAN: {company.iban}</Text>
-                        <Text style={styles.partyText}>Ref: {invoice.invoiceNumber}</Text>
+                        {hasBankDetails ? (
+                            <>
+                                {company.bankName && <Text style={styles.partyName}>{company.bankName}</Text>}
+                                {company.name && <Text style={styles.partyText}>Account: {company.name}</Text>}
+                                {company.accountNumber && <Text style={styles.partyText}>Account No: {company.accountNumber}</Text>}
+                                {company.iban && <Text style={styles.partyText}>IBAN: {company.iban}</Text>}
+                                <Text style={styles.partyText}>Ref: {invoice.invoiceNumber}</Text>
+                            </>
+                        ) : isDev ? (
+                            <>
+                                <Text style={styles.partyName}>E3 Operations (Development)</Text>
+                                <Text style={styles.partyText}>[Sandbox Preview — Configure Bank in Settings]</Text>
+                                <Text style={styles.partyText}>Ref: {invoice.invoiceNumber}</Text>
+                            </>
+                        ) : (
+                            <>
+                                <Text style={styles.partyName}>Official Bank Remittance</Text>
+                                <Text style={styles.partyText}>Wire instructions available upon commercial request.</Text>
+                                <Text style={styles.partyText}>Ref: {invoice.invoiceNumber}</Text>
+                            </>
+                        )}
                     </View>
                 </View>
 
