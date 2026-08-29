@@ -1598,3 +1598,60 @@ export const userSessionsRelations = relations(userSessions, ({ one }) => ({
 
 
 
+
+
+// ─── Authentication & Verification Tokens ───
+export const authTokens = pgTable("auth_tokens", {
+    id: varchar("id", { length: 255 }).primaryKey(),
+    userId: varchar("user_id", { length: 255 }).notNull().references(() => users.id),
+    type: varchar("type", { length: 50 }).notNull(), // password_reset | email_verification | vendor_invitation
+    tokenHash: varchar("token_hash", { length: 255 }).notNull().unique(),
+    expiresAt: timestamp("expires_at").notNull(),
+    usedAt: timestamp("used_at"),
+    metadata: jsonb("metadata"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => {
+    return {
+        userIdIdx: index("auth_tokens_user_id_idx").on(table.userId),
+        tokenHashIdx: index("auth_tokens_token_hash_idx").on(table.tokenHash),
+        typeIdx: index("auth_tokens_type_idx").on(table.type),
+    };
+});
+
+// ─── Processed Webhooks & Replay Protection ───
+export const processedWebhooks = pgTable("processed_webhooks", {
+    id: varchar("id", { length: 255 }).primaryKey(),
+    webhookId: varchar("webhook_id", { length: 255 }).notNull().unique(),
+    provider: varchar("provider", { length: 50 }).notNull(), // stripe | sadad | dev_mock
+    eventType: varchar("event_type", { length: 100 }).notNull(),
+    status: varchar("status", { length: 50 }).notNull().default("processed"),
+    payloadHash: varchar("payload_hash", { length: 255 }),
+    metadata: jsonb("metadata"),
+    processedAt: timestamp("processed_at").notNull().defaultNow(),
+}, (table) => {
+    return {
+        webhookIdIdx: index("processed_webhooks_webhook_id_idx").on(table.webhookId),
+        providerIdx: index("processed_webhooks_provider_idx").on(table.provider),
+    };
+});
+
+// ─── Distributed PostgreSQL Rate Limiter ───
+export const rateLimitEntries = pgTable("rate_limit_entries", {
+    id: varchar("id", { length: 255 }).primaryKey(),
+    key: varchar("key", { length: 255 }).notNull(),
+    points: integer("points").notNull().default(1),
+    expireAt: timestamp("expire_at").notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => {
+    return {
+        keyIdx: index("rate_limit_entries_key_idx").on(table.key),
+        expireAtIdx: index("rate_limit_entries_expire_at_idx").on(table.expireAt),
+    };
+});
+
+export const authTokensRelations = relations(authTokens, ({ one }) => ({
+    user: one(users, {
+        fields: [authTokens.userId],
+        references: [users.id],
+    }),
+}));

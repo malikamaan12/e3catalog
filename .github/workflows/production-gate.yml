@@ -1,0 +1,51 @@
+name: Production Readiness & Quality Gates
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+    branches: [ master, main ]
+
+jobs:
+  quality-gate:
+    name: Production Quality & Security Gates
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Secret & Hygiene Scanner
+        run: npx tsx src/scripts/scan-secrets.ts
+
+      - name: TypeScript Static Type Checking
+        run: npx tsc --noEmit
+
+      - name: ESLint Code Quality Gate
+        run: npm run lint
+
+      - name: Next.js Production Build
+        run: npm run build
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          AUTHENTICATION_SECRET: ${{ secrets.AUTHENTICATION_SECRET }}
+          APP_URL: https://e3catalog.vercel.app
+
+      - name: Install Playwright Browsers
+        run: npx playwright install chromium --with-deps
+
+      - name: Playwright E2E Regression Suite
+        run: npm run test:e2e
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          AUTHENTICATION_SECRET: ${{ secrets.AUTHENTICATION_SECRET }}
+          APP_URL: http://localhost:5001

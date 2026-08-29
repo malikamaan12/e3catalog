@@ -157,6 +157,7 @@ export async function setupE2EFixtures(): Promise<E2ETestFixtures> {
     const cleanup = async () => {
         const client = await pool.connect();
         try {
+            await client.query(`DELETE FROM "client_payments" WHERE "booking_id" = $1;`, [bookingId]);
             await client.query(`DELETE FROM "invoices" WHERE "id" = $1;`, [invoiceId]);
             await client.query(`DELETE FROM "bookings" WHERE "id" = $1;`, [bookingId]);
             await client.query(`DELETE FROM "inventory_units" WHERE "product_id" = $1;`, [productId]);

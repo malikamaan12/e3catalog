@@ -1,20 +1,38 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { users } from "@/lib/db/schema";
-import { eq, and, or } from "drizzle-orm";
+import { users, userSessions } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
 import { signToken } from "@/lib/auth";
 import { cookies } from "next/headers";
+import { checkRateLimit, applyRateLimitHeaders } from "@/lib/rate-limit";
+import bcrypt from "bcryptjs";
+import { v4 as uuid } from "uuid";
+import * as crypto from "crypto";
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "127.0.0.1";
+    
+    // Distributed Rate Limiting (15 attempts per minute per IP)
+    const rateLimit = await checkRateLimit(`login:${ip}`, { limit: 15, windowSeconds: 60 });
+    if (!rateLimit.success) {
+        const res = NextResponse.json(
+            { error: `Too many login attempts. Please retry in ${rateLimit.retryAfter} seconds.` },
+            { status: 429 }
+        );
+        return applyRateLimitHeaders(res, rateLimit);
+    }
+
     try {
-        const body = await req.json();
-        const { email, password } = body;
+        const body = await req.json().catch(() => ({}));
+        const email = body.email ? String(body.email).toLowerCase().trim() : "";
+        const password = body.password ? String(body.password) : "";
 
         if (!email || !password) {
-            return NextResponse.json(
+            const res = NextResponse.json(
                 { error: "Email and password are required" },
                 { status: 400 }
             );
+            return applyRateLimitHeaders(res, rateLimit);
         }
 
         const [user] = await db
@@ -27,26 +45,39 @@ export async function POST(req: Request) {
                 password: users.password,
             })
             .from(users)
-            .where(
-                and(
-                    eq(users.email, email.toLowerCase().trim()),
-                    eq(users.password, password)
-                )
-            )
+            .where(eq(users.email, email))
             .limit(1);
 
-        if (!user) {
-            return NextResponse.json(
+        if (!user || !user.password) {
+            const res = NextResponse.json(
                 { error: "Invalid email or password" },
                 { status: 401 }
             );
+            return applyRateLimitHeaders(res, rateLimit);
         }
 
-        if (user.status === 'blocked' || user.status === 'suspended') {
-            return NextResponse.json(
+        // Validate password against hashed or plain format
+        let isValid = false;
+        if (user.password.startsWith("$2a$") || user.password.startsWith("$2b$")) {
+            isValid = await bcrypt.compare(password, user.password);
+        } else {
+            isValid = user.password === password;
+        }
+
+        if (!isValid) {
+            const res = NextResponse.json(
+                { error: "Invalid email or password" },
+                { status: 401 }
+            );
+            return applyRateLimitHeaders(res, rateLimit);
+        }
+
+        if (user.status === "blocked" || user.status === "suspended") {
+            const res = NextResponse.json(
                 { error: "Your account is not active. Please contact support." },
                 { status: 403 }
             );
+            return applyRateLimitHeaders(res, rateLimit);
         }
 
         const token = await signToken({
@@ -54,6 +85,26 @@ export async function POST(req: Request) {
             email: user.email,
             role: user.role,
         });
+
+        // Record active session
+        const sessionTokenHash = crypto.createHash("sha256").update(token).digest("hex");
+        const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+        try {
+            await db.insert(userSessions).values({
+                id: uuid(),
+                userId: user.id,
+                sessionTokenHash,
+                ipAddress: ip,
+                deviceInfo: req.headers.get("user-agent")?.substring(0, 480) || "Unknown",
+                isRevoked: false,
+                lastActiveAt: new Date(),
+                createdAt: new Date(),
+                expiresAt,
+            });
+        } catch {
+            // Non-critical session record error
+        }
 
         const cookieStore = await cookies();
         cookieStore.set("e3_session", token, {
@@ -64,7 +115,7 @@ export async function POST(req: Request) {
             path: "/",
         });
 
-        return NextResponse.json({
+        const res = NextResponse.json({
             success: true,
             user: {
                 id: user.id,
@@ -73,18 +124,14 @@ export async function POST(req: Request) {
                 role: user.role,
             },
         });
+
+        return applyRateLimitHeaders(res, rateLimit);
     } catch (error: any) {
-        console.error("Login endpoint error detail:", {
-            message: error.message,
-            stack: error.stack,
-            code: error.code
-        });
-        return NextResponse.json(
-            {
-                error: "Internal server error: " + (error.message || "Unknown error"),
-                version: "2026-03-09-v2-login"
-            },
+        console.error("Login endpoint error detail:", error.message);
+        const res = NextResponse.json(
+            { error: "Internal server error" },
             { status: 500 }
         );
+        return applyRateLimitHeaders(res, rateLimit);
     }
 }

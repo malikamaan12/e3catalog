@@ -128,6 +128,12 @@ export default function LoginPage() {
                                 <label className="block text-sm font-medium text-navy-200" htmlFor="password">
                                     Password
                                 </label>
+                                <Link
+                                    href="/forgot-password"
+                                    className="text-xs font-medium text-gold hover:text-gold-400 transition"
+                                >
+                                    Forgot password?
+                                </Link>
                             </div>
                             <div className="mt-2 relative">
                                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-navy-400">

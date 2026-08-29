@@ -75,7 +75,7 @@ test.describe("Tax Configuration & Invoice Terminology Regression Tests", () => 
         const crSetting = await db.query.siteSettings.findFirst({
             where: eq(siteSettings.key, "commercial_registration_number" as any)
         });
-        expect(crSetting?.value).not.toBe("CR-974-DOHA");
+        expect(crSetting).toBeUndefined();
 
         const trnSetting = await db.query.siteSettings.findFirst({
             where: eq(siteSettings.key, "tax_registration_number" as any)

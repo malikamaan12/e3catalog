@@ -568,3 +568,5 @@ export async function sendReviewRequestEmail(opts: {
         console.error("[REVIEW EMAIL ERROR]", err);
     }
 }
+
+export * from "./email/index";
