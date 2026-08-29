@@ -234,7 +234,7 @@ export function InvoicePDFTemplate({ invoice, companyDetails }: InvoicePDFTempla
                         {company.crNumber ? <Text style={styles.brandSubtitle}>CR: {company.crNumber}</Text> : null}
                     </View>
                     <View style={styles.invoiceMeta}>
-                        <Text style={styles.invoiceTitle}>TAX INVOICE</Text>
+                        <Text style={styles.invoiceTitle}>COMMERCIAL INVOICE</Text>
                         <Text style={styles.invoiceNumber}>{invoice.invoiceNumber}</Text>
                         <Text style={styles.dateText}>Issue Date: {new Date(invoice.issueDate).toLocaleDateString()}</Text>
                         <Text style={styles.dateText}>Due Date: {new Date(invoice.dueDate).toLocaleDateString()}</Text>

@@ -90,7 +90,7 @@ export default function ClientInvoicesPage() {
                         My Invoices & Remittances
                     </h1>
                     <p className="text-[var(--color-slate)] mt-1 font-medium">
-                        View official corporate tax invoices, download PDF copies, and submit remittance confirmations.
+                        View official corporate commercial invoices, download PDF copies, and submit remittance confirmations.
                     </p>
                 </div>
             </header>
