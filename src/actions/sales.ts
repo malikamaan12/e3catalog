@@ -6,10 +6,11 @@ import { eq, or, and, ne } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth";
 import { USER_ROLES, BOOKING_STATUS } from "@/lib/constants";
-import { v4 as uuid } from "uuid";
 import { checkAvailability } from "@/lib/availability";
 import { sendQuoteStatusEmail } from "@/lib/email";
 import { logStatusTransition } from "@/lib/state-machine";
+import { calculateRentalDays } from "@/lib/pricing";
+import { v4 as uuid } from "uuid";
 
 export async function updateBookingQuote(projectIdOrId: string, data: {
     discount?: number;
@@ -141,6 +142,9 @@ export async function addQuoteItem(projectIdOrId: string, item: {
         }
 
         const newId = uuid();
+        const days = calculateRentalDays(item.startDate, item.endDate);
+        const lineTotal = (product.pricePerDay || 0) * item.units * days;
+
         await db.insert(bookings).values({
             id: newId,
             productId: item.productId,
@@ -156,6 +160,7 @@ export async function addQuoteItem(projectIdOrId: string, item: {
             customerName: ref.customerName,
             customerEmail: ref.customerEmail,
             customerPhone: ref.customerPhone,
+            totalPrice: lineTotal,
             discount: ref.discount,
             logisticsCost: ref.logisticsCost,
             laborCost: ref.laborCost,

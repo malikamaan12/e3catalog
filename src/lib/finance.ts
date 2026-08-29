@@ -3,6 +3,8 @@ import { bookings, products, vendors, vendorLedgers, commissionSettlements } fro
 import { eq, or, and } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 
+import { calculateRentalDays } from "./pricing";
+
 /**
  * Calculates and records the financial splits for a finalized quote/booking.
  * Should be called when a quote is formally 'approved'.
@@ -51,13 +53,9 @@ export async function processBookingCommissions(projectIdOrId: string) {
 
         if (existingSettlement) continue;
 
-        const start = new Date(item.startDate);
-        const end = new Date(item.endDate);
-        const days = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
-        
-        // Calculate the base rental price of this specific line item
+        const days = calculateRentalDays(item.startDate, item.endDate);
         const itemPricePerDay = (item.product as any)?.pricePerDay || 0;
-        let amount = itemPricePerDay * item.units * days;
+        let amount = item.totalPrice || (itemPricePerDay * item.units * days);
         
         // Let's account for discounts applied to the overall project proportionally?
         // For simplicity of MVP, ledger reflects base subtotal for the item. The platform absorbs global discounts.

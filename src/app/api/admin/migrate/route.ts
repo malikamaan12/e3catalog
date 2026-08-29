@@ -157,6 +157,10 @@ export async function POST() {
             CREATE INDEX IF NOT EXISTS vendor_commercial_terms_vendor_id_idx ON vendor_commercial_terms(vendor_id);
             CREATE INDEX IF NOT EXISTS vendor_commercial_terms_status_idx ON vendor_commercial_terms(status);`,
         },
+        {
+            name: "chat_messages.columns",
+            sql: `ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS booking_id VARCHAR(255) REFERENCES bookings(id);`,
+        },
     ];
 
     for (const migration of migrations) {

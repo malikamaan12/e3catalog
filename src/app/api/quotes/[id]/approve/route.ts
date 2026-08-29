@@ -4,7 +4,7 @@ import { eq, and, or } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { sendQuoteStatusEmail } from "@/lib/email";
-import { BOOKING_STATUS } from "@/lib/constants";
+import { BOOKING_STATUS, USER_ROLES } from "@/lib/constants";
 import { validateProjectAvailability } from "@/lib/availability";
 import { processBookingCommissions } from "@/lib/finance";
 import { logStatusTransition } from "@/lib/state-machine";
@@ -19,12 +19,17 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         const resolvedParams = await params;
         const id = resolvedParams.id;
 
-        // Fetch all bookings for this project/id belonging to user
-        const targetBookings = await db.query.bookings.findMany({
-            where: and(
+        // Fetch all bookings for this project/id (with client ownership or staff authorization)
+        const isStaff = [USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN, USER_ROLES.SALES_REP].includes(user.role as any);
+        const whereClause = isStaff
+            ? or(eq(bookings.id, id), eq(bookings.projectId, id))
+            : and(
                 eq(bookings.userId, user.id),
                 or(eq(bookings.id, id), eq(bookings.projectId, id))
-            ),
+            );
+
+        const targetBookings = await db.query.bookings.findMany({
+            where: whereClause,
         });
 
         if (targetBookings.length === 0) {

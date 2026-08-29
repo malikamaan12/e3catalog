@@ -20,8 +20,8 @@ export async function approveBookingWithSignature(bookingId: string, signatureDa
     const user = await getCurrentUser();
     
     // Auth Check
-    if (!user || user.role !== USER_ROLES.CLIENT) {
-        return { error: "Unauthorized: Client access required" };
+    if (!user) {
+        return { error: "Unauthorized: Please log in to approve this proposal" };
     }
 
     if (!signatureData || signatureData.length < 50) {
@@ -29,12 +29,17 @@ export async function approveBookingWithSignature(bookingId: string, signatureDa
     }
 
     try {
-        // 1. Fetch all items in this project quote belonging to the user
-        const projectBookings = await db.query.bookings.findMany({
-            where: and(
+        // 1. Fetch all items in this project quote (with client ownership check)
+        const isStaff = [USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN, USER_ROLES.SALES_REP].includes(user.role as any);
+        const whereClause = isStaff
+            ? or(eq(bookings.id, bookingId), eq(bookings.projectId, bookingId))
+            : and(
                 eq(bookings.userId, user.id),
                 or(eq(bookings.id, bookingId), eq(bookings.projectId, bookingId))
-            ),
+            );
+
+        const projectBookings = await db.query.bookings.findMany({
+            where: whereClause,
         });
 
         if (projectBookings.length === 0) {
