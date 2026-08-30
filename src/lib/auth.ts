@@ -1,6 +1,7 @@
 import { jwtVerify, SignJWT } from "jose";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { cache } from "react";
 import { db } from "./db";
 import { users } from "./db/schema";
 import { eq } from "drizzle-orm";
@@ -27,15 +28,15 @@ export async function verifyToken(token: string) {
     }
 }
 
-export async function getSession() {
+export const getSession = cache(async function getSession() {
     const cookieStore = await cookies();
     const token = cookieStore.get("e3_session")?.value;
     if (!token) return null;
 
     return await verifyToken(token);
-}
+});
 
-export async function getCurrentUser() {
+export const getCurrentUser = cache(async function getCurrentUser() {
     const session = await getSession();
     if (!session) return null;
 
@@ -65,7 +66,7 @@ export async function getCurrentUser() {
         console.error("[DB] getCurrentUser failed — returning null:", (dbErr as Error).message);
         return null;
     }
-}
+});
 
 export async function requireAuth() {
     const user = await getCurrentUser();

@@ -35,11 +35,17 @@ function MediaLoadingPlaceholder({ label }: { label: string }) {
 
 function CopyLinkButton({ productSlug, tab }: { productSlug: string, tab: string }) {
     const [copied, setCopied] = useState(false);
-    const handleCopy = () => {
-        const fullUrl = `${window.location.origin}/catalog/${productSlug}?tab=${tab}`;
-        navigator.clipboard.writeText(fullUrl);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
+    const handleCopy = async () => {
+        try {
+            if (typeof window !== "undefined" && navigator?.clipboard?.writeText) {
+                const fullUrl = `${window.location.origin}/catalog/${productSlug}?tab=${tab}`;
+                await navigator.clipboard.writeText(fullUrl);
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+            }
+        } catch {
+            // Non-critical clipboard error
+        }
     };
     return (
         <button onClick={handleCopy} className="absolute top-4 right-4 bg-[var(--color-navy)] bg-opacity-80 hover:bg-opacity-100 text-[var(--color-gold)] px-3 py-2 rounded-lg backdrop-blur-sm transition-all flex items-center gap-2 text-xs font-medium z-10 border border-[var(--color-border-subtle)]">

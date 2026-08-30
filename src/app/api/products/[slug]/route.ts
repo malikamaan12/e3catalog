@@ -109,7 +109,11 @@ export async function GET(
             })) || [],
         };
 
-        return NextResponse.json(publicProduct);
+        return NextResponse.json(publicProduct, {
+            headers: {
+                "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
+            },
+        });
     } catch (error) {
         console.error("[PRODUCT DETAIL] Error:", error);
         return NextResponse.json({ error: "Failed to load product" }, { status: 500 });

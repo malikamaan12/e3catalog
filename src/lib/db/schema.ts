@@ -41,6 +41,11 @@ export const users = pgTable("users", {
 
     // Multi-Tenant Isolation
     vendorId: varchar("vendor_id", { length: 255 }), // If this user is a vendor admin or sub-admin, maps to vendors.id
+}, (table) => {
+    return {
+        roleStatusIdx: index("users_role_status_idx").on(table.role, table.status),
+        vendorIdIdx: index("users_vendor_id_idx").on(table.vendorId),
+    };
 });
 
 // ─── System Logs ───
@@ -504,6 +509,9 @@ export const bookings = pgTable("bookings", {
 }, (table) => {
     return {
         productIdIdx: index("bookings_product_id_idx").on(table.productId),
+        projectIdIdx: index("bookings_project_id_idx").on(table.projectId),
+        userIdIdx: index("bookings_user_id_idx").on(table.userId),
+        vendorIdIdx: index("bookings_vendor_id_idx").on(table.vendorId),
         statusIdx: index("bookings_status_idx").on(table.status),
         startDateIdx: index("bookings_start_date_idx").on(table.startDate),
         endDateIdx: index("bookings_end_date_idx").on(table.endDate),
@@ -597,6 +605,12 @@ export const cartItems = pgTable("cart_items", {
     startTime: varchar("start_time", { length: 10 }),
     endTime: varchar("end_time", { length: 10 }),
     createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => {
+    return {
+        sessionIdIdx: index("cart_items_session_id_idx").on(table.sessionId),
+        userIdIdx: index("cart_items_user_id_idx").on(table.userId),
+        productIdIdx: index("cart_items_product_id_idx").on(table.productId),
+    };
 });
 
 // ─── Relations ───

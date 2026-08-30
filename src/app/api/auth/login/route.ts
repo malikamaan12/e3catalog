@@ -4,13 +4,13 @@ import { users, userSessions } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { signToken } from "@/lib/auth";
 import { cookies } from "next/headers";
-import { checkRateLimit, applyRateLimitHeaders } from "@/lib/rate-limit";
+import { checkRateLimit, applyRateLimitHeaders, getClientIp } from "@/lib/rate-limit";
 import bcrypt from "bcryptjs";
 import { v4 as uuid } from "uuid";
 import * as crypto from "crypto";
 
 export async function POST(req: NextRequest) {
-    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "127.0.0.1";
+    const ip = getClientIp(req);
     
     // Distributed Rate Limiting (15 attempts per minute per IP)
     const rateLimit = await checkRateLimit(`login:${ip}`, { limit: 15, windowSeconds: 60 });

@@ -1,6 +1,5 @@
 import { db } from "./db";
 import { siteSettings } from "./db/schema";
-import { eq } from "drizzle-orm";
 
 /**
  * Valid Site Settings Keys
@@ -35,26 +34,25 @@ const DEFAULT_SETTINGS: Record<SiteSettingKey, string> = {
     base_production_url: "https://e3catalog.com",
 };
 
+let cachedSettings: { data: Record<SiteSettingKey, string>; expiresAt: number } | null = null;
+const SETTINGS_TTL_MS = 60 * 1000; // 60s TTL in-memory cache for ultra-fast page renders
+
 /**
- * Server-side helper to fetch a site setting from the DB.
- * Falls back to DEFAULT_SETTINGS if key is missing in DB.
+ * Invalidate cached site settings (e.g. after admin updates settings).
  */
-export async function getSiteSetting(key: SiteSettingKey): Promise<string> {
-    try {
-        const setting = await db.query.siteSettings.findFirst({
-            where: eq(siteSettings.key, key)
-        });
-        return setting?.value ?? DEFAULT_SETTINGS[key];
-    } catch (error) {
-        console.error(`Error fetching site setting [${key}]:`, error);
-        return DEFAULT_SETTINGS[key];
-    }
+export function bustSiteSettingsCache(): void {
+    cachedSettings = null;
 }
 
 /**
- * Server-side helper to fetch all settings at once (optimization)
+ * Server-side helper to fetch all settings at once with high-speed in-memory caching.
  */
 export async function getAllSiteSettings(): Promise<Record<SiteSettingKey, string>> {
+    const now = Date.now();
+    if (cachedSettings && cachedSettings.expiresAt > now) {
+        return cachedSettings.data;
+    }
+
     try {
         const settings = await db.select().from(siteSettings);
         const settingsMap = { ...DEFAULT_SETTINGS };
@@ -65,8 +63,24 @@ export async function getAllSiteSettings(): Promise<Record<SiteSettingKey, strin
             }
         });
         
+        cachedSettings = { data: settingsMap, expiresAt: now + SETTINGS_TTL_MS };
         return settingsMap;
-    } catch (error) {
+    } catch {
+        if (cachedSettings) return cachedSettings.data;
         return DEFAULT_SETTINGS;
+    }
+}
+
+/**
+ * Server-side helper to fetch a site setting from cache or DB.
+ * Falls back to DEFAULT_SETTINGS if key is missing in DB.
+ */
+export async function getSiteSetting(key: SiteSettingKey): Promise<string> {
+    try {
+        const all = await getAllSiteSettings();
+        return all[key] ?? DEFAULT_SETTINGS[key];
+    } catch (error) {
+        console.error(`Error fetching site setting [${key}]:`, error);
+        return DEFAULT_SETTINGS[key];
     }
 }

@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { v4 as uuid } from "uuid";
+import bcrypt from "bcryptjs";
 
 export async function POST(req: Request) {
     try {
@@ -36,12 +37,13 @@ export async function POST(req: Request) {
         }
 
         const targetUserId = uuid();
+        const hashedPassword = await bcrypt.hash(password, 10);
         await db.insert(users).values({
             id: targetUserId,
             name: name.trim(),
             email: normalizedEmail,
             phoneNumber: phoneNumber || "",
-            password: password,
+            password: hashedPassword,
             role: "client",
             createdAt: new Date(),
             updatedAt: new Date(),

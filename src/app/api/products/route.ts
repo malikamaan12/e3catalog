@@ -189,11 +189,15 @@ export async function GET(req: NextRequest) {
         if (vendorId) {
             vendorFilter = eq(products.vendorId, vendorId);
         } else {
-            const activeVendorsList = await db
-                .select({ id: vendors.id })
-                .from(vendors)
-                .where(eq(vendors.storeStatus, "active"));
-            const activeVendorIds = activeVendorsList.map((v) => v.id);
+            let activeVendorIds = getCache<string[]>(CACHE_KEYS.ACTIVE_VENDORS);
+            if (!activeVendorIds) {
+                const activeVendorsList = await db
+                    .select({ id: vendors.id })
+                    .from(vendors)
+                    .where(eq(vendors.storeStatus, "active"));
+                activeVendorIds = activeVendorsList.map((v) => v.id);
+                setCache(CACHE_KEYS.ACTIVE_VENDORS, activeVendorIds, 60 * 1000); // 60s cache
+            }
 
             vendorFilter = activeVendorIds.length > 0
                 ? or(isNull(products.vendorId), inArray(products.vendorId, activeVendorIds))
@@ -203,18 +207,23 @@ export async function GET(req: NextRequest) {
         // ── 2. Resolve category filter ─────────────────────────────────────
         let categoryFilter: ReturnType<typeof eq> | undefined;
         if (categorySlug) {
-            const cat = await db
-                .select({ id: categories.id })
-                .from(categories)
-                .where(eq(categories.slug, categorySlug))
-                .limit(1);
-            if (!cat.length) {
-                return NextResponse.json(
-                    { products: [], nextCursor: null, hasMore: false },
-                    { headers: { "Cache-Control": "private, s-maxage=30" } }
-                );
+            let catId = getCache<string>(CACHE_KEYS.categorySlug(categorySlug));
+            if (!catId) {
+                const cat = await db
+                    .select({ id: categories.id })
+                    .from(categories)
+                    .where(eq(categories.slug, categorySlug))
+                    .limit(1);
+                if (!cat.length) {
+                    return NextResponse.json(
+                        { products: [], nextCursor: null, hasMore: false },
+                        { headers: { "Cache-Control": "private, s-maxage=30" } }
+                    );
+                }
+                catId = cat[0].id;
+                setCache(CACHE_KEYS.categorySlug(categorySlug), catId, 300 * 1000); // 5 min cache
             }
-            categoryFilter = eq(products.categoryId, cat[0].id);
+            categoryFilter = eq(products.categoryId, catId);
         }
 
         // ── 3. Build search filter ─────────────────────────────────────────

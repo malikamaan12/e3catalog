@@ -63,6 +63,9 @@ export const TTL = {
 export const CACHE_KEYS = {
     AVAILABILITY_MAP: "availability_map",
     FACETS: "catalog_facets",
+    ACTIVE_VENDORS: "active_vendors_list",
+    CATEGORIES_TREE: "categories_tree_list",
+    categorySlug: (slug: string) => `cat_slug::${slug}`,
     productPage: (category: string, search: string, cursor: string) =>
         `product_page::${category}::${search}::${cursor}`,
 };
