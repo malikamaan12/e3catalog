@@ -1,20 +1,15 @@
 # Gitleaks Configuration for E3 Rentals
-# Rule definitions and reviewed allowlist for non-secret placeholders in documentation
+# Explicit, minimal allowlist for synthetic test fixtures and documentation samples.
 
 [extend]
 useDefault = true
 
 [allowlist]
-description = "Reviewed non-secret documentation placeholders and sample references"
+description = "Reviewed synthetic test fixtures and historical documentation placeholders"
 paths = [
     '''DEVELOPER_HANDOVER_BIBLE\.md''',
-    '''docs/.*''',
-    '''\.next/.*''',
-    '''bin/.*'''
 ]
 regexes = [
     '''re_123456789abcdef''',
     '''whsec_dev_default_test_secret''',
-    '''sk_test_.*''',
-    '''pk_test_.*'''
 ]
