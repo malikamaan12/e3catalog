@@ -166,7 +166,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         }
 
         const resend = new Resend(process.env.RESEND_API_KEY);
-        const EMAIL_FROM = settings.resend_from_email || process.env.EMAIL_FROM || "E3 Rentals <noreply@e3rentals.com>";
+        const EMAIL_FROM = settings.resend_from_email || process.env.EMAIL_FROM || "";
 
         await resend.emails.send({
             from: EMAIL_FROM,

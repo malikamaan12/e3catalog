@@ -18,30 +18,43 @@ test.describe("Sprint 9: Production Integrations, Security & Release Readiness",
     });
 
     test("1. Liveness and Readiness Health Probes Return 200 OK with Dependency Status", async ({ request }) => {
-        // Liveness probe
+        // Liveness probe (public)
         const liveRes = await request.get("/api/health/live");
         expect(liveRes.status()).toBe(200);
         const liveData = await liveRes.json();
         expect(liveData.status).toBe("live");
 
-        // Deep readiness probe
-        const readyRes = await request.get("/api/health/ready");
-        expect(readyRes.status()).toBe(200);
-        const readyData = await readyRes.json();
-        expect(readyData.status).toBe("ready");
-        expect(readyData.checks?.database?.status).toBe("healthy");
-        expect(Array.isArray(readyData.checks?.integrations)).toBe(true);
+        // Public readiness probe (sanitized)
+        const publicReadyRes = await request.get("/api/health/ready");
+        expect(publicReadyRes.status()).toBe(200);
+        const publicReadyData = await publicReadyRes.json();
+        expect(publicReadyData.status).toBe("ready");
+        expect(publicReadyData.checks).toBeUndefined(); // Infra details are protected
+
+        // Authorized readiness probe (with ops secret)
+        const authReadyRes = await request.get("/api/health/ready", {
+            headers: { "x-ops-secret": "dev_ops_secret_test" },
+        });
+        expect(authReadyRes.status()).toBe(200);
+        const authReadyData = await authReadyRes.json();
+        expect(authReadyData.status).toBe("ready");
+        expect(authReadyData.checks?.database?.status).toBe("healthy");
+        expect(Array.isArray(authReadyData.checks?.integrations)).toBe(true);
+
+        // Verify valid provider states
+        for (const item of authReadyData.checks.integrations) {
+            expect(["active", "sandbox", "development fallback", "disabled", "misconfigured"]).toContain(item.status);
+        }
     });
 
     test("2. Rate Limiting Enforces Thresholds and Emits Standard RFC Headers", async ({ request }) => {
-        // Send a burst of requests to login endpoint with unique dummy IP header
         const testIp = `198.51.100.${Math.floor(Math.random() * 200) + 1}`;
         let rateLimited = false;
         let lastHeaders: Record<string, string> = {};
 
         for (let i = 0; i < 20; i++) {
             const res = await request.post("/api/auth/login", {
-                data: { email: "nonexistent@e3rentals.com", password: "wrong" },
+                data: { email: "rate_test_user@example.com", password: "wrong" },
                 headers: { "x-forwarded-for": testIp },
             });
 

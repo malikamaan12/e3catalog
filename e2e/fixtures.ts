@@ -145,8 +145,10 @@ export async function setupE2EFixtures(): Promise<E2ETestFixtures> {
 
     const loginAsPersona = async (context: BrowserContext, persona: PersonaCredentials): Promise<Page> => {
         const page = await context.newPage();
+        const testIp = `10.10.${Math.floor(Math.random() * 250) + 1}.${Math.floor(Math.random() * 250) + 1}`;
         const res = await page.request.post("http://localhost:5001/api/auth/login", {
             data: { email: persona.email, password: "password123" },
+            headers: { "x-forwarded-for": testIp },
         });
         if (!res.ok()) {
             throw new Error(`Failed to login as ${persona.email}: ${res.status()}`);

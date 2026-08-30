@@ -4,22 +4,23 @@ import { NextResponse } from "next/server";
 import { db } from "./db";
 import { users } from "./db/schema";
 import { eq } from "drizzle-orm";
+import { env } from "./env";
 
-const SECRET_KEY = new TextEncoder().encode(
-    process.env.JWT_SECRET || process.env.AUTHENTICATION_SECRET || "default_super_secret_key_for_development"
-);
+function getSecretKey(): Uint8Array {
+    return new TextEncoder().encode(env.AUTHENTICATION_SECRET || env.JWT_SECRET);
+}
 
 export async function signToken(payload: { id: string; email: string; role: string }) {
     return new SignJWT(payload)
         .setProtectedHeader({ alg: "HS256" })
         .setIssuedAt()
         .setExpirationTime("7d")
-        .sign(SECRET_KEY);
+        .sign(getSecretKey());
 }
 
 export async function verifyToken(token: string) {
     try {
-        const { payload } = await jwtVerify(token, SECRET_KEY);
+        const { payload } = await jwtVerify(token, getSecretKey());
         return payload as { id: string; email: string; role: string };
     } catch (error) {
         return null;
@@ -65,6 +66,7 @@ export async function getCurrentUser() {
         return null;
     }
 }
+
 export async function requireAuth() {
     const user = await getCurrentUser();
     if (!user) {

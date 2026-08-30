@@ -20,7 +20,7 @@ export const s3Client = new S3Client({
     responseChecksumValidation: "WHEN_REQUIRED" as any,
 });
 
-const BUCKET_NAME = process.env.S3_BUCKET_NAME || "rental-app-media";
+const BUCKET_NAME = process.env.S3_BUCKET_NAME || "";
 
 /**
  * Generate a pre-signed URL for client-side direct-to-S3 uploads

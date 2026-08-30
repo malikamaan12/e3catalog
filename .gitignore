@@ -48,5 +48,8 @@ next-env.d.ts
 /tmp/
 /backups/
 *.dump
+/bin/
+gitleaks-report.json
 
 .vercel
+

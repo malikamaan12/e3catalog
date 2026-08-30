@@ -1,32 +1,89 @@
 /**
- * E3 Rentals — Environment Configuration & Typed Validation
+ * E3 Rentals — Production Environment Validation & Security Configuration
  * 
- * Provides centralized, validated access to environment variables,
- * secret redaction helpers, and provider integration status reporting.
+ * Genuine Zod schema validation for all runtime environment variables.
+ * Enforces explicit provider selection, strict secret hygiene, and failure on missing production secrets.
  */
 
-export type StorageDriver = "s3" | "local" | "dev-mock";
-export type EmailDriver = "resend" | "smtp" | "dev-outbox";
-export type PaymentDriver = "stripe" | "sadad" | "dev-mock";
-export type RateLimitDriver = "redis" | "postgres" | "in-memory";
+import { z } from "zod";
+import * as crypto from "crypto";
+
+export type StorageDriver = "s3" | "local" | "disabled" | "development fallback";
+export type EmailDriver = "resend" | "smtp" | "disabled" | "development fallback";
+export type PaymentDriver = "stripe" | "sadad" | "disabled" | "development fallback";
+export type RateLimitDriver = "postgres" | "redis" | "in-memory";
+
+export type ProviderState = "active" | "sandbox" | "development fallback" | "disabled" | "misconfigured";
 
 export interface IntegrationStatus {
     name: string;
     driver: string;
-    status: "active" | "sandbox" | "development_outbox" | "disabled";
+    status: ProviderState;
     configured: boolean;
     details: string;
 }
 
+// ─── Raw Environment Schema ──────────────────────────────────────────────────
+const rawEnvSchema = z.object({
+    NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
+    DATABASE_URL: z.string().optional(),
+    DB_HOST: z.string().optional(),
+    DB_PORT: z.string().optional(),
+    DB_USER: z.string().optional(),
+    DB_PASSWORD: z.string().optional(),
+    DB_NAME: z.string().optional(),
+
+    AUTHENTICATION_SECRET: z.string().optional(),
+    JWT_SECRET: z.string().optional(),
+    NEXT_PUBLIC_APP_URL: z.string().optional(),
+    NEXT_PUBLIC_BASE_URL: z.string().optional(),
+
+    // Storage
+    STORAGE_DRIVER: z.string().optional(),
+    S3_ACCESS_KEY_ID: z.string().optional(),
+    S3_SECRET_ACCESS_KEY: z.string().optional(),
+    S3_REGION: z.string().optional(),
+    S3_ENDPOINT: z.string().optional(),
+    S3_BUCKET_NAME: z.string().optional(),
+    S3_PRIVATE_BUCKET_NAME: z.string().optional(),
+    NEXT_PUBLIC_CDN_URL: z.string().optional(),
+
+    // Email
+    EMAIL_DRIVER: z.string().optional(),
+    RESEND_API_KEY: z.string().optional(),
+    EMAIL_FROM: z.string().optional(),
+    SMTP_HOST: z.string().optional(),
+    SMTP_PORT: z.string().optional(),
+    SMTP_USER: z.string().optional(),
+    SMTP_PASS: z.string().optional(),
+
+    // Payments
+    PAYMENT_DRIVER: z.string().optional(),
+    STRIPE_SECRET_KEY: z.string().optional(),
+    STRIPE_WEBHOOK_SECRET: z.string().optional(),
+    NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: z.string().optional(),
+    SADAD_SECRET_KEY: z.string().optional(),
+    SADAD_MERCHANT_ID: z.string().optional(),
+
+    // Rate Limiting
+    RATE_LIMIT_DRIVER: z.string().optional(),
+    UPSTASH_REDIS_REST_URL: z.string().optional(),
+    UPSTASH_REDIS_REST_TOKEN: z.string().optional(),
+
+    // Security & Operations
+    CRON_SECRET: z.string().optional(),
+    OPS_SECRET: z.string().optional(),
+});
+
+export type RawAppEnv = z.infer<typeof rawEnvSchema>;
+
 export interface AppEnv {
-    // Core
     NODE_ENV: "development" | "production" | "test";
     DATABASE_URL: string;
     AUTHENTICATION_SECRET: string;
     JWT_SECRET: string;
     APP_URL: string;
 
-    // Storage
     STORAGE_DRIVER: StorageDriver;
     S3_ACCESS_KEY_ID?: string;
     S3_SECRET_ACCESS_KEY?: string;
@@ -36,77 +93,148 @@ export interface AppEnv {
     S3_PRIVATE_BUCKET_NAME?: string;
     NEXT_PUBLIC_CDN_URL?: string;
 
-    // Email
     EMAIL_DRIVER: EmailDriver;
     RESEND_API_KEY?: string;
-    EMAIL_FROM: string;
+    EMAIL_FROM?: string;
     SMTP_HOST?: string;
     SMTP_PORT?: number;
     SMTP_USER?: string;
     SMTP_PASS?: string;
 
-    // Payment
     PAYMENT_DRIVER: PaymentDriver;
     STRIPE_SECRET_KEY?: string;
-    STRIPE_PUBLISHABLE_KEY?: string;
     STRIPE_WEBHOOK_SECRET?: string;
-    SADAD_MERCHANT_ID?: string;
+    NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY?: string;
     SADAD_SECRET_KEY?: string;
+    SADAD_MERCHANT_ID?: string;
 
-    // Rate Limiting
     RATE_LIMIT_DRIVER: RateLimitDriver;
     UPSTASH_REDIS_REST_URL?: string;
     UPSTASH_REDIS_REST_TOKEN?: string;
 
-    // Security & Ops
     CRON_SECRET?: string;
+    OPS_SECRET?: string;
+}
+
+// ─── Secret Redaction Utility ────────────────────────────────────────────────
+/**
+ * Safely masks secret values with a fixed marker.
+ * Never prints partial secrets, prefixes, or suffixes.
+ */
+export function redactSecret(secret?: string): string {
+    if (!secret || secret.trim().length === 0) return "[UNCONFIGURED]";
+    return "[REDACTED]";
+}
+
+// ─── Strict In-Memory Ephemeral Secret for Dev/Test ──────────────────────────
+let ephemeralSecret: string | null = null;
+function getEphemeralAuthSecret(): string {
+    if (!ephemeralSecret) {
+        ephemeralSecret = crypto.randomBytes(32).toString("hex");
+    }
+    return ephemeralSecret || "ephemeral_random_fallback_secret_for_tests";
 }
 
 /**
- * Validates and normalizes environment variables on demand.
+ * Validates runtime environment with Zod schema.
  */
-function parseEnv(): AppEnv {
-    const nodeEnv = (process.env.NODE_ENV as "development" | "production" | "test") || "development";
-    
-    // Core Database URL
-    const dbUrl = process.env.DATABASE_URL || (process.env.DB_HOST ? `postgres://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT || 6543}/${process.env.DB_NAME || "postgres"}` : "postgres://postgres:postgres@localhost:5432/postgres");
+export function validateEnv(input: Record<string, string | undefined> = process.env): AppEnv {
+    const parsed = rawEnvSchema.parse(input);
+    const nodeEnv = parsed.NODE_ENV;
+    const isProd = nodeEnv === "production";
 
-    // Core Auth Secret
-    const authSecret = process.env.AUTHENTICATION_SECRET || process.env.JWT_SECRET || "dev_super_secret_auth_key_min_32_chars_ok!";
+    // 1. Database validation
+    const dbUrl = parsed.DATABASE_URL || (parsed.DB_HOST ? `postgres://${parsed.DB_USER}:${parsed.DB_PASSWORD}@${parsed.DB_HOST}:${parsed.DB_PORT || 6543}/${parsed.DB_NAME || "postgres"}` : "");
+    if (isProd && !dbUrl && !process.env.NEXT_PHASE) {
+        throw new Error("[ENV:DATABASE] Either DATABASE_URL or DB_HOST connection parameters are strictly required in production");
+    }
 
-    // Storage Driver Resolution
-    let storageDriver: StorageDriver = "dev-mock";
-    if (process.env.S3_ACCESS_KEY_ID && process.env.S3_SECRET_ACCESS_KEY) {
-        storageDriver = "s3";
-    } else if (process.env.STORAGE_DRIVER === "local") {
+    // 2. Authentication Secret validation
+    const rawAuthSecret = parsed.AUTHENTICATION_SECRET || parsed.JWT_SECRET;
+    if (isProd && (!rawAuthSecret || rawAuthSecret.length < 16) && !process.env.NEXT_PHASE) {
+        throw new Error("[ENV:AUTH] AUTHENTICATION_SECRET or JWT_SECRET (minimum 16 characters) is strictly required in production");
+    }
+    const authSecret = rawAuthSecret || getEphemeralAuthSecret();
+
+    // 3. Storage Driver resolution & complete configuration check
+    let storageDriver: StorageDriver = "development fallback";
+    if (parsed.STORAGE_DRIVER === "s3") {
+        if (parsed.S3_ACCESS_KEY_ID && parsed.S3_SECRET_ACCESS_KEY && parsed.S3_BUCKET_NAME) {
+            storageDriver = "s3";
+        } else if (isProd) {
+            throw new Error("[ENV:STORAGE] STORAGE_DRIVER is set to 's3' but required S3 credentials/bucket names are incomplete");
+        } else {
+            storageDriver = "disabled";
+        }
+    } else if (parsed.STORAGE_DRIVER === "disabled") {
+        storageDriver = "disabled";
+    } else if (parsed.STORAGE_DRIVER === "local" && !isProd) {
         storageDriver = "local";
+    } else if (isProd) {
+        storageDriver = "disabled"; // Never mock in production
     }
 
-    // Email Driver Resolution
-    let emailDriver: EmailDriver = "dev-outbox";
-    if (process.env.RESEND_API_KEY && !process.env.RESEND_API_KEY.includes("your_api_key")) {
-        emailDriver = "resend";
-    } else if (process.env.SMTP_HOST) {
-        emailDriver = "smtp";
+    // 4. Email Driver resolution & complete configuration check
+    let emailDriver: EmailDriver = "development fallback";
+    if (parsed.EMAIL_DRIVER === "resend") {
+        if (parsed.RESEND_API_KEY && !parsed.RESEND_API_KEY.includes("your_api_key") && parsed.EMAIL_FROM) {
+            emailDriver = "resend";
+        } else if (isProd) {
+            throw new Error("[ENV:EMAIL] EMAIL_DRIVER is set to 'resend' but RESEND_API_KEY or EMAIL_FROM is incomplete");
+        } else {
+            emailDriver = "disabled";
+        }
+    } else if (parsed.EMAIL_DRIVER === "smtp") {
+        if (parsed.SMTP_HOST && parsed.SMTP_USER && parsed.SMTP_PASS && parsed.EMAIL_FROM) {
+            emailDriver = "smtp";
+        } else if (isProd) {
+            throw new Error("[ENV:EMAIL] EMAIL_DRIVER is set to 'smtp' but SMTP host/credentials are incomplete");
+        } else {
+            emailDriver = "disabled";
+        }
+    } else if (parsed.EMAIL_DRIVER === "disabled") {
+        emailDriver = "disabled";
+    } else if (isProd) {
+        emailDriver = "disabled"; // Never fallback in production without explicit configuration
     }
 
-    // Payment Driver Resolution
-    let paymentDriver: PaymentDriver = "dev-mock";
-    if (process.env.STRIPE_SECRET_KEY && !process.env.STRIPE_SECRET_KEY.includes("your_key")) {
-        paymentDriver = "stripe";
-    } else if (process.env.SADAD_SECRET_KEY) {
-        paymentDriver = "sadad";
+    // 5. Payment Driver resolution & complete configuration check
+    let paymentDriver: PaymentDriver = "development fallback";
+    if (parsed.PAYMENT_DRIVER === "stripe") {
+        if (parsed.STRIPE_SECRET_KEY && !parsed.STRIPE_SECRET_KEY.includes("your_key") && parsed.STRIPE_WEBHOOK_SECRET) {
+            paymentDriver = "stripe";
+        } else if (isProd) {
+            throw new Error("[ENV:PAYMENTS] PAYMENT_DRIVER is set to 'stripe' but STRIPE_SECRET_KEY or STRIPE_WEBHOOK_SECRET is incomplete");
+        } else {
+            paymentDriver = "disabled";
+        }
+    } else if (parsed.PAYMENT_DRIVER === "sadad") {
+        if (parsed.SADAD_SECRET_KEY && parsed.SADAD_MERCHANT_ID) {
+            paymentDriver = "sadad";
+        } else if (isProd) {
+            throw new Error("[ENV:PAYMENTS] PAYMENT_DRIVER is set to 'sadad' but SADAD credentials are incomplete");
+        } else {
+            paymentDriver = "disabled";
+        }
+    } else if (parsed.PAYMENT_DRIVER === "disabled") {
+        paymentDriver = "disabled";
+    } else if (isProd) {
+        paymentDriver = "disabled";
     }
 
-    // Rate Limiting Driver Resolution
-    let rateLimitDriver: RateLimitDriver = "postgres"; // Production multi-tenant safe default
-    if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
-        rateLimitDriver = "redis";
-    } else if (process.env.RATE_LIMIT_DRIVER === "in-memory") {
+    // 6. Rate Limiting resolution
+    let rateLimitDriver: RateLimitDriver = "postgres";
+    if (parsed.RATE_LIMIT_DRIVER === "redis") {
+        if (parsed.UPSTASH_REDIS_REST_URL && parsed.UPSTASH_REDIS_REST_TOKEN) {
+            rateLimitDriver = "redis";
+        } else if (isProd) {
+            throw new Error("[ENV:RATELIMIT] RATE_LIMIT_DRIVER is set to 'redis' but UPSTASH credentials are incomplete");
+        }
+    } else if (parsed.RATE_LIMIT_DRIVER === "in-memory" && !isProd) {
         rateLimitDriver = "in-memory";
     }
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:5001";
+    const appUrl = parsed.NEXT_PUBLIC_APP_URL || parsed.NEXT_PUBLIC_BASE_URL || "http://localhost:5001";
 
     return {
         NODE_ENV: nodeEnv,
@@ -116,53 +244,43 @@ function parseEnv(): AppEnv {
         APP_URL: appUrl,
 
         STORAGE_DRIVER: storageDriver,
-        S3_ACCESS_KEY_ID: process.env.S3_ACCESS_KEY_ID,
-        S3_SECRET_ACCESS_KEY: process.env.S3_SECRET_ACCESS_KEY,
-        S3_REGION: process.env.S3_REGION || "auto",
-        S3_ENDPOINT: process.env.S3_ENDPOINT,
-        S3_BUCKET_NAME: process.env.S3_BUCKET_NAME || "rental-app-media",
-        S3_PRIVATE_BUCKET_NAME: process.env.S3_PRIVATE_BUCKET_NAME || "rental-app-private",
-        NEXT_PUBLIC_CDN_URL: process.env.NEXT_PUBLIC_CDN_URL,
+        S3_ACCESS_KEY_ID: parsed.S3_ACCESS_KEY_ID,
+        S3_SECRET_ACCESS_KEY: parsed.S3_SECRET_ACCESS_KEY,
+        S3_REGION: parsed.S3_REGION,
+        S3_ENDPOINT: parsed.S3_ENDPOINT,
+        S3_BUCKET_NAME: parsed.S3_BUCKET_NAME,
+        S3_PRIVATE_BUCKET_NAME: parsed.S3_PRIVATE_BUCKET_NAME,
+        NEXT_PUBLIC_CDN_URL: parsed.NEXT_PUBLIC_CDN_URL,
 
         EMAIL_DRIVER: emailDriver,
-        RESEND_API_KEY: process.env.RESEND_API_KEY,
-        EMAIL_FROM: process.env.EMAIL_FROM || "E3 Rentals <noreply@e3rentals.com>",
-        SMTP_HOST: process.env.SMTP_HOST,
-        SMTP_PORT: process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT, 10) : undefined,
-        SMTP_USER: process.env.SMTP_USER,
-        SMTP_PASS: process.env.SMTP_PASS,
+        RESEND_API_KEY: parsed.RESEND_API_KEY,
+        EMAIL_FROM: parsed.EMAIL_FROM,
+        SMTP_HOST: parsed.SMTP_HOST,
+        SMTP_PORT: parsed.SMTP_PORT ? parseInt(parsed.SMTP_PORT, 10) : undefined,
+        SMTP_USER: parsed.SMTP_USER,
+        SMTP_PASS: parsed.SMTP_PASS,
 
         PAYMENT_DRIVER: paymentDriver,
-        STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
-        STRIPE_PUBLISHABLE_KEY: process.env.STRIPE_PUBLISHABLE_KEY,
-        STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
-        SADAD_MERCHANT_ID: process.env.SADAD_MERCHANT_ID,
-        SADAD_SECRET_KEY: process.env.SADAD_SECRET_KEY,
+        STRIPE_SECRET_KEY: parsed.STRIPE_SECRET_KEY,
+        STRIPE_WEBHOOK_SECRET: parsed.STRIPE_WEBHOOK_SECRET,
+        NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: parsed.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
+        SADAD_SECRET_KEY: parsed.SADAD_SECRET_KEY,
+        SADAD_MERCHANT_ID: parsed.SADAD_MERCHANT_ID,
 
         RATE_LIMIT_DRIVER: rateLimitDriver,
-        UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL,
-        UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN,
+        UPSTASH_REDIS_REST_URL: parsed.UPSTASH_REDIS_REST_URL,
+        UPSTASH_REDIS_REST_TOKEN: parsed.UPSTASH_REDIS_REST_TOKEN,
 
-        CRON_SECRET: process.env.CRON_SECRET,
+        CRON_SECRET: parsed.CRON_SECRET,
+        OPS_SECRET: parsed.OPS_SECRET,
     };
 }
 
-export const env = parseEnv();
+export const env: AppEnv = validateEnv();
 
 /**
- * Redacts sensitive tokens/keys for safe display and logging.
- * Never displays more than the first and last 2 characters.
- */
-export function redactSecret(value?: string | null): string {
-    if (!value) return "[NOT CONFIGURED]";
-    if (value.length <= 4) return "****";
-    const prefix = value.substring(0, 2);
-    const suffix = value.substring(value.length - 2);
-    return `${prefix}******${suffix}`;
-}
-
-/**
- * Returns a clean status breakdown of all external service integrations.
+ * Returns strictly categorized integration statuses without leaking infrastructure details.
+ * States use only: 'active' | 'sandbox' | 'development fallback' | 'disabled' | 'misconfigured'
  */
 export function getIntegrationsStatus(): IntegrationStatus[] {
     return [
@@ -171,34 +289,34 @@ export function getIntegrationsStatus(): IntegrationStatus[] {
             driver: "drizzle-pg",
             status: env.DATABASE_URL ? "active" : "disabled",
             configured: Boolean(env.DATABASE_URL),
-            details: env.DATABASE_URL ? "Connected to PostgreSQL database cluster" : "No DATABASE_URL supplied",
+            details: env.DATABASE_URL ? "Connected to PostgreSQL database cluster" : "Database unconfigured",
         },
         {
             name: "Object Storage (Public & Private)",
             driver: env.STORAGE_DRIVER,
-            status: env.STORAGE_DRIVER === "s3" ? "active" : "development_outbox",
+            status: env.STORAGE_DRIVER === "s3" ? "active" : (env.STORAGE_DRIVER === "development fallback" ? "development fallback" : "disabled"),
             configured: env.STORAGE_DRIVER === "s3",
             details: env.STORAGE_DRIVER === "s3" 
-                ? `S3/R2 Bucket: ${env.S3_BUCKET_NAME}, Private: ${env.S3_PRIVATE_BUCKET_NAME}` 
-                : "Dev-mock adapter active (authorized ephemeral presigned URLs enabled)",
+                ? "S3/R2 storage adapter active" 
+                : "Storage unconfigured (development fallback mode)",
         },
         {
             name: "Transactional Email & Notifications",
             driver: env.EMAIL_DRIVER,
-            status: env.EMAIL_DRIVER === "resend" ? "active" : "development_outbox",
-            configured: env.EMAIL_DRIVER === "resend",
-            details: env.EMAIL_DRIVER === "resend"
-                ? `Resend API Key: ${redactSecret(env.RESEND_API_KEY)}, From: ${env.EMAIL_FROM}`
-                : "Persistent Development Outbox active (emails stored in notification_outbox table)",
+            status: env.EMAIL_DRIVER === "resend" || env.EMAIL_DRIVER === "smtp" ? "active" : (env.EMAIL_DRIVER === "development fallback" ? "development fallback" : "disabled"),
+            configured: env.EMAIL_DRIVER === "resend" || env.EMAIL_DRIVER === "smtp",
+            details: env.EMAIL_DRIVER === "resend" || env.EMAIL_DRIVER === "smtp"
+                ? "Email provider active"
+                : "Email provider unconfigured (development fallback outbox active)",
         },
         {
             name: "Payment Gateway",
             driver: env.PAYMENT_DRIVER,
-            status: env.PAYMENT_DRIVER === "stripe" ? "active" : "development_outbox",
-            configured: env.PAYMENT_DRIVER === "stripe",
-            details: env.PAYMENT_DRIVER === "stripe"
-                ? `Stripe Key: ${redactSecret(env.STRIPE_SECRET_KEY)}, Webhook: ${redactSecret(env.STRIPE_WEBHOOK_SECRET)}`
-                : "Development Sandbox active (simulated payment intents and HMAC replay-resistant webhooks)",
+            status: env.PAYMENT_DRIVER === "stripe" || env.PAYMENT_DRIVER === "sadad" ? "active" : (env.PAYMENT_DRIVER === "development fallback" ? "development fallback" : "disabled"),
+            configured: env.PAYMENT_DRIVER === "stripe" || env.PAYMENT_DRIVER === "sadad",
+            details: env.PAYMENT_DRIVER === "stripe" || env.PAYMENT_DRIVER === "sadad"
+                ? "Payment provider active"
+                : "Payment provider unconfigured (development sandbox fallback)",
         },
         {
             name: "Distributed Rate Limiter",
@@ -206,8 +324,8 @@ export function getIntegrationsStatus(): IntegrationStatus[] {
             status: "active",
             configured: true,
             details: env.RATE_LIMIT_DRIVER === "redis"
-                ? `Upstash Redis: ${redactSecret(env.UPSTASH_REDIS_REST_URL)}`
-                : "PostgreSQL Sliding Window Limiter active (multi-instance production safe)",
+                ? "Upstash Redis distributed limiter active"
+                : "PostgreSQL sliding window rate limiter active",
         },
     ];
 }

@@ -22,14 +22,14 @@ export type SiteSettingKey =
 
 const DEFAULT_SETTINGS: Record<SiteSettingKey, string> = {
     platform_name: "E3 Rentals",
-    support_email: "support@e3rentals.com",
+    support_email: process.env.SUPPORT_EMAIL || "",
     currency_symbol: "QAR",
     default_tax_rate: "0",
     terms_conditions_url: "/terms",
     homepage_hero_title: "BUILD BETTER EVENTS",
     homepage_hero_subtitle: "Enterprise staging, specialized hardware, and zero-gravity logistics.",
     footer_legal_text: "© 2026 E3 Rentals. All Rights Reserved.",
-    resend_from_email: "E3 Rentals <noreply@e3rentals.com>",
+    resend_from_email: process.env.EMAIL_FROM || "",
     qr_code_provider_url: "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=",
     default_quote_terms: "Strictly 100% advance payment required. Any damages charged at replacement value. Valid for 7 days.",
     base_production_url: "https://e3catalog.com",

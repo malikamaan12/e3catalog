@@ -117,7 +117,7 @@ export default function LoginPage() {
                                     value={emailState}
                                     onChange={(e) => setEmailState(e.target.value)}
                                     className="block w-full rounded-xl border-navy-600 bg-navy-900/50 py-3 pl-10 pr-3 text-white placeholder-navy-400 focus:border-gold focus:ring-gold sm:text-sm shadow-inner transition-colors"
-                                    placeholder={loginType === "admin" ? "admin@e3rentals.com" : "hello@company.com"}
+                                    placeholder={loginType === "admin" ? "admin@company.qa" : "hello@company.com"}
                                     required
                                 />
                             </div>

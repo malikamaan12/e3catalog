@@ -1,0 +1,20 @@
+# Gitleaks Configuration for E3 Rentals
+# Rule definitions and reviewed allowlist for non-secret placeholders in documentation
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Reviewed non-secret documentation placeholders and sample references"
+paths = [
+    '''DEVELOPER_HANDOVER_BIBLE\.md''',
+    '''docs/.*''',
+    '''\.next/.*''',
+    '''bin/.*'''
+]
+regexes = [
+    '''re_123456789abcdef''',
+    '''whsec_dev_default_test_secret''',
+    '''sk_test_.*''',
+    '''pk_test_.*'''
+]

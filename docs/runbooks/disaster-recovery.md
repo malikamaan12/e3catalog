@@ -1,41 +1,47 @@
 # E3 Rentals — Disaster Recovery & Backup Runbook
 
-## Overview
-This runbook defines the backup procedures, Point-in-Time Recovery (PITR) strategy, and emergency restore protocols for E3 Rentals.
+This document defines the database backup mechanisms and recovery procedures.
 
 ---
 
-## 1. Automated Backup Procedures
-Database backups capture all 52 tables with full row-level cryptographic SHA-256 digests.
+## 1. Recovery Architecture Overview
 
-### Creating an On-Demand Backup:
+E3 Rentals implements a dual backup strategy:
+
+1. **Primary Production Disaster Recovery (Physical PostgreSQL Dump)**:
+   - Tooling: Standard PostgreSQL `pg_dump` and `pg_restore` utilities.
+   - Frequency: Daily automated snapshots via Supabase/PostgreSQL cluster backups + weekly offsite archiving.
+   - Scope: Complete PostgreSQL cluster dump including all schemas, tables, constraints, indexes, sequences, extensions, and roles.
+
+2. **Application Logical Snapshots**:
+   - Tooling: `src/scripts/backup-database.ts` and `src/scripts/restore-database.ts`.
+   - Frequency: Pre-deployment checkpoints and schema migration drills.
+   - Scope: Logical JSON record exports with SHA-256 integrity checksums and Drizzle DDL migration playback.
+
+---
+
+## 2. Production PostgreSQL Backup & Restore Commands
+
+### Creating a Full Database Dump:
 ```bash
+# Create a compressed custom-format PostgreSQL dump
+pg_dump --clean --if-exists --no-owner --no-privileges -Fc -d "$DATABASE_URL" -f "e3_production_$(date +%Y%m%d_%H%M%S).dump"
+```
+
+### Restoring into a Target Database Cluster:
+```bash
+# Restore full schema and data
+pg_restore --clean --if-exists --no-owner --no-privileges -d "$TARGET_DATABASE_URL" "e3_production_backup.dump"
+```
+
+---
+
+## 3. Logical Application Snapshot Commands
+
+```bash
+# Create logical application snapshot with SHA-256 checksum
 npx tsx src/scripts/backup-database.ts
-```
-- Backups are stored in `tmp/backups/backup-<schema>-<timestamp>.json`
-- Each backup file includes a cryptographic `manifestChecksum` covering all table datasets.
 
----
-
-## 2. Automated Schema & Database Restore
-The restore engine automatically runs Drizzle migration journals up to the latest revision and inserts validated table data.
-
-### Restoring into a Target Schema / Database:
-```bash
-npx tsx -e "import { restoreDatabaseFromManifest } from './src/scripts/restore-database'; restoreDatabaseFromManifest('tmp/backups/backup-public-<timestamp>.json', 'public');"
-```
-
----
-
-## 3. Backup Verification Testing
-Before any major release or schema migration, run the automated verification test:
-```bash
+# Execute automated DR drill into isolated temporary schema
 npx tsx src/scripts/test-backup-restore.ts
 ```
-This test:
-1. Takes a full live backup of `public`.
-2. Creates an isolated temporary schema `backup_verify_test_temp`.
-3. Runs all 6 migration files against the temporary schema.
-4. Restores the full backup manifest into the temporary schema.
-5. Verifies 100% table and row count parity.
-6. Cleans up and destroys the test schema.

@@ -48,7 +48,7 @@ export class DevOutboxEmailAdapter implements EmailAdapter {
                     subject: options.subject,
                     html: options.html,
                     text: options.text,
-                    from: options.from || env.EMAIL_FROM,
+                    from: options.from || env.EMAIL_FROM || "UNCONFIGURED_SENDER",
                 },
                 status: "sent_to_provider",
                 providerResponse: {
@@ -124,7 +124,7 @@ export class ResendEmailAdapter implements EmailAdapter {
             const resend = new Resend(this.apiKey);
 
             const res = await resend.emails.send({
-                from: options.from || env.EMAIL_FROM,
+                from: options.from || env.EMAIL_FROM || "UNCONFIGURED_SENDER",
                 to: options.to,
                 subject: options.subject,
                 html: options.html,

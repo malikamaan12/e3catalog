@@ -9,7 +9,7 @@ function getResend() {
     return resendInstance;
 }
 
-const FROM = process.env.EMAIL_FROM || "E3 Rentals <noreply@e3rentals.com>";
+const FROM = process.env.EMAIL_FROM || "";
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:5001";
 
 // ─── Status Configs ──────────────────────────────────────────────────────────
@@ -146,7 +146,7 @@ function buildEmailHTML(opts: {
 
         <!-- Footer -->
         <div style="margin-top:24px;text-align:center;color:#475569;font-size:12px;line-height:1.8;">
-            <p style="margin:0;">Questions? Contact us at <a href="mailto:info@e3rentals.com" style="color:#d4a843;text-decoration:none;">info@e3rentals.com</a></p>
+            <p style="margin:0;">Questions? Contact us at <a href="mailto:support" style="color:#d4a843;text-decoration:none;">support</a></p>
             <p style="margin:4px 0 0;">© ${new Date().getFullYear()} E3 Rentals. All rights reserved.</p>
         </div>
     </div>
@@ -358,7 +358,7 @@ function buildEmailHTMLWithId(opts: {
             </div>
         </div>
         <div style="margin-top:24px;text-align:center;color:#475569;font-size:12px;line-height:1.8;">
-            <p style="margin:0;">Questions? Contact us at <a href="mailto:info@e3rentals.com" style="color:#d4a843;text-decoration:none;">info@e3rentals.com</a></p>
+            <p style="margin:0;">Questions? Contact us at <a href="mailto:support" style="color:#d4a843;text-decoration:none;">support</a></p>
             <p style="margin:4px 0 0;">© ${new Date().getFullYear()} E3 Rentals. All rights reserved.</p>
         </div>
     </div>
@@ -548,7 +548,7 @@ export async function sendReviewRequestEmail(opts: {
             </div>
         </div>
         <div style="margin-top:24px;text-align:center;color:#475569;font-size:12px;line-height:1.8;">
-            <p style="margin:0;">Questions? Contact us at <a href="mailto:info@e3rentals.com" style="color:#d4a843;text-decoration:none;">info@e3rentals.com</a></p>
+            <p style="margin:0;">Questions? Contact us at <a href="mailto:support" style="color:#d4a843;text-decoration:none;">support</a></p>
             <p style="margin:4px 0 0;">© ${new Date().getFullYear()} E3 Rentals. All rights reserved.</p>
         </div>
     </div>
