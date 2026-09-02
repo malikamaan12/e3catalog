@@ -1,9 +1,10 @@
 import { db } from "@/lib/db";
-import { bookings, inventoryUnits, safetyCertificates, stagingInventory } from "@/lib/db/schema";
+import { bookings, inventoryUnits, safetyCertificates, stagingInventory, warehouseTransfers, warehousePickLists, inventoryCycleCounts } from "@/lib/db/schema";
 import { eq, and, gte, lte, inArray } from "drizzle-orm";
 import { 
     Truck, RotateCcw, Wrench, AlertTriangle,
-    Scan, LayoutGrid, Printer, ShieldAlert, BoxesIcon
+    Scan, LayoutGrid, Printer, ShieldAlert, BoxesIcon,
+    CheckSquare, ArrowLeftRight, Grid, ClipboardList
 } from "lucide-react";
 import Link from "next/link";
 import { format, addDays, startOfDay, endOfDay } from "date-fns";
@@ -61,53 +62,81 @@ export default async function WarehouseOverviewPage() {
             lte(safetyCertificates.expiryDate, thirtyDaysFromNow)
         ));
 
+    // 7. Active Inter-Warehouse Transfers In Transit
+    const activeTransfers = await db
+        .select({ id: warehouseTransfers.id })
+        .from(warehouseTransfers)
+        .where(inArray(warehouseTransfers.status, ["requested", "in_transit"]));
+
+    // 8. Active Wave Pick Lists
+    const activePickLists = await db
+        .select({ id: warehousePickLists.id })
+        .from(warehousePickLists)
+        .where(inArray(warehousePickLists.status, ["pending", "picking", "packed", "staged"]));
+
+    // 9. Active Cycle Count Audits
+    const activeCycleCounts = await db
+        .select({ id: inventoryCycleCounts.id })
+        .from(inventoryCycleCounts)
+        .where(eq(inventoryCycleCounts.status, "in_progress"));
+
     const stats = [
+        { label: "Pick & Stage Queue",   value: activePickLists.length,    icon: CheckSquare,    color: "text-amber-400",   bg: "bg-amber-500/10",   href: "/dashboard/warehouse/pick-lists" },
         { label: "Dispatches Today",      value: dispatches.length,         icon: Truck,          color: "text-amber-500",   bg: "bg-amber-500/10",   href: "/dashboard/warehouse/dispatch" },
         { label: "Returns Today",         value: returns.length,            icon: RotateCcw,       color: "text-sky-500",     bg: "bg-sky-500/10",     href: "/dashboard/warehouse/dispatch" },
+        { label: "In-Transit Transfers",  value: activeTransfers.length,    icon: ArrowLeftRight, color: "text-indigo-400",  bg: "bg-indigo-500/10",  href: "/dashboard/warehouse/transfers" },
         { label: "On Rent / Deployed",    value: onRent.length,             icon: BoxesIcon,       color: "text-emerald-400", bg: "bg-emerald-500/10", href: "/dashboard/warehouse/fleet" },
         { label: "Awaiting Inspection",   value: awaitingInspection.length, icon: ShieldAlert,     color: "text-orange-400",  bg: "bg-orange-500/10",  href: "/dashboard/warehouse/inspections" },
+        { label: "Active Stock Audits",   value: activeCycleCounts.length,  icon: ClipboardList,  color: "text-purple-400",  bg: "bg-purple-500/10",  href: "/dashboard/warehouse/counts" },
         { label: "In Maintenance",        value: maintenance.length,        icon: Wrench,          color: "text-red-500",     bg: "bg-red-500/10",     href: "/dashboard/warehouse/fleet" },
-        { label: "Expiring Certs",        value: certificates.length,       icon: AlertTriangle,   color: "text-amber-400",   bg: "bg-amber-400/10",   href: "/dashboard/warehouse/fleet" },
     ];
 
     const QUICK_ACTIONS = [
         {
+            href: "/dashboard/warehouse/pick-lists",
+            icon: CheckSquare,
+            label: "Wave Picking",
+            sub: "Pick · Stage",
+            accent: "from-amber-500/20 to-amber-600/5 border-amber-500/25 hover:border-amber-500/60",
+            iconColor: "text-amber-400",
+        },
+        {
             href: "/dashboard/warehouse/fulfillment",
             icon: Scan,
-            label: "Scan to Fulfill",
+            label: "Scan Station",
             sub: "Dispatch · Return",
-            accent: "from-amber-500/20 to-amber-600/5 border-amber-500/25 hover:border-amber-500/60",
-            iconColor: "text-amber-500",
+            accent: "from-emerald-500/20 to-emerald-600/5 border-emerald-500/25 hover:border-emerald-500/60",
+            iconColor: "text-emerald-400",
         },
         {
-            href: "/dashboard/warehouse/fleet",
-            icon: LayoutGrid,
-            label: "Fleet Manager",
-            sub: "Browse · Update",
+            href: "/dashboard/warehouse/transfers",
+            icon: ArrowLeftRight,
+            label: "Transfers",
+            sub: "Hub · Transit",
+            accent: "from-indigo-500/20 to-indigo-600/5 border-indigo-500/25 hover:border-indigo-500/60",
+            iconColor: "text-indigo-400",
+        },
+        {
+            href: "/dashboard/warehouse/zones",
+            icon: Grid,
+            label: "Zones & Bins",
+            sub: "Aisles · Racks",
             accent: "from-sky-500/20 to-sky-600/5 border-sky-500/25 hover:border-sky-500/60",
-            iconColor: "text-sky-500",
+            iconColor: "text-sky-400",
         },
         {
-            href: "/dashboard/warehouse/onboarding",
-            icon: BoxesIcon,
-            label: "Bulk Onboarding",
-            sub: "Count · Convert",
-            accent: "from-violet-500/20 to-violet-600/5 border-violet-500/25 hover:border-violet-500/60",
-            iconColor: "text-violet-400",
-        },
-        {
-            href: "/dashboard/warehouse/inspections",
-            icon: ShieldAlert,
-            label: "Log Damage",
-            sub: "Inspect · Report",
-            accent: "from-red-500/20 to-red-600/5 border-red-500/25 hover:border-red-500/60",
-            iconColor: "text-red-400",
+            href: "/dashboard/warehouse/counts",
+            icon: ClipboardList,
+            label: "Stock Audit",
+            sub: "Cycle · Reconcile",
+            accent: "from-purple-500/20 to-purple-600/5 border-purple-500/25 hover:border-purple-500/60",
+            iconColor: "text-purple-400",
         },
         {
             href: "/dashboard/warehouse/labels",
             icon: Printer,
             label: "Print Labels",
-            sub: "QR · Batch",
+            sub: "QR · Zebra",
             accent: "from-slate-500/20 to-slate-600/5 border-slate-500/25 hover:border-slate-400/40",
             iconColor: "text-slate-400",
         },

@@ -153,6 +153,39 @@ export default function QRScannerModal({ isOpen, onClose, onScan, title = "Hardw
         setManualInput("");
     };
 
+    // ─── Hardware Barcode Gun / Keyboard Wedge Listener ───
+    useEffect(() => {
+        if (!isOpen) return;
+
+        let keyBuffer = "";
+        let lastKeyTime = 0;
+
+        const handleKeyDown = (e: KeyboardEvent) => {
+            // Ignore if active target is a regular form input
+            if (["INPUT", "TEXTAREA", "SELECT"].includes((e.target as HTMLElement)?.tagName)) {
+                return;
+            }
+
+            const now = Date.now();
+            if (now - lastKeyTime > 150) {
+                keyBuffer = ""; // Reset buffer if slow typing
+            }
+            lastKeyTime = now;
+
+            if (e.key === "Enter") {
+                if (keyBuffer.trim().length >= 3 && !isLockedOut) {
+                    onScan(keyBuffer.trim().toUpperCase());
+                    keyBuffer = "";
+                }
+            } else if (e.key.length === 1) {
+                keyBuffer += e.key;
+            }
+        };
+
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+    }, [isOpen, isLockedOut, onScan]);
+
     useEffect(() => {
         if (isOpen) {
             const timeout = setTimeout(() => startScanner(currentCameraIdx), 300);

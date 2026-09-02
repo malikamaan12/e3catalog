@@ -8,16 +8,24 @@ import {
     Truck,
     Package, 
     ShieldAlert, 
-    Tag
+    Tag,
+    Grid,
+    ArrowLeftRight,
+    CheckSquare,
+    ClipboardList
 } from "lucide-react";
 
 const WAREHOUSE_TABS = [
     { href: "/dashboard/warehouse/overview", label: "Hub", icon: LayoutDashboard },
+    { href: "/dashboard/warehouse/pick-lists", label: "Pick & Stage", icon: CheckSquare },
     { href: "/dashboard/warehouse/dispatch", label: "Pipeline", icon: Route },
-    { href: "/dashboard/warehouse/transport", label: "Transport", icon: Truck },
-    { href: "/dashboard/warehouse/fulfillment", label: "Scan", icon: Package },
+    { href: "/dashboard/warehouse/fulfillment", label: "Scan Station", icon: Package },
+    { href: "/dashboard/warehouse/transfers", label: "Transfers", icon: ArrowLeftRight },
+    { href: "/dashboard/warehouse/zones", label: "Zones & Bins", icon: Grid },
     { href: "/dashboard/warehouse/fleet", label: "Fleet", icon: Package },
-    { href: "/dashboard/warehouse/inspections", label: "Inspect", icon: ShieldAlert },
+    { href: "/dashboard/warehouse/inspections", label: "Inspect & QC", icon: ShieldAlert },
+    { href: "/dashboard/warehouse/counts", label: "Stock Audit", icon: ClipboardList },
+    { href: "/dashboard/warehouse/transport", label: "Transport", icon: Truck },
     { href: "/dashboard/warehouse/labels", label: "Labels", icon: Tag },
 ];
 

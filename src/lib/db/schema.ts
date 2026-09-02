@@ -317,6 +317,46 @@ export const vendorWarehouses = pgTable("vendor_warehouses", {
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
+// ─── Warehouse Zones (Spatial Segregation) ───
+export const warehouseZones = pgTable("warehouse_zones", {
+    id: varchar("id", { length: 255 }).primaryKey(),
+    warehouseId: varchar("warehouse_id", { length: 255 }).notNull().references(() => vendorWarehouses.id, { onDelete: "cascade" }),
+    name: varchar("name", { length: 255 }).notNull(), // e.g. "Audio Zone A", "Staging Dock 1", "Quarantine / Repairs"
+    code: varchar("code", { length: 50 }).notNull(), // e.g. "ZN-AUD-A"
+    zoneType: varchar("zone_type", { length: 50 }).notNull().default("storage"), // storage | staging | quarantine | returns | loading_dock
+    color: varchar("color", { length: 50 }).default("#3b82f6"), // Visual UI badging
+    description: varchar("description", { length: 500 }),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => {
+    return {
+        warehouseIdIdx: index("warehouse_zones_warehouse_id_idx").on(table.warehouseId),
+        zoneTypeIdx: index("warehouse_zones_type_idx").on(table.zoneType),
+    };
+});
+
+// ─── Warehouse Bins / Racks / Shelves ───
+export const warehouseBins = pgTable("warehouse_bins", {
+    id: varchar("id", { length: 255 }).primaryKey(),
+    warehouseId: varchar("warehouse_id", { length: 255 }).notNull().references(() => vendorWarehouses.id, { onDelete: "cascade" }),
+    zoneId: varchar("zone_id", { length: 255 }).notNull().references(() => warehouseZones.id, { onDelete: "cascade" }),
+    binCode: varchar("bin_code", { length: 100 }).notNull().unique(), // e.g. "BIN-AUD-A01-R2"
+    aisle: varchar("aisle", { length: 50 }),
+    rack: varchar("rack", { length: 50 }),
+    shelf: varchar("shelf", { length: 50 }),
+    bin: varchar("bin", { length: 50 }),
+    maxCapacity: integer("max_capacity").default(50),
+    isActive: boolean("is_active").notNull().default(true),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => {
+    return {
+        warehouseIdIdx: index("warehouse_bins_warehouse_id_idx").on(table.warehouseId),
+        zoneIdIdx: index("warehouse_bins_zone_id_idx").on(table.zoneId),
+        binCodeIdx: index("warehouse_bins_code_idx").on(table.binCode),
+    };
+});
+
 // ─── Inventory Units (Digital Product Passport) ───
 export const inventoryUnits = pgTable("inventory_units", {
     id: varchar("id", { length: 255 }).primaryKey(),
@@ -329,6 +369,8 @@ export const inventoryUnits = pgTable("inventory_units", {
     lastInspectionDate: timestamp("last_inspection_date"),
     warehouseLocation: varchar("warehouse_location", { length: 255 }), // Legacy free-text
     warehouseId: varchar("warehouse_id", { length: 255 }).references(() => vendorWarehouses.id), // Structured FK
+    zoneId: varchar("zone_id", { length: 255 }).references(() => warehouseZones.id),
+    binId: varchar("bin_id", { length: 255 }).references(() => warehouseBins.id),
     shelfLocation: varchar("shelf_location", { length: 255 }), // e.g. "Rack A3 / Shelf 2"
     purchaseDate: timestamp("purchase_date"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -339,6 +381,7 @@ export const inventoryUnits = pgTable("inventory_units", {
         vendorIdIdx: index("inventory_units_vendor_id_idx").on(table.vendorId),
         assetTagIdx: index("inventory_units_tag_idx").on(table.assetTagCode),
         statusIdx: index("inventory_units_status_idx").on(table.availabilityStatus),
+        binIdIdx: index("inventory_units_bin_id_idx").on(table.binId),
     };
 });
 
@@ -613,6 +656,134 @@ export const cartItems = pgTable("cart_items", {
     };
 });
 
+// ─── Inter-Warehouse Transfers ───
+export const warehouseTransfers = pgTable("warehouse_transfers", {
+    id: varchar("id", { length: 255 }).primaryKey(),
+    transferNumber: varchar("transfer_number", { length: 100 }).notNull().unique(), // e.g. "TRF-2026-001"
+    sourceWarehouseId: varchar("source_warehouse_id", { length: 255 }).notNull().references(() => vendorWarehouses.id),
+    destWarehouseId: varchar("dest_warehouse_id", { length: 255 }).notNull().references(() => vendorWarehouses.id),
+    status: varchar("status", { length: 50 }).notNull().default("draft"), // draft | requested | approved | in_transit | received | cancelled
+    requestedBy: varchar("requested_by", { length: 255 }).references(() => users.id),
+    dispatchedBy: varchar("dispatched_by", { length: 255 }).references(() => users.id),
+    receivedBy: varchar("received_by", { length: 255 }).references(() => users.id),
+    driverName: varchar("driver_name", { length: 255 }),
+    vehiclePlate: varchar("vehicle_plate", { length: 100 }),
+    driverPhone: varchar("driver_phone", { length: 50 }),
+    notes: text("notes"),
+    dispatchedAt: timestamp("dispatched_at"),
+    receivedAt: timestamp("received_at"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => {
+    return {
+        sourceIdx: index("warehouse_transfers_source_idx").on(table.sourceWarehouseId),
+        destIdx: index("warehouse_transfers_dest_idx").on(table.destWarehouseId),
+        statusIdx: index("warehouse_transfers_status_idx").on(table.status),
+    };
+});
+
+export const warehouseTransferItems = pgTable("warehouse_transfer_items", {
+    id: varchar("id", { length: 255 }).primaryKey(),
+    transferId: varchar("transfer_id", { length: 255 }).notNull().references(() => warehouseTransfers.id, { onDelete: "cascade" }),
+    productId: varchar("product_id", { length: 255 }).notNull().references(() => products.id),
+    inventoryUnitId: varchar("inventory_unit_id", { length: 255 }).references(() => inventoryUnits.id),
+    requestedQuantity: integer("requested_quantity").notNull().default(1),
+    transferredQuantity: integer("transferred_quantity").notNull().default(1),
+    status: varchar("status", { length: 50 }).notNull().default("pending"), // pending | loaded | received | discrepancy
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => {
+    return {
+        transferIdIdx: index("warehouse_transfer_items_transfer_idx").on(table.transferId),
+        unitIdIdx: index("warehouse_transfer_items_unit_idx").on(table.inventoryUnitId),
+    };
+});
+
+// ─── Warehouse Pick Lists & Wave Picking ───
+export const warehousePickLists = pgTable("warehouse_pick_lists", {
+    id: varchar("id", { length: 255 }).primaryKey(),
+    pickNumber: varchar("pick_number", { length: 100 }).notNull().unique(), // e.g. "PCK-2026-001"
+    bookingId: varchar("booking_id", { length: 255 }).notNull().references(() => bookings.id, { onDelete: "cascade" }),
+    warehouseId: varchar("warehouse_id", { length: 255 }).references(() => vendorWarehouses.id),
+    stagingBay: varchar("staging_bay", { length: 100 }), // e.g. "Bay 04 - Dispatch Gate A"
+    status: varchar("status", { length: 50 }).notNull().default("pending"), // pending | picking | packed | staged | loaded | dispatched
+    assignedPickerId: varchar("assigned_picker_id", { length: 255 }).references(() => users.id),
+    packedAt: timestamp("packed_at"),
+    stagedAt: timestamp("staged_at"),
+    notes: text("notes"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => {
+    return {
+        bookingIdIdx: index("warehouse_pick_lists_booking_idx").on(table.bookingId),
+        statusIdx: index("warehouse_pick_lists_status_idx").on(table.status),
+        stagingBayIdx: index("warehouse_pick_lists_bay_idx").on(table.stagingBay),
+    };
+});
+
+export const warehousePickItems = pgTable("warehouse_pick_items", {
+    id: varchar("id", { length: 255 }).primaryKey(),
+    pickListId: varchar("pick_list_id", { length: 255 }).notNull().references(() => warehousePickLists.id, { onDelete: "cascade" }),
+    productId: varchar("product_id", { length: 255 }).notNull().references(() => products.id),
+    inventoryUnitId: varchar("inventory_unit_id", { length: 255 }).references(() => inventoryUnits.id),
+    requiredQty: integer("required_qty").notNull().default(1),
+    pickedQty: integer("picked_qty").notNull().default(0),
+    isAccessory: boolean("is_accessory").default(false),
+    accessoryName: varchar("accessory_name", { length: 255 }),
+    isVerified: boolean("is_verified").default(false),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => {
+    return {
+        pickListIdIdx: index("warehouse_pick_items_pick_idx").on(table.pickListId),
+        unitIdIdx: index("warehouse_pick_items_unit_idx").on(table.inventoryUnitId),
+    };
+});
+
+// ─── Inventory Cycle Counts ───
+export const inventoryCycleCounts = pgTable("inventory_cycle_counts", {
+    id: varchar("id", { length: 255 }).primaryKey(),
+    countNumber: varchar("count_number", { length: 100 }).notNull().unique(), // e.g. "CNT-2026-001"
+    warehouseId: varchar("warehouse_id", { length: 255 }).notNull().references(() => vendorWarehouses.id),
+    zoneId: varchar("zone_id", { length: 255 }).references(() => warehouseZones.id),
+    title: varchar("title", { length: 255 }).notNull(), // e.g. "Q3 Audio Zone Physical Audit"
+    status: varchar("status", { length: 50 }).notNull().default("planned"), // planned | in_progress | completed | reconciled
+    countedById: varchar("counted_by_id", { length: 255 }).references(() => users.id),
+    totalExpectedUnits: integer("total_expected_units").default(0),
+    totalScannedUnits: integer("total_scanned_units").default(0),
+    discrepancyCount: integer("discrepancy_count").default(0),
+    startedAt: timestamp("started_at"),
+    completedAt: timestamp("completed_at"),
+    reconciledAt: timestamp("reconciled_at"),
+    notes: text("notes"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => {
+    return {
+        warehouseIdIdx: index("inventory_cycle_counts_wh_idx").on(table.warehouseId),
+        zoneIdIdx: index("inventory_cycle_counts_zone_idx").on(table.zoneId),
+        statusIdx: index("inventory_cycle_counts_status_idx").on(table.status),
+    };
+});
+
+export const cycleCountItems = pgTable("cycle_count_items", {
+    id: varchar("id", { length: 255 }).primaryKey(),
+    cycleCountId: varchar("cycle_count_id", { length: 255 }).notNull().references(() => inventoryCycleCounts.id, { onDelete: "cascade" }),
+    inventoryUnitId: varchar("inventory_unit_id", { length: 255 }).references(() => inventoryUnits.id),
+    productId: varchar("product_id", { length: 255 }).references(() => products.id),
+    expectedBinId: varchar("expected_bin_id", { length: 255 }).references(() => warehouseBins.id),
+    scannedBinId: varchar("scanned_bin_id", { length: 255 }).references(() => warehouseBins.id),
+    expectedStatus: varchar("expected_status", { length: 50 }),
+    scannedStatus: varchar("scanned_status", { length: 50 }),
+    discrepancyType: varchar("discrepancy_type", { length: 50 }), // none | missing | wrong_bin | condition_mismatch | unregistered
+    isResolved: boolean("is_resolved").default(false),
+    resolutionNotes: text("resolution_notes"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => {
+    return {
+        cycleCountIdIdx: index("cycle_count_items_count_idx").on(table.cycleCountId),
+        unitIdIdx: index("cycle_count_items_unit_idx").on(table.inventoryUnitId),
+    };
+});
+
 // ─── Relations ───
 export const categoriesRelations = relations(categories, ({ many }) => ({
     products: many(products),
@@ -707,6 +878,33 @@ export const vendorWarehousesRelations = relations(vendorWarehouses, ({ one, man
         fields: [vendorWarehouses.vendorId],
         references: [vendors.id],
     }),
+    zones: many(warehouseZones),
+    bins: many(warehouseBins),
+    inventoryUnits: many(inventoryUnits),
+    transfersAsSource: many(warehouseTransfers, { relationName: "sourceTransfers" }),
+    transfersAsDest: many(warehouseTransfers, { relationName: "destTransfers" }),
+    pickLists: many(warehousePickLists),
+    cycleCounts: many(inventoryCycleCounts),
+}));
+
+export const warehouseZonesRelations = relations(warehouseZones, ({ one, many }) => ({
+    warehouse: one(vendorWarehouses, {
+        fields: [warehouseZones.warehouseId],
+        references: [vendorWarehouses.id],
+    }),
+    bins: many(warehouseBins),
+    inventoryUnits: many(inventoryUnits),
+}));
+
+export const warehouseBinsRelations = relations(warehouseBins, ({ one, many }) => ({
+    warehouse: one(vendorWarehouses, {
+        fields: [warehouseBins.warehouseId],
+        references: [vendorWarehouses.id],
+    }),
+    zone: one(warehouseZones, {
+        fields: [warehouseBins.zoneId],
+        references: [warehouseZones.id],
+    }),
     inventoryUnits: many(inventoryUnits),
 }));
 
@@ -723,8 +921,119 @@ export const inventoryUnitsRelations = relations(inventoryUnits, ({ one, many })
         fields: [inventoryUnits.warehouseId],
         references: [vendorWarehouses.id],
     }),
+    zone: one(warehouseZones, {
+        fields: [inventoryUnits.zoneId],
+        references: [warehouseZones.id],
+    }),
+    bin: one(warehouseBins, {
+        fields: [inventoryUnits.binId],
+        references: [warehouseBins.id],
+    }),
     inspectionLogs: many(inspectionLogs),
     maintenanceRecords: many(maintenanceRecords),
+}));
+
+export const warehouseTransfersRelations = relations(warehouseTransfers, ({ one, many }) => ({
+    sourceWarehouse: one(vendorWarehouses, {
+        fields: [warehouseTransfers.sourceWarehouseId],
+        references: [vendorWarehouses.id],
+        relationName: "sourceTransfers",
+    }),
+    destWarehouse: one(vendorWarehouses, {
+        fields: [warehouseTransfers.destWarehouseId],
+        references: [vendorWarehouses.id],
+        relationName: "destTransfers",
+    }),
+    requester: one(users, {
+        fields: [warehouseTransfers.requestedBy],
+        references: [users.id],
+    }),
+    items: many(warehouseTransferItems),
+}));
+
+export const warehouseTransferItemsRelations = relations(warehouseTransferItems, ({ one }) => ({
+    transfer: one(warehouseTransfers, {
+        fields: [warehouseTransferItems.transferId],
+        references: [warehouseTransfers.id],
+    }),
+    product: one(products, {
+        fields: [warehouseTransferItems.productId],
+        references: [products.id],
+    }),
+    inventoryUnit: one(inventoryUnits, {
+        fields: [warehouseTransferItems.inventoryUnitId],
+        references: [inventoryUnits.id],
+    }),
+}));
+
+export const warehousePickListsRelations = relations(warehousePickLists, ({ one, many }) => ({
+    booking: one(bookings, {
+        fields: [warehousePickLists.bookingId],
+        references: [bookings.id],
+    }),
+    warehouse: one(vendorWarehouses, {
+        fields: [warehousePickLists.warehouseId],
+        references: [vendorWarehouses.id],
+    }),
+    assignedPicker: one(users, {
+        fields: [warehousePickLists.assignedPickerId],
+        references: [users.id],
+    }),
+    items: many(warehousePickItems),
+}));
+
+export const warehousePickItemsRelations = relations(warehousePickItems, ({ one }) => ({
+    pickList: one(warehousePickLists, {
+        fields: [warehousePickItems.pickListId],
+        references: [warehousePickLists.id],
+    }),
+    product: one(products, {
+        fields: [warehousePickItems.productId],
+        references: [products.id],
+    }),
+    inventoryUnit: one(inventoryUnits, {
+        fields: [warehousePickItems.inventoryUnitId],
+        references: [inventoryUnits.id],
+    }),
+}));
+
+export const inventoryCycleCountsRelations = relations(inventoryCycleCounts, ({ one, many }) => ({
+    warehouse: one(vendorWarehouses, {
+        fields: [inventoryCycleCounts.warehouseId],
+        references: [vendorWarehouses.id],
+    }),
+    zone: one(warehouseZones, {
+        fields: [inventoryCycleCounts.zoneId],
+        references: [warehouseZones.id],
+    }),
+    countedBy: one(users, {
+        fields: [inventoryCycleCounts.countedById],
+        references: [users.id],
+    }),
+    items: many(cycleCountItems),
+}));
+
+export const cycleCountItemsRelations = relations(cycleCountItems, ({ one }) => ({
+    cycleCount: one(inventoryCycleCounts, {
+        fields: [cycleCountItems.cycleCountId],
+        references: [inventoryCycleCounts.id],
+    }),
+    inventoryUnit: one(inventoryUnits, {
+        fields: [cycleCountItems.inventoryUnitId],
+        references: [inventoryUnits.id],
+    }),
+    product: one(products, {
+        fields: [cycleCountItems.productId],
+        references: [products.id],
+    }),
+    expectedBin: one(warehouseBins, {
+        fields: [cycleCountItems.expectedBinId],
+        references: [warehouseBins.id],
+    }),
+    scannedBin: one(warehouseBins, {
+        fields: [cycleCountItems.scannedBinId],
+        references: [warehouseBins.id],
+    }),
 }));
 
 export const inspectionLogsRelations = relations(inspectionLogs, ({ one }) => ({
