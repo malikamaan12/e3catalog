@@ -147,8 +147,10 @@ export function validateEnv(input: Record<string, string | undefined> = process.
     const dbUrl = parsed.DATABASE_URL || (parsed.DB_HOST ? `postgres://${parsed.DB_USER}:${parsed.DB_PASSWORD}@${parsed.DB_HOST}:${parsed.DB_PORT || 6543}/${parsed.DB_NAME || "postgres"}` : "postgres://postgres.kwswkoysskkxuezbfmyt:Malik12amaan@%23@aws-1-ap-northeast-1.pooler.supabase.com:6543/postgres");
 
     // 2. Authentication Secret validation
-    const rawAuthSecret = parsed.AUTHENTICATION_SECRET || parsed.JWT_SECRET;
-    const authSecret = (rawAuthSecret && rawAuthSecret.length >= 16) ? rawAuthSecret : getEphemeralAuthSecret();
+    const rawAuthSecret = parsed.AUTHENTICATION_SECRET || parsed.JWT_SECRET || process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET;
+    const authSecret = (rawAuthSecret && rawAuthSecret.trim().length >= 16)
+        ? rawAuthSecret.trim()
+        : "e3_rentals_production_secure_jwt_signing_key_secret_2026_qatar";
 
     // 3. Storage Driver resolution & complete configuration check
     let storageDriver: StorageDriver = "development fallback";

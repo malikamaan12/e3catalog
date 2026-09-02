@@ -3,11 +3,10 @@ import type { NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 
 function getSecretKey(): Uint8Array {
-    const rawSecret = process.env.AUTHENTICATION_SECRET || process.env.JWT_SECRET;
-    const isProduction = process.env.NODE_ENV === "production" || process.env.VERCEL === "1";
-    const secret = (rawSecret && rawSecret.trim().length > 0)
-        ? rawSecret
-        : (isProduction ? "production_fallback_auth_secret_do_not_use_in_real_prod_e3_rentals_key_2026" : "default_super_secret_key_for_development");
+    const rawSecret = process.env.AUTHENTICATION_SECRET || process.env.JWT_SECRET || process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET;
+    const secret = (rawSecret && rawSecret.trim().length >= 16)
+        ? rawSecret.trim()
+        : "e3_rentals_production_secure_jwt_signing_key_secret_2026_qatar";
     return new TextEncoder().encode(secret);
 }
 
