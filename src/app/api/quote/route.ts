@@ -1,18 +1,24 @@
 import { db } from "@/lib/db";
 import { cartItems } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, or } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { differenceInDays } from "date-fns";
+import { getCurrentUser } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
     const sessionId = req.cookies.get("rental_session")?.value;
+    const currentUser = await getCurrentUser().catch(() => null);
 
-    if (!sessionId) {
-        return NextResponse.json({ error: "No cart session" }, { status: 400 });
+    if (!sessionId && !currentUser) {
+        return NextResponse.json({ error: "No cart session found" }, { status: 400 });
     }
 
+    const whereClause = currentUser?.id
+        ? (sessionId ? or(eq(cartItems.sessionId, sessionId), eq(cartItems.userId, currentUser.id)) : eq(cartItems.userId, currentUser.id))
+        : eq(cartItems.sessionId, sessionId!);
+
     const items = await db.query.cartItems.findMany({
-        where: eq(cartItems.sessionId, sessionId),
+        where: whereClause,
         with: {
             product: {
                 with: {

@@ -1,24 +1,41 @@
 import { NextRequest, NextResponse } from "next/server";
 import { processNotificationOutbox } from "@/lib/notifications";
-import { env } from "@/lib/env";
+import { verifyCronAuthorization, unauthorizedCronResponse, methodNotAllowedResponse } from "@/lib/cron-auth";
+import { withCronExecutionGovernance } from "@/lib/cron-governance";
+
+export const dynamic = "force-dynamic";
+
+export async function GET() {
+    return methodNotAllowedResponse();
+}
 
 export async function POST(req: NextRequest) {
-    const authHeader = req.headers.get("authorization");
-    const cronSecret = env.CRON_SECRET || "dev_cron_secret_token";
-
-    if (authHeader !== `Bearer ${cronSecret}` && req.headers.get("x-cron-secret") !== cronSecret) {
-        return NextResponse.json({ error: "Unauthorized cron trigger" }, { status: 401 });
+    if (!verifyCronAuthorization(req)) {
+        return unauthorizedCronResponse();
     }
 
-    try {
-        const result = await processNotificationOutbox(50);
-        return NextResponse.json({
-            success: true,
-            timestamp: new Date().toISOString(),
-            ...result,
-        });
-    } catch (err: any) {
-        console.error("[Cron] process-notifications error:", err.message);
-        return NextResponse.json({ error: "Failed to process notifications" }, { status: 500 });
+    const execution = await withCronExecutionGovernance(
+        "process_notifications",
+        "scheduled",
+        undefined,
+        async () => {
+            const result = await processNotificationOutbox(50);
+            return {
+                jobName: "process_notifications",
+                itemsProcessed: (result as any)?.processedCount || 0,
+                itemsFailed: (result as any)?.failedCount || 0,
+                details: result,
+            };
+        }
+    );
+
+    if (!execution.success) {
+        return NextResponse.json({ error: execution.message }, { status: 429 });
     }
+
+    return NextResponse.json({
+        success: true,
+        runId: execution.runId,
+        result: execution.result,
+    });
 }
