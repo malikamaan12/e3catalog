@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { users, userSessions } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { signToken } from "@/lib/auth";
 import { cookies } from "next/headers";
 import { checkRateLimit, applyRateLimitHeaders, getClientIp } from "@/lib/rate-limit";
@@ -12,8 +12,8 @@ import * as crypto from "crypto";
 export async function POST(req: NextRequest) {
     const ip = getClientIp(req);
     
-    // Distributed Rate Limiting (15 attempts per minute per IP)
-    const rateLimit = await checkRateLimit(`login:${ip}`, { limit: 15, windowSeconds: 60 });
+    // Distributed Rate Limiting (30 attempts per minute per IP)
+    const rateLimit = await checkRateLimit(`login:${ip}`, { limit: 30, windowSeconds: 60 });
     if (!rateLimit.success) {
         const res = NextResponse.json(
             { error: `Too many login attempts. Please retry in ${rateLimit.retryAfter} seconds.` },
@@ -45,10 +45,10 @@ export async function POST(req: NextRequest) {
                 password: users.password,
             })
             .from(users)
-            .where(eq(users.email, email))
+            .where(sql`lower(${users.email}) = ${email}`)
             .limit(1);
 
-        if (!user || !user.password) {
+        if (!user) {
             const res = NextResponse.json(
                 { error: "Invalid email or password" },
                 { status: 401 }
@@ -56,12 +56,30 @@ export async function POST(req: NextRequest) {
             return applyRateLimitHeaders(res, rateLimit);
         }
 
+        if (!user.password) {
+            const res = NextResponse.json(
+                { error: "No password set for this account. Please use 'Forgot password' to set a password." },
+                { status: 401 }
+            );
+            return applyRateLimitHeaders(res, rateLimit);
+        }
+
         // Validate password against hashed or plain format
         let isValid = false;
-        if (user.password.startsWith("$2a$") || user.password.startsWith("$2b$")) {
+        const isBcrypt = user.password.startsWith("$2");
+        if (isBcrypt) {
             isValid = await bcrypt.compare(password, user.password);
         } else {
             isValid = user.password === password;
+            // Transparently upgrade plaintext password to bcrypt hash in DB
+            if (isValid) {
+                try {
+                    const hashed = await bcrypt.hash(password, 10);
+                    await db.update(users).set({ password: hashed, updatedAt: new Date() }).where(eq(users.id, user.id));
+                } catch {
+                    // Non-critical background upgrade
+                }
+            }
         }
 
         if (!isValid) {
@@ -72,7 +90,7 @@ export async function POST(req: NextRequest) {
             return applyRateLimitHeaders(res, rateLimit);
         }
 
-        if (user.status === "blocked" || user.status === "suspended") {
+        if (user.status === "blocked" || user.status === "suspended" || user.status === "inactive") {
             const res = NextResponse.json(
                 { error: "Your account is not active. Please contact support." },
                 { status: 403 }

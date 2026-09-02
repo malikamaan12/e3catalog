@@ -34,17 +34,30 @@ export default function LoginPage() {
 
             const data = await res.json();
 
-            // Route based on actual role claim instead of what tab they clicked
-            const adminRoles = [USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN, USER_ROLES.SALES_REP, USER_ROLES.WAREHOUSE_MANAGER, USER_ROLES.VENDOR];
-            if (adminRoles.includes(data.user?.role)) {
-                router.push("/admin");
+            // Extract 'from' redirect parameter if present
+            const params = new URLSearchParams(window.location.search);
+            const fromParam = params.get("from");
+            const safeFrom = fromParam && fromParam.startsWith("/") && !fromParam.startsWith("//") ? fromParam : null;
+
+            // Route cleanly based on persona
+            let targetUrl = "/dashboard";
+            const role = data.user?.role;
+            if (role === USER_ROLES.SUPER_ADMIN || role === USER_ROLES.ADMIN) {
+                targetUrl = safeFrom && safeFrom.startsWith("/admin") ? safeFrom : "/admin";
+            } else if (role === USER_ROLES.VENDOR) {
+                targetUrl = safeFrom && safeFrom.startsWith("/dashboard") ? safeFrom : "/dashboard/products";
+            } else if (role === USER_ROLES.WAREHOUSE_MANAGER) {
+                targetUrl = safeFrom && (safeFrom.startsWith("/dashboard/warehouse") || safeFrom.startsWith("/admin/fulfillment")) ? safeFrom : "/dashboard/warehouse/overview";
+            } else if (role === USER_ROLES.SALES_REP) {
+                targetUrl = safeFrom && (safeFrom.startsWith("/dashboard/sales") || safeFrom.startsWith("/admin/bookings")) ? safeFrom : "/dashboard/sales/overview";
             } else {
-                router.push("/dashboard");
+                targetUrl = safeFrom && safeFrom.startsWith("/dashboard") ? safeFrom : "/dashboard/client/overview";
             }
-            router.refresh();
+
+            // Perform full window navigation so all session cookies and server RSCs reload fresh
+            window.location.href = targetUrl;
         } catch (err: any) {
             setError(err.message);
-        } finally {
             setIsLoading(false);
         }
     };
