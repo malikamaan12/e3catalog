@@ -1174,6 +1174,89 @@ export const bookingApprovalRequests = pgTable("booking_approval_requests", {
     };
 });
 
+// ─── Automated Multi-Vehicle Dispatch Routes & Waypoint Clusters ───
+export const dispatchRoutes = pgTable("dispatch_routes", {
+    id: varchar("id", { length: 255 }).primaryKey(),
+    clusterNumber: varchar("cluster_number", { length: 100 }).notNull().unique(), // e.g. "ROUTE-2026-09-01-N1"
+    zone: varchar("zone", { length: 100 }).notNull(), // "Lusail & Pearl" | "West Bay" | "Al Rayyan" | "Al Wakrah" | "Central Doha" | "Industrial Area"
+    driverId: varchar("driver_id", { length: 255 }).references(() => users.id),
+    driverName: varchar("driver_name", { length: 255 }),
+    vehiclePlate: varchar("vehicle_plate", { length: 100 }),
+    vehicleCapacityKg: integer("vehicle_capacity_kg").default(3500),
+    scheduledDate: timestamp("scheduled_date").notNull(),
+    status: varchar("status", { length: 50 }).notNull().default("draft"), // draft | sequenced | dispatched | in_transit | completed
+    totalStops: integer("total_stops").notNull().default(0),
+    totalWeightKg: real("total_weight_kg").notNull().default(0),
+    totalVolumeCbm: real("total_volume_cbm").notNull().default(0),
+    notes: text("notes"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => {
+    return {
+        zoneIdx: index("dispatch_routes_zone_idx").on(table.zone),
+        scheduledDateIdx: index("dispatch_routes_date_idx").on(table.scheduledDate),
+        statusIdx: index("dispatch_routes_status_idx").on(table.status),
+    };
+});
+
+export const dispatchStops = pgTable("dispatch_stops", {
+    id: varchar("id", { length: 255 }).primaryKey(),
+    routeId: varchar("route_id", { length: 255 }).notNull().references(() => dispatchRoutes.id, { onDelete: "cascade" }),
+    bookingId: varchar("booking_id", { length: 255 }).references(() => bookings.id, { onDelete: "set null" }),
+    sequenceIndex: integer("sequence_index").notNull().default(0),
+    venueAddress: varchar("venue_address", { length: 500 }).notNull(),
+    contactPerson: varchar("contact_person", { length: 255 }),
+    contactPhone: varchar("contact_phone", { length: 100 }),
+    timeWindowStart: varchar("time_window_start", { length: 20 }), // e.g. "09:00"
+    timeWindowEnd: varchar("time_window_end", { length: 20 }), // e.g. "12:00"
+    stopType: varchar("stop_type", { length: 50 }).notNull().default("delivery"), // delivery | pickup | transfer
+    status: varchar("status", { length: 50 }).notNull().default("pending"), // pending | en_route | arrived | completed | failed
+    notes: text("notes"),
+    completedAt: timestamp("completed_at"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => {
+    return {
+        routeIdx: index("dispatch_stops_route_idx").on(table.routeId),
+        bookingIdx: index("dispatch_stops_booking_idx").on(table.bookingId),
+        sequenceIdx: index("dispatch_stops_sequence_idx").on(table.sequenceIndex),
+    };
+});
+
+// ─── Dynamic Demand Surge & Tiered Seasonal Rate Rules ───
+export const pricingSurgeRules = pgTable("pricing_surge_rules", {
+    id: varchar("id", { length: 255 }).primaryKey(),
+    name: varchar("name", { length: 255 }).notNull(), // e.g. "Qatar National Day Peak", "Weekend Prime"
+    code: varchar("code", { length: 100 }).notNull().unique(), // e.g. "QND_SURGE_2026"
+    startDate: timestamp("start_date"),
+    endDate: timestamp("end_date"),
+    multiplier: real("multiplier").notNull().default(1.2), // e.g. 1.25 = +25%
+    dayOfWeek: varchar("day_of_week", { length: 100 }), // e.g. "thursday,friday,saturday"
+    isActive: boolean("is_active").notNull().default(true),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => {
+    return {
+        codeIdx: index("pricing_surge_rules_code_idx").on(table.code),
+        activeIdx: index("pricing_surge_rules_active_idx").on(table.isActive),
+    };
+});
+
+export const pricingDurationTiers = pgTable("pricing_duration_tiers", {
+    id: varchar("id", { length: 255 }).primaryKey(),
+    name: varchar("name", { length: 255 }).notNull(), // e.g. "Weekly Production Rate", "Monthly Residency"
+    minDays: integer("min_days").notNull(), // e.g. 4
+    maxDays: integer("max_days"), // e.g. 7 or null for unbounded
+    discountPercent: real("discount_percent").notNull().default(15), // e.g. 15%
+    isActive: boolean("is_active").notNull().default(true),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => {
+    return {
+        activeIdx: index("pricing_duration_tiers_active_idx").on(table.isActive),
+    };
+});
+
 // ─── Relations ───
 export const categoriesRelations = relations(categories, ({ many }) => ({
     products: many(products),
@@ -2580,6 +2663,25 @@ export const bookingApprovalRequestsRelations = relations(bookingApprovalRequest
     approver: one(users, {
         fields: [bookingApprovalRequests.approverId],
         references: [users.id],
+    }),
+}));
+
+export const dispatchRoutesRelations = relations(dispatchRoutes, ({ one, many }) => ({
+    driver: one(users, {
+        fields: [dispatchRoutes.driverId],
+        references: [users.id],
+    }),
+    stops: many(dispatchStops),
+}));
+
+export const dispatchStopsRelations = relations(dispatchStops, ({ one }) => ({
+    route: one(dispatchRoutes, {
+        fields: [dispatchStops.routeId],
+        references: [dispatchRoutes.id],
+    }),
+    booking: one(bookings, {
+        fields: [dispatchStops.bookingId],
+        references: [bookings.id],
     }),
 }));
 

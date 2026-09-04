@@ -18,6 +18,7 @@ import {
     Search
 } from "lucide-react";
 import { AdminSettlementManager } from "@/components/admin/AdminSettlementManager";
+import { FinancialJournalCockpit } from "@/components/financials/FinancialJournalCockpit";
 
 export default function AdminFinancialsPage() {
     const [activeTab, setActiveTab] = useState<"invoices" | "aging" | "payments" | "settlements" | "journals" | "reconciliation">("invoices");
@@ -345,46 +346,7 @@ export default function AdminFinancialsPage() {
 
             {/* TAB: Double-Entry Journals */}
             {activeTab === "journals" && (
-                <div className="space-y-6">
-                    <div className="glass rounded-2xl border border-white/10 overflow-hidden">
-                        <table className="w-full text-left text-xs">
-                            <thead className="bg-white/5 text-[var(--color-slate)] uppercase tracking-wider font-semibold">
-                                <tr>
-                                    <th className="px-6 py-4">Journal #</th>
-                                    <th className="px-6 py-4">Description</th>
-                                    <th className="px-6 py-4">Account Splits (Debits & Credits)</th>
-                                    <th className="px-6 py-4">Posted Date</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-white/5">
-                                {journalsList.map((j) => (
-                                    <tr key={j.id} className="hover:bg-white/[0.02] transition-colors">
-                                        <td className="px-6 py-4 font-mono font-bold text-[var(--color-gold)] align-top">
-                                            {j.journalNumber}
-                                        </td>
-                                        <td className="px-6 py-4 font-medium text-white align-top">
-                                            {j.description}
-                                        </td>
-                                        <td className="px-6 py-4 space-y-1">
-                                            {j.entries?.map((e: any) => (
-                                                <div key={e.id} className="flex justify-between gap-4 font-mono text-[11px]">
-                                                    <span className="text-[var(--color-slate)]">{e.accountName} ({e.accountCode}):</span>
-                                                    <span>
-                                                        {e.debit > 0 && <span className="text-emerald-400 font-bold">DR QAR {e.debit.toLocaleString()}</span>}
-                                                        {e.credit > 0 && <span className="text-blue-400 font-bold">CR QAR {e.credit.toLocaleString()}</span>}
-                                                    </span>
-                                                </div>
-                                            ))}
-                                        </td>
-                                        <td className="px-6 py-4 text-[var(--color-slate)] align-top">
-                                            {new Date(j.postedAt).toLocaleDateString()}
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+                <FinancialJournalCockpit />
             )}
 
             {/* TAB: Reconciliation */}

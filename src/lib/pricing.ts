@@ -48,8 +48,24 @@ export interface QuoteFinancials {
     additionalChargeAmount: number;
     additionalChargeType: "fixed" | "percent" | "per_unit" | "per_day";
     additionalChargeCalculated: number;
+    durationTierDiscountPercent?: number;
+    durationDiscountAmount?: number;
+    durationTierName?: string;
+    surgeMultiplier?: number;
+    surgeAdjustmentAmount?: number;
     grandTotal: number;
     hasUnpricedItems: boolean;
+}
+
+/**
+ * Returns non-linear duration discount tier based on event rental days.
+ */
+export function getDurationTierDiscount(days: number): { percent: number; name: string } {
+    if (days >= 30) return { percent: 45, name: "30+ Days Residency (45% Off)" };
+    if (days >= 15) return { percent: 35, name: "Fortnight Lease (35% Off)" };
+    if (days >= 8) return { percent: 25, name: "Multi-Week Rate (25% Off)" };
+    if (days >= 4) return { percent: 15, name: "Weekly Production Rate (15% Off)" };
+    return { percent: 0, name: "Standard Daily Rate" };
 }
 
 /**
@@ -93,6 +109,8 @@ export function calculateQuoteFinancials(params: {
     additionalChargeName?: string | null;
     additionalChargeAmount?: number;
     additionalChargeType?: "fixed" | "percent" | "per_unit" | "per_day";
+    surgeMultiplier?: number;
+    applyDurationTier?: boolean;
 }): QuoteFinancials {
     const {
         items,
@@ -103,6 +121,8 @@ export function calculateQuoteFinancials(params: {
         additionalChargeName = null,
         additionalChargeAmount = 0,
         additionalChargeType = "fixed",
+        surgeMultiplier = 1.0,
+        applyDurationTier = true,
     } = params;
 
     let baseRentalSubtotal = 0;
@@ -147,7 +167,19 @@ export function calculateQuoteFinancials(params: {
 
     baseRentalSubtotal = roundCurrency(baseRentalSubtotal);
     totalCustomFees = roundCurrency(totalCustomFees);
-    const grossSubtotal = roundCurrency(baseRentalSubtotal + totalCustomFees);
+
+    // Duration Tier Curve Discount
+    const tier = applyDurationTier ? getDurationTierDiscount(maxDays) : { percent: 0, name: "Standard" };
+    const durationDiscountAmount = tier.percent > 0 ? roundCurrency((baseRentalSubtotal * tier.percent) / 100) : 0;
+
+    // Demand Surge Multiplier Adjustment
+    const effectiveSurge = Math.max(1.0, Number(surgeMultiplier) || 1.0);
+    const surgeAdjustmentAmount = effectiveSurge > 1.0 ? roundCurrency(baseRentalSubtotal * (effectiveSurge - 1.0)) : 0;
+
+    const grossSubtotal = Math.max(
+        0, 
+        roundCurrency(baseRentalSubtotal + surgeAdjustmentAmount - durationDiscountAmount + totalCustomFees)
+    );
 
     // Calculate Discounts
     const pctDiscount = roundCurrency((grossSubtotal * (Number(discountPercent) || 0)) / 100);
@@ -199,6 +231,11 @@ export function calculateQuoteFinancials(params: {
         additionalChargeAmount: addAmt,
         additionalChargeType,
         additionalChargeCalculated,
+        durationTierDiscountPercent: tier.percent,
+        durationDiscountAmount,
+        durationTierName: tier.name,
+        surgeMultiplier: effectiveSurge,
+        surgeAdjustmentAmount,
         grandTotal,
         hasUnpricedItems,
     };

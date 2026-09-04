@@ -13,6 +13,9 @@ import {
 import Link from "next/link";
 import { format } from "date-fns";
 import { CrossHiresManager } from "@/components/warehouse/CrossHiresManager";
+import DispatchRouteManager from "@/components/transport/DispatchRouteManager";
+import { Compass } from "lucide-react";
+
 export default async function DispatchPipelinePage(props: { searchParams: Promise<{ tab?: string }> }) {
     const searchParams = await props.searchParams;
     const activeTab = searchParams.tab || 'outgoing';
@@ -90,9 +93,22 @@ export default async function DispatchPipelinePage(props: { searchParams: Promis
                     <ArrowRightLeft className="w-3.5 h-3.5" />
                     Cross-Hire Sub-Rentals
                 </Link>
+                <Link 
+                    href="/dashboard/warehouse/dispatch?tab=clusters"
+                    className={`px-6 py-3 rounded-lg font-bold text-[10px] uppercase tracking-[0.2em] transition-all flex items-center gap-1.5 ${
+                        activeTab === 'clusters' 
+                            ? 'bg-emerald-500 text-navy shadow-lg shadow-emerald-500/20 font-black' 
+                            : 'text-[var(--color-slate)] hover:text-[var(--color-warm-white)] hover:bg-white/5'
+                    }`}
+                >
+                    <Compass className="w-3.5 h-3.5" />
+                    Route Optimization
+                </Link>
             </div>
 
-            {activeTab === 'cross_hires' ? (
+            {activeTab === 'clusters' ? (
+                <DispatchRouteManager />
+            ) : activeTab === 'cross_hires' ? (
                 <CrossHiresManager />
             ) : (
                 <div className="flex flex-col gap-6">

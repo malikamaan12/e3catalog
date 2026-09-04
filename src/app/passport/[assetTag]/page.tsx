@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { QRCodeSVG } from "qrcode.react";
+import { toast } from "react-hot-toast";
 
 interface AssetPassportData {
     id: string;
@@ -84,6 +85,11 @@ export default function PassportPage() {
     const [showInspectModal, setShowInspectModal] = useState<{ type: string; label: string } | null>(null);
     const [showAssignModal, setShowAssignModal] = useState(false);
     const [showBumpOutModal, setShowBumpOutModal] = useState(false);
+    const [showExtendModal, setShowExtendModal] = useState(false);
+    const [showIncidentModal, setShowIncidentModal] = useState(false);
+    const [extendEndDate, setExtendEndDate] = useState("");
+    const [incidentData, setIncidentData] = useState({ issueType: "power_fault", description: "", phone: "" });
+    const [isSubmittingAction, setIsSubmittingAction] = useState(false);
 
     const fetchPassport = useCallback(async () => {
         try {
@@ -97,6 +103,56 @@ export default function PassportPage() {
             setLoading(false);
         }
     }, [assetTag]);
+
+    const handleExtendRental = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!extendEndDate) return;
+        setIsSubmittingAction(true);
+        try {
+            const res = await fetch(`/api/passport/${assetTag}/extend`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ newEndDate: extendEndDate }),
+            });
+            const d = await res.json();
+            if (res.ok) {
+                toast.success(d.message || "Rental period extended!");
+                setShowExtendModal(false);
+                fetchPassport();
+            } else {
+                toast.error(d.error || "Extension failed");
+            }
+        } catch (err: any) {
+            toast.error(err.message || "Error extending rental");
+        } finally {
+            setIsSubmittingAction(false);
+        }
+    };
+
+    const handleReportIncident = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!incidentData.description) return;
+        setIsSubmittingAction(true);
+        try {
+            const res = await fetch(`/api/passport/${assetTag}/incident`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(incidentData),
+            });
+            const d = await res.json();
+            if (res.ok) {
+                toast.success("Incident logged & Rapid Replacement Work Order Dispatched!");
+                setShowIncidentModal(false);
+                fetchPassport();
+            } else {
+                toast.error(d.error || "Failed to log incident");
+            }
+        } catch (err: any) {
+            toast.error(err.message || "Error reporting incident");
+        } finally {
+            setIsSubmittingAction(false);
+        }
+    };
 
     useEffect(() => {
         fetchPassport();
@@ -380,6 +436,22 @@ export default function PassportPage() {
                                                 <p className="font-mono text-sm text-gold">{new Date(data.currentAssignment.endDate).toLocaleDateString()}</p>
                                             </div>
                                         </div>
+
+                                        {/* On-Site Actions */}
+                                        <div className="mt-4 pt-4 border-t border-blue-500/20 flex flex-wrap gap-2.5">
+                                            <button
+                                                onClick={() => setShowExtendModal(true)}
+                                                className="px-4 py-2 rounded-xl bg-[var(--color-gold)] text-navy font-black text-[10px] uppercase tracking-wider hover:scale-105 transition-all shadow-md flex items-center gap-1.5"
+                                            >
+                                                <Calendar className="w-3.5 h-3.5" /> Extend Rental Period
+                                            </button>
+                                            <button
+                                                onClick={() => setShowIncidentModal(true)}
+                                                className="px-4 py-2 rounded-xl bg-red-500/20 border border-red-500/40 text-red-300 font-black text-[10px] uppercase tracking-wider hover:bg-red-500/30 transition-all flex items-center gap-1.5"
+                                            >
+                                                <AlertTriangle className="w-3.5 h-3.5" /> Report Fault / Request Swap
+                                            </button>
+                                        </div>
                                     </div>
                                 ) : (
                                     <div className="border border-white/10 border-dashed rounded-2xl p-8 text-center bg-white/5">
@@ -525,6 +597,98 @@ export default function PassportPage() {
                     onClose={() => setShowBumpOutModal(false)}
                     onSuccess={() => { setShowBumpOutModal(false); fetchPassport(); setTab('status'); }}
                 />
+            )}
+
+            {/* On-Site Rental Extension Modal */}
+            {showExtendModal && (
+                <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-end md:items-center justify-center p-4">
+                    <div className="w-full max-w-md bg-[#0a0f1e] border border-white/10 rounded-3xl p-6 shadow-2xl relative space-y-4">
+                        <div className="flex justify-between items-center">
+                            <h3 className="font-black text-lg text-white uppercase italic tracking-tight">Extend Rental Period</h3>
+                            <button onClick={() => setShowExtendModal(false)} className="p-2 bg-white/5 rounded-full"><X className="w-4 h-4 text-slate" /></button>
+                        </div>
+                        <p className="text-xs text-slate">
+                            Select a new completion date for on-site production. Daily rate will be prorated automatically.
+                        </p>
+                        <form onSubmit={handleExtendRental} className="space-y-4">
+                            <div>
+                                <label className="block text-[10px] font-black uppercase tracking-wider text-slate mb-1">New End Date *</label>
+                                <input
+                                    type="date"
+                                    required
+                                    value={extendEndDate}
+                                    onChange={e => setExtendEndDate(e.target.value)}
+                                    className="w-full bg-surface border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-gold"
+                                />
+                            </div>
+                            <button
+                                type="submit"
+                                disabled={isSubmittingAction}
+                                className="w-full py-3.5 rounded-xl bg-[var(--color-gold)] text-navy font-black text-xs uppercase tracking-wider hover:scale-105 transition-all shadow-lg"
+                            >
+                                {isSubmittingAction ? "Extending..." : "Confirm & Prorate Extension"}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* On-Site Rapid Fault / Incident Modal */}
+            {showIncidentModal && (
+                <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-end md:items-center justify-center p-4">
+                    <div className="w-full max-w-md bg-[#0a0f1e] border border-white/10 rounded-3xl p-6 shadow-2xl relative space-y-4">
+                        <div className="flex justify-between items-center">
+                            <h3 className="font-black text-lg text-white uppercase italic tracking-tight">Report Fault & Request Swap</h3>
+                            <button onClick={() => setShowIncidentModal(false)} className="p-2 bg-white/5 rounded-full"><X className="w-4 h-4 text-slate" /></button>
+                        </div>
+                        <p className="text-xs text-slate">
+                            Log on-site malfunction. An urgent replacement ticket will be dispatched to the operations hub.
+                        </p>
+                        <form onSubmit={handleReportIncident} className="space-y-4">
+                            <div>
+                                <label className="block text-[10px] font-black uppercase tracking-wider text-slate mb-1">Fault Category</label>
+                                <select
+                                    value={incidentData.issueType}
+                                    onChange={e => setIncidentData({ ...incidentData, issueType: e.target.value })}
+                                    className="w-full bg-surface border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-gold"
+                                >
+                                    <option value="power_fault">Power / PSU Failure</option>
+                                    <option value="signal_loss">Signal / DMX Loss</option>
+                                    <option value="physical_damage">Physical Casing Damage</option>
+                                    <option value="missing_accessory">Missing Accessory / Cable</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-black uppercase tracking-wider text-slate mb-1">Description *</label>
+                                <textarea
+                                    required
+                                    rows={3}
+                                    value={incidentData.description}
+                                    onChange={e => setIncidentData({ ...incidentData, description: e.target.value })}
+                                    placeholder="Describe fault details..."
+                                    className="w-full bg-surface border border-white/10 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-gold resize-none"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-black uppercase tracking-wider text-slate mb-1">On-Site Tech Phone</label>
+                                <input
+                                    type="text"
+                                    value={incidentData.phone}
+                                    onChange={e => setIncidentData({ ...incidentData, phone: e.target.value })}
+                                    placeholder="+974 ..."
+                                    className="w-full bg-surface border border-white/10 rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-gold"
+                                />
+                            </div>
+                            <button
+                                type="submit"
+                                disabled={isSubmittingAction}
+                                className="w-full py-3.5 rounded-xl bg-red-500 text-white font-black text-xs uppercase tracking-wider hover:scale-105 transition-all shadow-lg shadow-red-500/20"
+                            >
+                                {isSubmittingAction ? "Dispatching..." : "Dispatch Rapid Replacement"}
+                            </button>
+                        </form>
+                    </div>
+                </div>
             )}
         </div>
     );
