@@ -19,10 +19,12 @@ import {
     ArrowUpRight,
     PackageCheck,
     Archive,
-    RefreshCw
+    RefreshCw,
+    TrendingUp
 } from "lucide-react";
 import { PRODUCT_STATUS, USER_ROLES } from "@/lib/constants";
 import { toast } from "react-hot-toast";
+import PricingRuleManager from "@/components/pricing/PricingRuleManager";
 
 interface Product {
     id: string;
@@ -49,6 +51,7 @@ export default function AdminProductsPage() {
     const [products, setProducts] = useState<Product[]>([]);
     const [loading, setLoading] = useState(true);
     const [userRole, setUserRole] = useState<string>("admin");
+    const [activeView, setActiveView] = useState<"catalog" | "pricing_rules">("catalog");
 
     // Filters
     const [searchQuery, setSearchQuery] = useState("");
@@ -253,8 +256,38 @@ export default function AdminProductsPage() {
                 </div>
             </div>
 
-            {/* Filter Controls */}
-            <div className="max-w-7xl mx-auto mb-8 space-y-4">
+            {/* View Switcher Tabs */}
+            <div className="max-w-7xl mx-auto flex gap-2 mb-8 border-b border-white/10 pb-3">
+                <button
+                    onClick={() => setActiveView("catalog")}
+                    className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all ${
+                        activeView === "catalog"
+                            ? "bg-gold text-navy shadow-lg shadow-gold/20"
+                            : "bg-white/5 text-slate-400 hover:bg-white/10"
+                    }`}
+                >
+                    <Layers className="w-4 h-4" /> Catalog & Fleet Listings ({products.length})
+                </button>
+                <button
+                    onClick={() => setActiveView("pricing_rules")}
+                    className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all ${
+                        activeView === "pricing_rules"
+                            ? "bg-gold text-navy shadow-lg shadow-gold/20"
+                            : "bg-white/5 text-slate-400 hover:bg-white/10"
+                    }`}
+                >
+                    <TrendingUp className="w-4 h-4" /> Dynamic Surge & Duration Tiers
+                </button>
+            </div>
+
+            {activeView === "pricing_rules" ? (
+                <div className="max-w-7xl mx-auto">
+                    <PricingRuleManager />
+                </div>
+            ) : (
+                <>
+                    {/* Filter Controls */}
+                    <div className="max-w-7xl mx-auto mb-8 space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
                     <div className="relative lg:col-span-2">
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -514,6 +547,8 @@ export default function AdminProductsPage() {
                     </table>
                 </div>
             </div>
+            </>
+            )}
         </div>
     );
 }

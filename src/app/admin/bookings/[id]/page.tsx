@@ -7,11 +7,12 @@ import { useRouter } from "next/navigation";
 import { 
     ChevronDown, ArrowLeft, MoreVertical, Package, 
     ExternalLink, Mail, Phone, Clock, Download, MessageCircle,
-    MessagesSquare
+    MessagesSquare, Sparkles, Users
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import EmbeddedChat from "@/components/chat/EmbeddedChat";
+import CrewSchedulingCockpit from "@/components/crew/CrewSchedulingCockpit";
 import { BOOKING_STATUS } from "@/lib/constants";
 
 const formatDateTime = (dateStr: string) => {
@@ -162,6 +163,7 @@ export default function BookingDetailsPage({ params }: { params: Promise<{ id: s
     });
 
     const [currentUser, setCurrentUser] = useState<{ id: string; role: string } | null>(null);
+    const [dealRoomLoading, setDealRoomLoading] = useState(false);
 
     useEffect(() => {
         Promise.all([
@@ -360,6 +362,28 @@ export default function BookingDetailsPage({ params }: { params: Promise<{ id: s
         setGeneratingPdf(false);
     };
 
+    const handleOpenDealRoom = async () => {
+        setDealRoomLoading(true);
+        try {
+            const res = await fetch(`/api/deal-rooms`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ bookingId: id }),
+            });
+            const data = await res.json();
+            const slug = data.dealRoom?.slug || data.slug;
+            if (slug) {
+                window.open(`/deal-room/${slug}`, "_blank");
+            } else {
+                alert("Could not initialize deal room: " + (data.error || "Unknown error"));
+            }
+        } catch (e: any) {
+            alert("Failed to access deal room: " + e.message);
+        } finally {
+            setDealRoomLoading(false);
+        }
+    };
+
     return (
         <div className="max-w-6xl w-full mx-auto pb-12">
             <button onClick={() => router.push('/admin/bookings')} className="text-sm text-[var(--color-slate)] hover:text-white mb-6 flex items-center gap-2 group">
@@ -402,6 +426,16 @@ export default function BookingDetailsPage({ params }: { params: Promise<{ id: s
                         </select>
                         <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3 h-3 pointer-events-none group-hover:scale-110 transition-transform opacity-50" />
                     </div>
+
+                    <button
+                        onClick={handleOpenDealRoom}
+                        disabled={dealRoomLoading}
+                        className="text-[11px] font-bold px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500/20 to-gold/20 hover:from-amber-500/30 hover:to-gold/30 border border-gold/40 text-gold flex items-center gap-2 shadow-lg transition-all hover:scale-105 active:scale-95 disabled:opacity-50 cursor-pointer"
+                        title="Open interactive client white-label deal room portal"
+                    >
+                        <Sparkles className="w-3.5 h-3.5 text-gold" />
+                        {dealRoomLoading ? "Opening Room..." : "Client Deal Room ↗"}
+                    </button>
                 </div>
             </div>
 
@@ -613,6 +647,9 @@ export default function BookingDetailsPage({ params }: { params: Promise<{ id: s
                             </div>
                         )}
                     </div>
+
+                    {/* Technical Crew & Event Labor Scheduling */}
+                    <CrewSchedulingCockpit bookingId={id} venueDefault={booking.notes || "Qatar National Convention Centre (QNCC)"} />
 
                     {/* Terms & Conditions (Bottom Left) */}
                     <div className="glass rounded-2xl border border-white/5 overflow-hidden shadow-sm">

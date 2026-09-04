@@ -14,7 +14,9 @@ import Link from "next/link";
 import { format } from "date-fns";
 import { CrossHiresManager } from "@/components/warehouse/CrossHiresManager";
 import DispatchRouteManager from "@/components/transport/DispatchRouteManager";
-import { Compass } from "lucide-react";
+import LiveFleetRadar from "@/components/transport/LiveFleetRadar";
+import FlightCaseManager from "@/components/warehouse/FlightCaseManager";
+import { Compass, Radio, Box } from "lucide-react";
 
 export default async function DispatchPipelinePage(props: { searchParams: Promise<{ tab?: string }> }) {
     const searchParams = await props.searchParams;
@@ -104,9 +106,35 @@ export default async function DispatchPipelinePage(props: { searchParams: Promis
                     <Compass className="w-3.5 h-3.5" />
                     Route Optimization
                 </Link>
+                <Link 
+                    href="/dashboard/warehouse/dispatch?tab=radar"
+                    className={`px-6 py-3 rounded-lg font-bold text-[10px] uppercase tracking-[0.2em] transition-all flex items-center gap-1.5 ${
+                        activeTab === 'radar' 
+                            ? 'bg-emerald-400 text-neutral-950 shadow-lg shadow-emerald-400/20 font-black' 
+                            : 'text-[var(--color-slate)] hover:text-[var(--color-warm-white)] hover:bg-white/5'
+                    }`}
+                >
+                    <Radio className="w-3.5 h-3.5" />
+                    Live GPS Radar
+                </Link>
+                <Link 
+                    href="/dashboard/warehouse/dispatch?tab=flight_cases"
+                    className={`px-6 py-3 rounded-lg font-bold text-[10px] uppercase tracking-[0.2em] transition-all flex items-center gap-1.5 ${
+                        activeTab === 'flight_cases' 
+                            ? 'bg-amber-400 text-neutral-950 shadow-lg shadow-amber-400/20 font-black' 
+                            : 'text-[var(--color-slate)] hover:text-[var(--color-warm-white)] hover:bg-white/5'
+                    }`}
+                >
+                    <Box className="w-3.5 h-3.5" />
+                    Flight Cases & Kits
+                </Link>
             </div>
 
-            {activeTab === 'clusters' ? (
+            {activeTab === 'radar' ? (
+                <LiveFleetRadar />
+            ) : activeTab === 'flight_cases' ? (
+                <FlightCaseManager />
+            ) : activeTab === 'clusters' ? (
                 <DispatchRouteManager />
             ) : activeTab === 'cross_hires' ? (
                 <CrossHiresManager />

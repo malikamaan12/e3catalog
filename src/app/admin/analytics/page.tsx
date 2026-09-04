@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Loader2, TrendingUp, HandCoins, BarChart3, PieChart, Info, PercentCircle, Activity, Box, Search } from "lucide-react";
+import { Loader2, TrendingUp, HandCoins, BarChart3, PieChart, Info, PercentCircle, Activity, Box, Search, Layers } from "lucide-react";
 import { USER_ROLES } from "@/lib/constants";
+import PredictiveUtilizationCockpit from "@/components/analytics/PredictiveUtilizationCockpit";
 import { 
     LineChart, 
     Line, 
@@ -29,6 +30,7 @@ type AnalyticsData = {
 };
 
 export default function AnalyticsDashboard() {
+    const [activeSection, setActiveSection] = useState<'financial' | 'predictive'>('financial');
     const [data, setData] = useState<AnalyticsData | null>(null);
     const [loading, setLoading] = useState(true);
     const [user, setUser] = useState<any>(null);
@@ -54,15 +56,7 @@ export default function AnalyticsDashboard() {
         fetchInitial();
     }, []);
 
-    if (loading || !data || !user) {
-        return (
-            <div className="flex justify-center items-center h-[60vh]">
-                <Loader2 className="w-8 h-8 animate-spin text-[var(--color-gold)]" />
-            </div>
-        );
-    }
-
-    const isSuperAdmin = user.role === USER_ROLES.SUPER_ADMIN || user.role === USER_ROLES.ADMIN;
+    const isSuperAdmin = user?.role === USER_ROLES.SUPER_ADMIN || user?.role === USER_ROLES.ADMIN;
     
     // Formatting currency
     const formatCurrency = (val: number) => {
@@ -83,8 +77,39 @@ export default function AnalyticsDashboard() {
                             : "Transparent overview of your payouts, historical metrics, and projected revenue."}
                     </p>
                 </div>
+
+                <div className="flex gap-1.5 p-1 bg-white/[0.04] border border-white/10 rounded-xl">
+                    <button
+                        onClick={() => setActiveSection('financial')}
+                        className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5 ${
+                            activeSection === 'financial'
+                                ? 'bg-[var(--color-gold)] text-[var(--color-navy)] shadow-md'
+                                : 'text-[var(--color-slate)] hover:text-white'
+                        }`}
+                    >
+                        <BarChart3 className="w-3.5 h-3.5" /> Financial Overview
+                    </button>
+                    <button
+                        onClick={() => setActiveSection('predictive')}
+                        className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5 ${
+                            activeSection === 'predictive'
+                                ? 'bg-[var(--color-gold)] text-[var(--color-navy)] shadow-md'
+                                : 'text-[var(--color-slate)] hover:text-white'
+                        }`}
+                    >
+                        <Layers className="w-3.5 h-3.5" /> Predictive Fleet & RevPAR
+                    </button>
+                </div>
             </div>
 
+            {activeSection === 'predictive' ? (
+                <PredictiveUtilizationCockpit />
+            ) : loading || !data ? (
+                <div className="flex justify-center items-center h-[50vh]">
+                    <Loader2 className="w-8 h-8 animate-spin text-[var(--color-gold)]" />
+                </div>
+            ) : (
+                <>
             {/* Top Stat Row */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {isSuperAdmin ? (
@@ -248,8 +273,9 @@ export default function AnalyticsDashboard() {
                         </div>
                     )}
                 </div>
-
             </div>
+            </>
+            )}
         </div>
     );
 }

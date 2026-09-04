@@ -1076,17 +1076,23 @@ export const crossHireOrders = pgTable("cross_hire_orders", {
 export const fleetGpsPings = pgTable("fleet_gps_pings", {
     id: varchar("id", { length: 255 }).primaryKey(),
     dispatchLogId: varchar("dispatch_log_id", { length: 255 }).notNull().references(() => bookingDispatchLogs.id, { onDelete: "cascade" }),
+    routeId: varchar("route_id", { length: 255 }).references(() => dispatchRoutes.id, { onDelete: "set null" }),
     driverId: varchar("driver_id", { length: 255 }).references(() => users.id),
     vehiclePlate: varchar("vehicle_plate", { length: 100 }),
     latitude: real("latitude").notNull(),
     longitude: real("longitude").notNull(),
     heading: real("heading"),
     speed: real("speed"),
+    batteryPct: integer("battery_pct").default(100),
+    currentZone: varchar("current_zone", { length: 100 }),
+    distanceRemainingKm: real("distance_remaining_km").default(0),
+    etaMinutes: integer("eta_minutes").default(0),
     status: varchar("status", { length: 50 }).notNull().default("in_transit"), // departed | in_transit | arrived | unloading | completed
     createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (table) => {
     return {
         dispatchLogIdx: index("fleet_gps_pings_dispatch_idx").on(table.dispatchLogId),
+        routeIdx: index("fleet_gps_pings_route_idx").on(table.routeId),
         createdAtIdx: index("fleet_gps_pings_created_idx").on(table.createdAt),
     };
 });
@@ -2684,4 +2690,262 @@ export const dispatchStopsRelations = relations(dispatchStops, ({ one }) => ({
         references: [bookings.id],
     }),
 }));
+
+// ─── Track 2: Master Flight Cases & Kit Sub-Assemblies ───
+export const flightCases = pgTable("flight_cases", {
+    id: varchar("id", { length: 255 }).primaryKey(),
+    caseNumber: varchar("case_number", { length: 100 }).notNull().unique(),
+    name: varchar("name", { length: 255 }).notNull(),
+    caseType: varchar("case_type", { length: 100 }).notNull().default("Trunk"),
+    assetTagCode: varchar("asset_tag_code", { length: 100 }).notNull().unique(),
+    rfidTag: varchar("rfid_tag", { length: 100 }),
+    tareWeightKg: real("tare_weight_kg").default(15),
+    maxCapacityKg: real("max_capacity_kg").default(80),
+    status: varchar("status", { length: 50 }).notNull().default("available"), // available | packed | in_transit | on_site | damaged | maintenance
+    warehouseLocation: varchar("warehouse_location", { length: 100 }).default("Zone A - Bay 1"),
+    notes: text("notes"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => {
+    return {
+        caseTypeIdx: index("flight_cases_case_type_idx").on(table.caseType),
+        statusIdx: index("flight_cases_status_idx").on(table.status),
+        assetTagIdx: index("flight_cases_asset_tag_idx").on(table.assetTagCode),
+    };
+});
+
+export const flightCaseContents = pgTable("flight_case_contents", {
+    id: varchar("id", { length: 255 }).primaryKey(),
+    flightCaseId: varchar("flight_case_id", { length: 255 }).notNull().references(() => flightCases.id, { onDelete: "cascade" }),
+    inventoryUnitId: varchar("inventory_unit_id", { length: 255 }).references(() => inventoryUnits.id, { onDelete: "set null" }),
+    productId: varchar("product_id", { length: 255 }).references(() => products.id, { onDelete: "set null" }),
+    accessoryName: varchar("accessory_name", { length: 255 }).notNull(),
+    expectedQuantity: integer("expected_quantity").notNull().default(1),
+    isPermanentChild: boolean("is_permanent_child").notNull().default(false),
+    isVerifiedPacked: boolean("is_verified_packed").notNull().default(true),
+    verifiedAt: timestamp("verified_at"),
+    verifiedBy: varchar("verified_by", { length: 255 }).references(() => users.id, { onDelete: "set null" }),
+}, (table) => {
+    return {
+        caseIdx: index("flight_case_contents_case_idx").on(table.flightCaseId),
+        unitIdx: index("flight_case_contents_unit_idx").on(table.inventoryUnitId),
+    };
+});
+
+export const kitMissingItemClaims = pgTable("kit_missing_item_claims", {
+    id: varchar("id", { length: 255 }).primaryKey(),
+    bookingId: varchar("booking_id", { length: 255 }).references(() => bookings.id, { onDelete: "cascade" }),
+    flightCaseId: varchar("flight_case_id", { length: 255 }).references(() => flightCases.id, { onDelete: "set null" }),
+    inventoryUnitId: varchar("inventory_unit_id", { length: 255 }).references(() => inventoryUnits.id, { onDelete: "set null" }),
+    itemName: varchar("item_name", { length: 255 }).notNull(),
+    penaltyFee: real("penalty_fee").notNull().default(0),
+    status: varchar("status", { length: 50 }).notNull().default("open"), // open | deducted_from_deposit | invoiced | waived | resolved
+    claimNotes: text("claim_notes"),
+    filedBy: varchar("filed_by", { length: 255 }).references(() => users.id, { onDelete: "set null" }),
+    resolvedAt: timestamp("resolved_at"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => {
+    return {
+        bookingIdx: index("kit_missing_claims_booking_idx").on(table.bookingId),
+        caseIdx: index("kit_missing_claims_case_idx").on(table.flightCaseId),
+        statusIdx: index("kit_missing_claims_status_idx").on(table.status),
+    };
+});
+
+// ─── Track 3: Technical Crew Roles & Shift Assignments ───
+export const eventCrewRoles = pgTable("event_crew_roles", {
+    id: varchar("id", { length: 255 }).primaryKey(),
+    name: varchar("name", { length: 255 }).notNull(),
+    code: varchar("code", { length: 100 }).notNull().unique(),
+    defaultHourlyRate: real("default_hourly_rate").notNull().default(150),
+    overtimeMultiplier: real("overtime_multiplier").notNull().default(1.5),
+    description: text("description"),
+    isActive: boolean("is_active").notNull().default(true),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => {
+    return {
+        codeIdx: index("event_crew_roles_code_idx").on(table.code),
+    };
+});
+
+export const bookingCrewAssignments = pgTable("booking_crew_assignments", {
+    id: varchar("id", { length: 255 }).primaryKey(),
+    bookingId: varchar("booking_id", { length: 255 }).notNull().references(() => bookings.id, { onDelete: "cascade" }),
+    userId: varchar("user_id", { length: 255 }).references(() => users.id, { onDelete: "set null" }),
+    crewName: varchar("crew_name", { length: 255 }).notNull(),
+    roleId: varchar("role_id", { length: 255 }).references(() => eventCrewRoles.id, { onDelete: "set null" }),
+    callTime: timestamp("call_time").notNull(),
+    endTime: timestamp("end_time").notNull(),
+    venueLocation: varchar("venue_location", { length: 500 }).notNull(),
+    status: varchar("status", { length: 50 }).notNull().default("scheduled"), // scheduled | confirmed | checked_in | completed | cancelled
+    checkInAt: timestamp("check_in_at"),
+    checkOutAt: timestamp("check_out_at"),
+    standardHours: real("standard_hours").default(0),
+    overtimeHours: real("overtime_hours").default(0),
+    hourlyRate: real("hourly_rate").notNull().default(150),
+    laborCost: real("labor_cost").notNull().default(0),
+    clientBillableRate: real("client_billable_rate").default(200),
+    notes: text("notes"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => {
+    return {
+        bookingIdx: index("booking_crew_booking_idx").on(table.bookingId),
+        userIdx: index("booking_crew_user_idx").on(table.userId),
+        statusIdx: index("booking_crew_status_idx").on(table.status),
+        callTimeIdx: index("booking_crew_call_time_idx").on(table.callTime),
+    };
+});
+
+// ─── Track 4: Corporate Client Credit Health Scoring ───
+export const clientCreditHealth = pgTable("client_credit_health", {
+    id: varchar("id", { length: 255 }).primaryKey(),
+    userId: varchar("user_id", { length: 255 }).references(() => users.id, { onDelete: "set null" }),
+    organizationId: varchar("organization_id", { length: 255 }).references(() => clientOrganizations.id, { onDelete: "cascade" }),
+    clientName: varchar("client_name", { length: 255 }).notNull(),
+    creditLimit: real("credit_limit").notNull().default(50000),
+    currentOutstanding: real("current_outstanding").notNull().default(0),
+    paymentBehaviorScore: integer("payment_behavior_score").notNull().default(95),
+    riskTier: varchar("risk_tier", { length: 50 }).notNull().default("low_risk"), // low_risk | medium_risk | high_risk | credit_hold
+    averageDaysToPay: real("average_days_to_pay").default(14),
+    lastAuditedAt: timestamp("last_audited_at").notNull().defaultNow(),
+    notes: text("notes"),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => {
+    return {
+        orgIdx: index("client_credit_org_idx").on(table.organizationId),
+        riskTierIdx: index("client_credit_risk_tier_idx").on(table.riskTier),
+    };
+});
+
+// ─── Track 5: White-Label Client Deal Room & Amendments ───
+export const dealRooms = pgTable("deal_rooms", {
+    id: varchar("id", { length: 255 }).primaryKey(),
+    bookingId: varchar("booking_id", { length: 255 }).references(() => bookings.id, { onDelete: "cascade" }),
+    quoteId: varchar("quote_id", { length: 255 }),
+    slug: varchar("slug", { length: 255 }).notNull().unique(),
+    title: varchar("title", { length: 255 }).notNull(),
+    accessPasscode: varchar("access_passcode", { length: 50 }),
+    expiresAt: timestamp("expires_at"),
+    allowAmendments: boolean("allow_amendments").notNull().default(true),
+    status: varchar("status", { length: 50 }).notNull().default("active"), // active | locked | accepted | declined
+    viewCount: integer("view_count").notNull().default(0),
+    lastViewedAt: timestamp("last_viewed_at"),
+    brandingConfig: jsonb("branding_config").default({}),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => {
+    return {
+        slugIdx: index("deal_rooms_slug_idx").on(table.slug),
+        bookingIdx: index("deal_rooms_booking_idx").on(table.bookingId),
+        statusIdx: index("deal_rooms_status_idx").on(table.status),
+    };
+});
+
+export const dealRoomAmendments = pgTable("deal_room_amendments", {
+    id: varchar("id", { length: 255 }).primaryKey(),
+    dealRoomId: varchar("deal_room_id", { length: 255 }).notNull().references(() => dealRooms.id, { onDelete: "cascade" }),
+    requestedChanges: jsonb("requested_changes").notNull(),
+    proposedSubtotal: real("proposed_subtotal").notNull().default(0),
+    status: varchar("status", { length: 50 }).notNull().default("pending"), // pending | accepted | declined
+    clientComment: text("client_comment"),
+    adminNotes: text("admin_notes"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    reviewedAt: timestamp("reviewed_at"),
+}, (table) => {
+    return {
+        roomIdx: index("deal_room_amendments_room_idx").on(table.dealRoomId),
+        statusIdx: index("deal_room_amendments_status_idx").on(table.status),
+    };
+});
+
+// ─── Relations for Tracks 1-5 ───
+export const flightCasesRelations = relations(flightCases, ({ many }) => ({
+    contents: many(flightCaseContents),
+    claims: many(kitMissingItemClaims),
+}));
+
+export const flightCaseContentsRelations = relations(flightCaseContents, ({ one }) => ({
+    flightCase: one(flightCases, {
+        fields: [flightCaseContents.flightCaseId],
+        references: [flightCases.id],
+    }),
+    inventoryUnit: one(inventoryUnits, {
+        fields: [flightCaseContents.inventoryUnitId],
+        references: [inventoryUnits.id],
+    }),
+    product: one(products, {
+        fields: [flightCaseContents.productId],
+        references: [products.id],
+    }),
+    verifier: one(users, {
+        fields: [flightCaseContents.verifiedBy],
+        references: [users.id],
+    }),
+}));
+
+export const kitMissingItemClaimsRelations = relations(kitMissingItemClaims, ({ one }) => ({
+    booking: one(bookings, {
+        fields: [kitMissingItemClaims.bookingId],
+        references: [bookings.id],
+    }),
+    flightCase: one(flightCases, {
+        fields: [kitMissingItemClaims.flightCaseId],
+        references: [flightCases.id],
+    }),
+    unit: one(inventoryUnits, {
+        fields: [kitMissingItemClaims.inventoryUnitId],
+        references: [inventoryUnits.id],
+    }),
+    filer: one(users, {
+        fields: [kitMissingItemClaims.filedBy],
+        references: [users.id],
+    }),
+}));
+
+export const eventCrewRolesRelations = relations(eventCrewRoles, ({ many }) => ({
+    assignments: many(bookingCrewAssignments),
+}));
+
+export const bookingCrewAssignmentsRelations = relations(bookingCrewAssignments, ({ one }) => ({
+    booking: one(bookings, {
+        fields: [bookingCrewAssignments.bookingId],
+        references: [bookings.id],
+    }),
+    user: one(users, {
+        fields: [bookingCrewAssignments.userId],
+        references: [users.id],
+    }),
+    role: one(eventCrewRoles, {
+        fields: [bookingCrewAssignments.roleId],
+        references: [eventCrewRoles.id],
+    }),
+}));
+
+export const clientCreditHealthRelations = relations(clientCreditHealth, ({ one }) => ({
+    organization: one(clientOrganizations, {
+        fields: [clientCreditHealth.organizationId],
+        references: [clientOrganizations.id],
+    }),
+    user: one(users, {
+        fields: [clientCreditHealth.userId],
+        references: [users.id],
+    }),
+}));
+
+export const dealRoomsRelations = relations(dealRooms, ({ one, many }) => ({
+    booking: one(bookings, {
+        fields: [dealRooms.bookingId],
+        references: [bookings.id],
+    }),
+    amendments: many(dealRoomAmendments),
+}));
+
+export const dealRoomAmendmentsRelations = relations(dealRoomAmendments, ({ one }) => ({
+    dealRoom: one(dealRooms, {
+        fields: [dealRoomAmendments.dealRoomId],
+        references: [dealRooms.id],
+    }),
+}));
+
 
