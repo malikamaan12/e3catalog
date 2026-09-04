@@ -17,6 +17,7 @@ import {
     MapPin,
     AlertCircle
 } from "lucide-react";
+import { BookingExtensionCard } from "@/components/client/BookingExtensionCard";
 import Link from "next/link";
 
 export const metadata = {
@@ -44,6 +45,9 @@ export default async function BookingLogisticsPage({ params }: { params: { booki
                 }
             },
             dispatchLog: true,
+            extensions: {
+                orderBy: (ext, { desc }) => [desc(ext.createdAt)],
+            },
         }
     });
 
@@ -196,6 +200,15 @@ export default async function BookingLogisticsPage({ params }: { params: { booki
                             </div>
                         </div>
                     </section>
+
+                    {/* On-Site Rental Extension Card (Option D) */}
+                    <BookingExtensionCard
+                        bookingId={booking.id}
+                        productName={booking.product?.name || "Equipment Rental"}
+                        currentEndDate={booking.endDate.toISOString()}
+                        units={booking.units}
+                        extensions={booking.extensions as any}
+                    />
                 </div>
 
                 {/* Right: Document Vault */}

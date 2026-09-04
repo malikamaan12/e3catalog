@@ -908,6 +908,67 @@ export const maintenancePartsUsage = pgTable("maintenance_parts_usage", {
     };
 });
 
+// ─── Vendor Settlement Statements (Remittance & Self-Billing) ───
+export const vendorSettlementStatements = pgTable("vendor_settlement_statements", {
+    id: varchar("id", { length: 255 }).primaryKey(),
+    statementNumber: varchar("statement_number", { length: 100 }).notNull().unique(), // e.g. VSS-2026-001
+    vendorId: varchar("vendor_id", { length: 255 }).notNull().references(() => vendors.id),
+    periodStart: timestamp("period_start").notNull(),
+    periodEnd: timestamp("period_end").notNull(),
+    totalBookingsCount: integer("total_bookings_count").notNull().default(0),
+    grossRentalRevenue: real("gross_rental_revenue").notNull().default(0),
+    platformCommissionTotal: real("platform_commission_total").notNull().default(0),
+    netPayableToVendor: real("net_payable_to_vendor").notNull().default(0),
+    status: varchar("status", { length: 50 }).notNull().default("draft"), // draft | generated | approved | paid | disputed
+    bankName: varchar("bank_name", { length: 255 }),
+    bankIban: varchar("bank_iban", { length: 100 }),
+    transactionReference: varchar("transaction_reference", { length: 100 }), // Wire / Cheque Reference
+    paidAt: timestamp("paid_at"),
+    notes: text("notes"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => {
+    return {
+        vendorIdIdx: index("vendor_settlement_statements_vendor_idx").on(table.vendorId),
+        statusIdx: index("vendor_settlement_statements_status_idx").on(table.status),
+    };
+});
+
+// ─── Settlement Statement Items ───
+export const settlementStatementItems = pgTable("settlement_statement_items", {
+    id: varchar("id", { length: 255 }).primaryKey(),
+    statementId: varchar("statement_id", { length: 255 }).notNull().references(() => vendorSettlementStatements.id, { onDelete: "cascade" }),
+    bookingId: varchar("booking_id", { length: 255 }).notNull().references(() => bookings.id),
+    bookingAmount: real("booking_amount").notNull(),
+    commissionRate: real("commission_rate").notNull().default(15), // Default 15%
+    commissionAmount: real("commission_amount").notNull(),
+    vendorEarnings: real("vendor_earnings").notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => {
+    return {
+        statementIdIdx: index("settlement_statement_items_statement_idx").on(table.statementId),
+        bookingIdIdx: index("settlement_statement_items_booking_idx").on(table.bookingId),
+    };
+});
+
+// ─── On-Site Booking Extensions ───
+export const bookingExtensions = pgTable("booking_extensions", {
+    id: varchar("id", { length: 255 }).primaryKey(),
+    bookingId: varchar("booking_id", { length: 255 }).notNull().references(() => bookings.id, { onDelete: "cascade" }),
+    requestedDays: integer("requested_days").notNull(),
+    originalEndDate: timestamp("original_end_date").notNull(),
+    newEndDate: timestamp("new_end_date").notNull(),
+    additionalAmount: real("additional_amount").notNull().default(0),
+    reason: text("reason"),
+    status: varchar("status", { length: 50 }).notNull().default("approved"), // pending | approved | rejected
+    approvedBy: varchar("approved_by", { length: 255 }).references(() => users.id),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => {
+    return {
+        bookingIdIdx: index("booking_extensions_booking_idx").on(table.bookingId),
+    };
+});
+
 // ─── Relations ───
 export const categoriesRelations = relations(categories, ({ many }) => ({
     products: many(products),
@@ -961,6 +1022,7 @@ export const vendorsRelations = relations(vendors, ({ one, many }) => ({
     inventoryUnits: many(inventoryUnits),
     ledgers: many(vendorLedgers),
     settlements: many(commissionSettlements),
+    settlementStatements: many(vendorSettlementStatements),
     reviews: many(reviews),
 }));
 
@@ -1237,6 +1299,7 @@ export const bookingsRelations = relations(bookings, ({ one, many }) => ({
         references: [proofOfDeliveries.bookingId]
     }),
     agreements: many(rentalAgreements),
+    extensions: many(bookingExtensions),
     unitAssignments: many(bookingUnitAssignments),
 }));
 
@@ -2171,5 +2234,35 @@ export const maintenancePartsUsageRelations = relations(maintenancePartsUsage, (
     sparePart: one(spareParts, {
         fields: [maintenancePartsUsage.sparePartId],
         references: [spareParts.id],
+    }),
+}));
+
+export const vendorSettlementStatementsRelations = relations(vendorSettlementStatements, ({ one, many }) => ({
+    vendor: one(vendors, {
+        fields: [vendorSettlementStatements.vendorId],
+        references: [vendors.id],
+    }),
+    items: many(settlementStatementItems),
+}));
+
+export const settlementStatementItemsRelations = relations(settlementStatementItems, ({ one }) => ({
+    statement: one(vendorSettlementStatements, {
+        fields: [settlementStatementItems.statementId],
+        references: [vendorSettlementStatements.id],
+    }),
+    booking: one(bookings, {
+        fields: [settlementStatementItems.bookingId],
+        references: [bookings.id],
+    }),
+}));
+
+export const bookingExtensionsRelations = relations(bookingExtensions, ({ one }) => ({
+    booking: one(bookings, {
+        fields: [bookingExtensions.bookingId],
+        references: [bookings.id],
+    }),
+    approver: one(users, {
+        fields: [bookingExtensions.approvedBy],
+        references: [users.id],
     }),
 }));
