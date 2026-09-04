@@ -1,8 +1,9 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { bookings, chatMessages } from "@/lib/db/schema";
+import { bookings, chatMessages, rentalAgreements } from "@/lib/db/schema";
 import { eq, and, or } from "drizzle-orm";
+import { v4 as uuid } from "uuid";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth";
 import { BOOKING_STATUS, USER_ROLES } from "@/lib/constants";
@@ -16,7 +17,7 @@ import { sendQuoteStatusEmail } from "@/lib/email";
  * Strictly checks ownership, re-validates physical availability,
  * locks inventory, generates vendor ledgers, and logs audit history.
  */
-export async function approveBookingWithSignature(bookingId: string, signatureData: string) {
+export async function approveBookingWithSignature(bookingId: string, signatureData: string, clientQid?: string) {
     const user = await getCurrentUser();
     
     // Auth Check
@@ -89,17 +90,55 @@ export async function approveBookingWithSignature(bookingId: string, signatureDa
                 .where(or(eq(bookings.id, projectId), eq(bookings.projectId, projectId)));
         });
 
-        // 5. Generate Vendor Financial Ledgers and Commission Receivables
+        // 5. Auto-Generate & Sign Official Rental Agreement Record
+        const existingAgr = await db.query.rentalAgreements.findFirst({
+            where: eq(rentalAgreements.bookingId, firstBooking.id)
+        });
+
+        const agreementNumber = existingAgr?.agreementNumber || `AGR-${Date.now().toString(36).toUpperCase()}`;
+        const replacementValueTotal = (firstBooking.totalPrice || 1000) * 8;
+        const securityDepositAmount = (firstBooking.totalPrice || 1000) * 0.20;
+
+        if (existingAgr) {
+            await db.update(rentalAgreements)
+                .set({
+                    status: "signed",
+                    signedByClientName: user.name || firstBooking.customerName || "Valued Client",
+                    signedByClientQid: clientQid || null,
+                    clientSignatureData: signatureData,
+                    signedAt: now,
+                    updatedAt: now,
+                })
+                .where(eq(rentalAgreements.id, existingAgr.id));
+        } else {
+            await db.insert(rentalAgreements).values({
+                id: uuid(),
+                agreementNumber,
+                bookingId: firstBooking.id,
+                projectId,
+                clientId: user.id,
+                status: "signed",
+                contractTerms: "Standard E3 Rentals Qatar Master Equipment Rental Terms & Conditions",
+                replacementValueTotal,
+                securityDepositAmount,
+                signedByClientName: user.name || firstBooking.customerName || "Valued Client",
+                signedByClientQid: clientQid || null,
+                clientSignatureData: signatureData,
+                signedAt: now,
+            });
+        }
+
+        // 6. Generate Vendor Financial Ledgers and Commission Receivables
         await processBookingCommissions(projectId).catch(console.error);
 
-        // 6. Audit Log
+        // 7. Audit Log
         await logStatusTransition({
             actorId: user.id,
             targetId: projectId,
             fromStatus: firstBooking.status,
             toStatus: BOOKING_STATUS.APPROVED,
             role: "client",
-            details: `Client digitally signed and approved proposal (ref: #${projectId.slice(0, 8).toUpperCase()})`,
+            details: `Client digitally signed and approved proposal & rental agreement #${agreementNumber} (ref: #${projectId.slice(0, 8).toUpperCase()})`,
         });
 
         // 7. Send Email Confirmation

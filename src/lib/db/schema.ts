@@ -784,6 +784,130 @@ export const cycleCountItems = pgTable("cycle_count_items", {
     };
 });
 
+// ─── Proof of Delivery (POD & Sign-on-Glass) ───
+export const proofOfDeliveries = pgTable("proof_of_deliveries", {
+    id: varchar("id", { length: 255 }).primaryKey(),
+    bookingId: varchar("booking_id", { length: 255 }).notNull().references(() => bookings.id, { onDelete: "cascade" }),
+    dispatchLogId: varchar("dispatch_log_id", { length: 255 }).references(() => bookingDispatchLogs.id),
+    driverId: varchar("driver_id", { length: 255 }).references(() => users.id),
+    driverName: varchar("driver_name", { length: 255 }),
+    recipientName: varchar("recipient_name", { length: 255 }).notNull(),
+    recipientPhone: varchar("recipient_phone", { length: 50 }),
+    recipientNationalId: varchar("recipient_national_id", { length: 100 }), // Qatar ID / Passport
+    signatureData: text("signature_data").notNull(), // Vectorized Base64 PNG signature
+    photoUrls: jsonb("photo_urls").default([]), // Handover photo proof
+    deliveryStatus: varchar("delivery_status", { length: 50 }).notNull().default("delivered"), // delivered | partial_delivery | delivery_rejected
+    notes: text("notes"),
+    latitude: real("latitude"),
+    longitude: real("longitude"),
+    deliveredAt: timestamp("delivered_at").notNull().defaultNow(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => {
+    return {
+        bookingIdIdx: index("proof_of_deliveries_booking_id_idx").on(table.bookingId),
+        driverIdIdx: index("proof_of_deliveries_driver_id_idx").on(table.driverId),
+        statusIdx: index("proof_of_deliveries_status_idx").on(table.deliveryStatus),
+    };
+});
+
+// ─── Digital Rental Agreements (Contracts & E-Signatures) ───
+export const rentalAgreements = pgTable("rental_agreements", {
+    id: varchar("id", { length: 255 }).primaryKey(),
+    agreementNumber: varchar("agreement_number", { length: 100 }).notNull().unique(), // e.g. AGR-2026-001
+    bookingId: varchar("booking_id", { length: 255 }).notNull().references(() => bookings.id, { onDelete: "cascade" }),
+    projectId: varchar("project_id", { length: 255 }),
+    clientId: varchar("client_id", { length: 255 }).notNull().references(() => users.id),
+    status: varchar("status", { length: 50 }).notNull().default("draft"), // draft | pending_signature | signed | voided
+    contractTerms: text("contract_terms").notNull(),
+    replacementValueTotal: real("replacement_value_total").default(0),
+    securityDepositAmount: real("security_deposit_amount").default(0),
+    signedByClientName: varchar("signed_by_client_name", { length: 255 }),
+    signedByClientQid: varchar("signed_by_client_qid", { length: 100 }),
+    clientSignatureData: text("client_signature_data"), // Base64 signature
+    signedAt: timestamp("signed_at"),
+    ipAddress: varchar("ip_address", { length: 100 }),
+    userAgent: varchar("user_agent", { length: 500 }),
+    pdfUrl: varchar("pdf_url", { length: 500 }),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => {
+    return {
+        bookingIdIdx: index("rental_agreements_booking_id_idx").on(table.bookingId),
+        clientIdIdx: index("rental_agreements_client_id_idx").on(table.clientId),
+        statusIdx: index("rental_agreements_status_idx").on(table.status),
+    };
+});
+
+// ─── Spare Parts Catalog & Inventory ───
+export const spareParts = pgTable("spare_parts", {
+    id: varchar("id", { length: 255 }).primaryKey(),
+    vendorId: varchar("vendor_id", { length: 255 }).references(() => vendors.id),
+    warehouseId: varchar("warehouse_id", { length: 255 }).references(() => vendorWarehouses.id),
+    partNumber: varchar("part_number", { length: 100 }).notNull().unique(), // e.g. PRT-PWR-CON20
+    name: varchar("name", { length: 255 }).notNull(),
+    category: varchar("category", { length: 50 }).notNull().default("cables"), // electrical | optical | mechanical | rigging | cables
+    stockQuantity: integer("stock_quantity").notNull().default(0),
+    minStockThreshold: integer("min_stock_threshold").notNull().default(5),
+    unitCost: real("unit_cost").notNull().default(0),
+    description: text("description"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => {
+    return {
+        partNumberIdx: index("spare_parts_part_number_idx").on(table.partNumber),
+        categoryIdx: index("spare_parts_category_idx").on(table.category),
+        warehouseIdIdx: index("spare_parts_warehouse_id_idx").on(table.warehouseId),
+    };
+});
+
+// ─── Maintenance Work Orders ───
+export const maintenanceWorkOrders = pgTable("maintenance_work_orders", {
+    id: varchar("id", { length: 255 }).primaryKey(),
+    workOrderNumber: varchar("work_order_number", { length: 100 }).notNull().unique(), // e.g. WO-2026-001
+    unitId: varchar("unit_id", { length: 255 }).notNull().references(() => inventoryUnits.id),
+    maintenanceRecordId: varchar("maintenance_record_id", { length: 255 }).references(() => maintenanceRecords.id),
+    assignedTechnicianId: varchar("assigned_technician_id", { length: 255 }).references(() => users.id),
+    technicianName: varchar("technician_name", { length: 255 }),
+    status: varchar("status", { length: 50 }).notNull().default("open"), // open | in_progress | awaiting_parts | qc_testing | completed | scrapped
+    priority: varchar("priority", { length: 50 }).notNull().default("medium"), // low | medium | high | urgent
+    reportedIssue: text("reported_issue").notNull(),
+    diagnosticNotes: text("diagnostic_notes"),
+    resolutionNotes: text("resolution_notes"),
+    laborHours: real("labor_hours").notNull().default(0),
+    laborRatePerHour: real("labor_rate_per_hour").notNull().default(50), // Default QAR 50/hr
+    totalPartsCost: real("total_parts_cost").notNull().default(0),
+    totalRepairCost: real("total_repair_cost").notNull().default(0),
+    electricalSafetyTested: boolean("electrical_safety_tested").notNull().default(false), // PAT inspection flag
+    patCertificateNumber: varchar("pat_certificate_number", { length: 100 }),
+    patPassedAt: timestamp("pat_passed_at"),
+    startedAt: timestamp("started_at"),
+    completedAt: timestamp("completed_at"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => {
+    return {
+        unitIdIdx: index("maintenance_work_orders_unit_id_idx").on(table.unitId),
+        statusIdx: index("maintenance_work_orders_status_idx").on(table.status),
+        priorityIdx: index("maintenance_work_orders_priority_idx").on(table.priority),
+    };
+});
+
+// ─── Maintenance Parts Usage (Deduction junction) ───
+export const maintenancePartsUsage = pgTable("maintenance_parts_usage", {
+    id: varchar("id", { length: 255 }).primaryKey(),
+    workOrderId: varchar("work_order_id", { length: 255 }).notNull().references(() => maintenanceWorkOrders.id, { onDelete: "cascade" }),
+    sparePartId: varchar("spare_part_id", { length: 255 }).notNull().references(() => spareParts.id),
+    quantityUsed: integer("quantity_used").notNull().default(1),
+    unitCost: real("unit_cost").notNull(),
+    totalCost: real("total_cost").notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => {
+    return {
+        workOrderIdIdx: index("maintenance_parts_usage_wo_idx").on(table.workOrderId),
+        sparePartIdIdx: index("maintenance_parts_usage_part_idx").on(table.sparePartId),
+    };
+});
+
 // ─── Relations ───
 export const categoriesRelations = relations(categories, ({ many }) => ({
     products: many(products),
@@ -931,6 +1055,7 @@ export const inventoryUnitsRelations = relations(inventoryUnits, ({ one, many })
     }),
     inspectionLogs: many(inspectionLogs),
     maintenanceRecords: many(maintenanceRecords),
+    workOrders: many(maintenanceWorkOrders),
 }));
 
 export const warehouseTransfersRelations = relations(warehouseTransfers, ({ one, many }) => ({
@@ -1107,6 +1232,11 @@ export const bookingsRelations = relations(bookings, ({ one, many }) => ({
         fields: [bookings.id],
         references: [bookingDispatchLogs.bookingId]
     }),
+    proofOfDelivery: one(proofOfDeliveries, {
+        fields: [bookings.id],
+        references: [proofOfDeliveries.bookingId]
+    }),
+    agreements: many(rentalAgreements),
     unitAssignments: many(bookingUnitAssignments),
 }));
 
@@ -1976,5 +2106,70 @@ export const authTokensRelations = relations(authTokens, ({ one }) => ({
     user: one(users, {
         fields: [authTokens.userId],
         references: [users.id],
+    }),
+}));
+
+export const proofOfDeliveriesRelations = relations(proofOfDeliveries, ({ one }) => ({
+    booking: one(bookings, {
+        fields: [proofOfDeliveries.bookingId],
+        references: [bookings.id],
+    }),
+    dispatchLog: one(bookingDispatchLogs, {
+        fields: [proofOfDeliveries.dispatchLogId],
+        references: [bookingDispatchLogs.id],
+    }),
+    driver: one(users, {
+        fields: [proofOfDeliveries.driverId],
+        references: [users.id],
+    }),
+}));
+
+export const rentalAgreementsRelations = relations(rentalAgreements, ({ one }) => ({
+    booking: one(bookings, {
+        fields: [rentalAgreements.bookingId],
+        references: [bookings.id],
+    }),
+    client: one(users, {
+        fields: [rentalAgreements.clientId],
+        references: [users.id],
+    }),
+}));
+
+export const sparePartsRelations = relations(spareParts, ({ one, many }) => ({
+    vendor: one(vendors, {
+        fields: [spareParts.vendorId],
+        references: [vendors.id],
+    }),
+    warehouse: one(vendorWarehouses, {
+        fields: [spareParts.warehouseId],
+        references: [vendorWarehouses.id],
+    }),
+    usages: many(maintenancePartsUsage),
+}));
+
+export const maintenanceWorkOrdersRelations = relations(maintenanceWorkOrders, ({ one, many }) => ({
+    unit: one(inventoryUnits, {
+        fields: [maintenanceWorkOrders.unitId],
+        references: [inventoryUnits.id],
+    }),
+    maintenanceRecord: one(maintenanceRecords, {
+        fields: [maintenanceWorkOrders.maintenanceRecordId],
+        references: [maintenanceRecords.id],
+    }),
+    assignedTechnician: one(users, {
+        fields: [maintenanceWorkOrders.assignedTechnicianId],
+        references: [users.id],
+    }),
+    partsUsed: many(maintenancePartsUsage),
+}));
+
+export const maintenancePartsUsageRelations = relations(maintenancePartsUsage, ({ one }) => ({
+    workOrder: one(maintenanceWorkOrders, {
+        fields: [maintenancePartsUsage.workOrderId],
+        references: [maintenanceWorkOrders.id],
+    }),
+    sparePart: one(spareParts, {
+        fields: [maintenancePartsUsage.sparePartId],
+        references: [spareParts.id],
     }),
 }));

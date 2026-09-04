@@ -36,14 +36,15 @@ export default function QuoteSignOffClient({ booking, financials, user }: QuoteS
     const [isPending, startTransition] = useTransition();
     const [isSuccess, setIsSuccess] = useState(booking.status === "approved" || booking.status === "booked");
     const [approvalError, setApprovalError] = useState("");
+    const [clientQid, setClientQid] = useState("");
 
     const handleSignatureSave = (signatureData: string) => {
         setApprovalError("");
         startTransition(async () => {
-            const res = await approveBookingWithSignature(booking.projectId || booking.id, signatureData);
+            const res = await approveBookingWithSignature(booking.projectId || booking.id, signatureData, clientQid);
             if (res.success) {
                 setIsSuccess(true);
-                toast.success("Proposal Digitally Signed & Confirmed!");
+                toast.success("Proposal & Rental Agreement Digitally Signed!");
             } else {
                 setApprovalError(res.error || "Approval failed");
                 toast.error(res.error || "Approval failed");
@@ -53,6 +54,11 @@ export default function QuoteSignOffClient({ booking, financials, user }: QuoteS
 
     const handleDownloadPDF = () => {
         const url = `/api/pdf/quote-proposal/${booking.projectId || booking.id}`;
+        window.open(url, "_blank");
+    };
+
+    const handleDownloadAgreementPDF = () => {
+        const url = `/api/pdf/agreement/${booking.id || booking.projectId}`;
         window.open(url, "_blank");
     };
 
@@ -66,19 +72,26 @@ export default function QuoteSignOffClient({ booking, financials, user }: QuoteS
                     Operation <span className="text-emerald-500">Confirmed</span>
                 </h1>
                 <p className="text-slate max-w-md mx-auto mb-6 font-medium leading-relaxed text-sm">
-                    Your digital signature has been recorded and stock is reserved. The E3 Operations and Warehouse Fulfillment team has been mobilized.
+                    Your digital signature has been recorded and formal equipment rental agreement executed under Qatar Law. The E3 Operations and Warehouse Fulfillment team has been mobilized.
                 </p>
-                <div className="flex gap-4">
+                <div className="flex flex-wrap gap-3 justify-center">
                     <button 
                         onClick={handleDownloadPDF}
-                        className="px-8 py-4 rounded-2xl bg-white/5 border border-white/10 text-white font-black text-xs uppercase tracking-widest hover:bg-white/10 transition-all flex items-center gap-2"
+                        className="px-6 py-3.5 rounded-2xl bg-white/5 border border-white/10 text-white font-black text-xs uppercase tracking-widest hover:bg-white/10 transition-all flex items-center gap-2"
                     >
                         <Download className="w-4 h-4 text-gold" />
-                        Download Signed PDF
+                        Proposal PDF
+                    </button>
+                    <button 
+                        onClick={handleDownloadAgreementPDF}
+                        className="px-6 py-3.5 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 font-black text-xs uppercase tracking-widest hover:bg-emerald-500/30 transition-all flex items-center gap-2"
+                    >
+                        <Download className="w-4 h-4 text-emerald-400" />
+                        Signed Rental Agreement PDF
                     </button>
                     <Link 
                         href="/dashboard/client/overview" 
-                        className="px-8 py-4 rounded-2xl bg-gold text-navy font-black text-xs uppercase tracking-widest hover:scale-105 transition-all flex items-center gap-2"
+                        className="px-6 py-3.5 rounded-2xl bg-gold text-navy font-black text-xs uppercase tracking-widest hover:scale-105 transition-all flex items-center gap-2"
                     >
                         Return to Dashboard
                         <ArrowRight className="w-4 h-4" />
@@ -263,10 +276,25 @@ export default function QuoteSignOffClient({ booking, financials, user }: QuoteS
                                 </p>
                             </div>
                             
-                            <SignaturePad 
-                                onSave={handleSignatureSave} 
-                                isLoading={isPending} 
-                            />
+                            <div className="space-y-3">
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-300 mb-1">
+                                        Qatar ID / Signer National ID <span className="text-gold font-normal">(Optional, for formal contract audit)</span>
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={clientQid}
+                                        onChange={e => setClientQid(e.target.value)}
+                                        placeholder="e.g. 28463400..."
+                                        className="w-full bg-white/5 border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-gold"
+                                    />
+                                </div>
+                                
+                                <SignaturePad 
+                                    onSave={handleSignatureSave} 
+                                    isLoading={isPending} 
+                                />
+                            </div>
 
                             <button 
                                 onClick={() => setActiveTab("review")}
