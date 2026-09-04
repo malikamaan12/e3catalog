@@ -172,11 +172,11 @@ function FleetPageContent() {
             if (res.ok) {
                 const data = await res.json();
                 setUnits(data);
-                // Detect role from data
-                const r = await fetch("/api/auth/session");
+                // Detect role from auth session
+                const r = await fetch("/api/auth/me");
                 if (r.ok) {
                     const s = await r.json();
-                    setUserRole(s?.role || "vendor");
+                    setUserRole(s?.user?.role || "vendor");
                 }
             }
         } catch (error) { console.error(error); }

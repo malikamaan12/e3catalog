@@ -197,9 +197,14 @@ export default async function BookingLogisticsPage({ params }: { params: { booki
                                             <Link href={`/dashboard/client/booking/${booking.id}/track`} className="px-4 py-2 rounded-lg bg-[var(--color-gold)] text-[var(--color-navy)] text-[9px] font-black uppercase tracking-widest transition-all hover:scale-105 shadow-md flex items-center gap-1">
                                                 <Navigation className="w-3 h-3" /> Live GPS
                                             </Link>
-                                            <Link href={`/dashboard/client/manifest/${booking.id}`} className="px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-[9px] font-black text-white uppercase tracking-widest transition-all">
-                                                Manifest
-                                            </Link>
+                                            <a 
+                                                href={`/api/pdf/manifest/${booking.id}`} 
+                                                target="_blank" 
+                                                rel="noopener noreferrer"
+                                                className="px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-[9px] font-black text-white uppercase tracking-widest transition-all inline-block"
+                                            >
+                                                Manifest PDF ↗
+                                            </a>
                                         </div>
                                     </div>
                                 )}
