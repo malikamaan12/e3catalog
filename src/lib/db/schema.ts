@@ -274,6 +274,7 @@ export const products = pgTable("products", {
     averageRating: real("average_rating").default(5.0),
     reviewCount: integer("review_count").default(0),
     isPublished: boolean("is_published").default(false),
+    isKit: boolean("is_kit").default(false),
     // Lifecycle Status (draft | pending_review | changes_requested | approved | published | unpublished | archived)
     status: varchar("status", { length: 50 }).notNull().default("draft"),
     brand: varchar("brand", { length: 255 }),
@@ -966,6 +967,102 @@ export const bookingExtensions = pgTable("booking_extensions", {
 }, (table) => {
     return {
         bookingIdIdx: index("booking_extensions_booking_idx").on(table.bookingId),
+    };
+});
+
+// ─── Product Kit Items (Bill of Materials) ───
+export const productKitItems = pgTable("product_kit_items", {
+    id: varchar("id", { length: 255 }).primaryKey(),
+    parentProductId: varchar("parent_product_id", { length: 255 }).notNull().references(() => products.id, { onDelete: "cascade" }),
+    childProductId: varchar("child_product_id", { length: 255 }).notNull().references(() => products.id, { onDelete: "cascade" }),
+    quantity: integer("quantity").notNull().default(1),
+    isOptional: boolean("is_optional").notNull().default(false),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => {
+    return {
+        parentProductIdx: index("product_kit_items_parent_idx").on(table.parentProductId),
+        childProductIdx: index("product_kit_items_child_idx").on(table.childProductId),
+    };
+});
+
+// ─── Damage Claims & Security Deposit Deductions ───
+export const damageClaims = pgTable("damage_claims", {
+    id: varchar("id", { length: 255 }).primaryKey(),
+    claimNumber: varchar("claim_number", { length: 100 }).notNull().unique(), // e.g. CLM-2026-001
+    bookingId: varchar("booking_id", { length: 255 }).notNull().references(() => bookings.id, { onDelete: "cascade" }),
+    inventoryUnitId: varchar("inventory_unit_id", { length: 255 }).references(() => inventoryUnits.id),
+    inspectionLogId: varchar("inspection_log_id", { length: 255 }).references(() => inspectionLogs.id),
+    incidentDescription: text("incident_description").notNull(),
+    photoUrls: jsonb("photo_urls").$type<string[]>().default([]),
+    severity: varchar("severity", { length: 50 }).notNull().default("moderate"), // minor | moderate | severe | total_loss
+    partsCost: real("parts_cost").notNull().default(0),
+    laborCost: real("labor_cost").notNull().default(0),
+    totalClaimAmount: real("total_claim_amount").notNull().default(0),
+    securityDepositHeld: real("security_deposit_held").notNull().default(0),
+    amountDeducted: real("amount_deducted").notNull().default(0),
+    amountRefunded: real("amount_refunded").notNull().default(0),
+    status: varchar("status", { length: 50 }).notNull().default("filed"), // draft | filed | settled_deducted | disputed | waived
+    filedBy: varchar("filed_by", { length: 255 }).references(() => users.id),
+    settledAt: timestamp("settled_at"),
+    clientDisputeReason: text("client_dispute_reason"),
+    adminResolutionNotes: text("admin_resolution_notes"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => {
+    return {
+        bookingIdx: index("damage_claims_booking_idx").on(table.bookingId),
+        unitIdx: index("damage_claims_unit_idx").on(table.inventoryUnitId),
+        statusIdx: index("damage_claims_status_idx").on(table.status),
+    };
+});
+
+// ─── Sub-Rentals & Cross-Hiring Orders (B2B Sourcing) ───
+export const crossHireOrders = pgTable("cross_hire_orders", {
+    id: varchar("id", { length: 255 }).primaryKey(),
+    orderNumber: varchar("order_number", { length: 100 }).notNull().unique(), // e.g. XHIRE-2026-001
+    bookingId: varchar("booking_id", { length: 255 }).references(() => bookings.id, { onDelete: "set null" }),
+    supplierVendorId: varchar("supplier_vendor_id", { length: 255 }).references(() => vendors.id),
+    supplierName: varchar("supplier_name", { length: 255 }).notNull(),
+    supplierContact: varchar("supplier_contact", { length: 255 }),
+    productId: varchar("product_id", { length: 255 }).notNull().references(() => products.id),
+    unitsRequested: integer("units_requested").notNull().default(1),
+    periodStart: timestamp("period_start").notNull(),
+    periodEnd: timestamp("period_end").notNull(),
+    supplierDailyRate: real("supplier_daily_rate").notNull().default(0),
+    clientDailyRate: real("client_daily_rate").notNull().default(0),
+    totalSupplierCost: real("total_supplier_cost").notNull().default(0),
+    totalClientRevenue: real("total_client_revenue").notNull().default(0),
+    profitMargin: real("profit_margin").notNull().default(0),
+    status: varchar("status", { length: 50 }).notNull().default("requested"), // requested | confirmed | received | deployed | returned | cancelled
+    assetTagAllocations: jsonb("asset_tag_allocations").$type<string[]>().default([]),
+    notes: text("notes"),
+    createdById: varchar("created_by_id", { length: 255 }).references(() => users.id),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => {
+    return {
+        bookingIdx: index("cross_hire_orders_booking_idx").on(table.bookingId),
+        productIdx: index("cross_hire_orders_product_idx").on(table.productId),
+        statusIdx: index("cross_hire_orders_status_idx").on(table.status),
+    };
+});
+
+// ─── Real-Time Fleet Dispatch GPS Telemetry ───
+export const fleetGpsPings = pgTable("fleet_gps_pings", {
+    id: varchar("id", { length: 255 }).primaryKey(),
+    dispatchLogId: varchar("dispatch_log_id", { length: 255 }).notNull().references(() => bookingDispatchLogs.id, { onDelete: "cascade" }),
+    driverId: varchar("driver_id", { length: 255 }).references(() => users.id),
+    vehiclePlate: varchar("vehicle_plate", { length: 100 }),
+    latitude: real("latitude").notNull(),
+    longitude: real("longitude").notNull(),
+    heading: real("heading"),
+    speed: real("speed"),
+    status: varchar("status", { length: 50 }).notNull().default("in_transit"), // departed | in_transit | arrived | unloading | completed
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => {
+    return {
+        dispatchLogIdx: index("fleet_gps_pings_dispatch_idx").on(table.dispatchLogId),
+        createdAtIdx: index("fleet_gps_pings_created_idx").on(table.createdAt),
     };
 });
 
@@ -2266,3 +2363,66 @@ export const bookingExtensionsRelations = relations(bookingExtensions, ({ one })
         references: [users.id],
     }),
 }));
+
+export const productKitItemsRelations = relations(productKitItems, ({ one }) => ({
+    parentProduct: one(products, {
+        fields: [productKitItems.parentProductId],
+        references: [products.id],
+        relationName: "kitParent",
+    }),
+    childProduct: one(products, {
+        fields: [productKitItems.childProductId],
+        references: [products.id],
+        relationName: "kitChild",
+    }),
+}));
+
+export const damageClaimsRelations = relations(damageClaims, ({ one }) => ({
+    booking: one(bookings, {
+        fields: [damageClaims.bookingId],
+        references: [bookings.id],
+    }),
+    unit: one(inventoryUnits, {
+        fields: [damageClaims.inventoryUnitId],
+        references: [inventoryUnits.id],
+    }),
+    inspectionLog: one(inspectionLogs, {
+        fields: [damageClaims.inspectionLogId],
+        references: [inspectionLogs.id],
+    }),
+    filer: one(users, {
+        fields: [damageClaims.filedBy],
+        references: [users.id],
+    }),
+}));
+
+export const crossHireOrdersRelations = relations(crossHireOrders, ({ one }) => ({
+    booking: one(bookings, {
+        fields: [crossHireOrders.bookingId],
+        references: [bookings.id],
+    }),
+    supplierVendor: one(vendors, {
+        fields: [crossHireOrders.supplierVendorId],
+        references: [vendors.id],
+    }),
+    product: one(products, {
+        fields: [crossHireOrders.productId],
+        references: [products.id],
+    }),
+    creator: one(users, {
+        fields: [crossHireOrders.createdById],
+        references: [users.id],
+    }),
+}));
+
+export const fleetGpsPingsRelations = relations(fleetGpsPings, ({ one }) => ({
+    dispatchLog: one(bookingDispatchLogs, {
+        fields: [fleetGpsPings.dispatchLogId],
+        references: [bookingDispatchLogs.id],
+    }),
+    driver: one(users, {
+        fields: [fleetGpsPings.driverId],
+        references: [users.id],
+    }),
+}));
+

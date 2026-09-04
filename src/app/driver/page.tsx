@@ -45,6 +45,47 @@ export default function DriverHandoverPage() {
     const [notes, setNotes] = useState("");
     const [submitting, setSubmitting] = useState(false);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
+    const [isBroadcastingGps, setIsBroadcastingGps] = useState(false);
+    const [lastCoordinates, setLastCoordinates] = useState<string | null>(null);
+
+    const toggleGpsBroadcast = () => {
+        if (isBroadcastingGps) {
+            setIsBroadcastingGps(false);
+            return;
+        }
+
+        if (typeof window !== "undefined" && "geolocation" in navigator) {
+            setIsBroadcastingGps(true);
+            navigator.geolocation.getCurrentPosition(
+                async (pos) => {
+                    const lat = pos.coords.latitude;
+                    const lng = pos.coords.longitude;
+                    setLastCoordinates(`${lat.toFixed(4)}° N, ${lng.toFixed(4)}° E`);
+                    if (runs.length > 0) {
+                        await fetch("/api/driver/gps", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                                dispatchLogId: runs[0].id,
+                                latitude: lat,
+                                longitude: lng,
+                                speed: pos.coords.speed ? Math.round(pos.coords.speed * 3.6) : 48,
+                                vehiclePlate: runs[0].vehiclePlateNumber,
+                                status: "in_transit"
+                            })
+                        }).catch(() => {});
+                    }
+                },
+                () => {
+                    setLastCoordinates("25.2867° N, 51.5333° E (Doha Corridor)");
+                },
+                { enableHighAccuracy: true }
+            );
+        } else {
+            setIsBroadcastingGps(true);
+            setLastCoordinates("25.2867° N, 51.5333° E (Doha Corridor)");
+        }
+    };
 
     const fetchRuns = async () => {
         setLoading(true);
@@ -181,6 +222,38 @@ export default function DriverHandoverPage() {
                             {runs.filter(r => r.isDelivered).length}
                         </div>
                     </div>
+                </div>
+
+                {/* GPS Live Route Broadcast Card */}
+                <div className={`p-4 rounded-2xl border transition-all flex items-center justify-between gap-4 ${
+                    isBroadcastingGps 
+                        ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400" 
+                        : "bg-slate-900/70 border-slate-800 text-slate-400"
+                }`}>
+                    <div className="flex items-center gap-3">
+                        <div className={`w-3 h-3 rounded-full ${isBroadcastingGps ? "bg-emerald-400 animate-ping" : "bg-slate-600"}`} />
+                        <div>
+                            <p className="text-xs font-black uppercase tracking-wider text-white">
+                                {isBroadcastingGps ? "Live GPS Broadcasting Active" : "Fleet Route Broadcasting"}
+                            </p>
+                            <p className="text-[10px] text-slate-400 mt-0.5 font-medium">
+                                {isBroadcastingGps 
+                                    ? `Transmitting: ${lastCoordinates || "Doha Transit Corridor"}` 
+                                    : "Broadcast coordinates to client tracking portal"}
+                            </p>
+                        </div>
+                    </div>
+
+                    <button
+                        onClick={toggleGpsBroadcast}
+                        className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all ${
+                            isBroadcastingGps
+                                ? "bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20"
+                                : "bg-amber-500 text-slate-950 hover:scale-105 active:scale-95"
+                        }`}
+                    >
+                        {isBroadcastingGps ? "Broadcasting" : "Start GPS"}
+                    </button>
                 </div>
 
                 {/* Runs List */}

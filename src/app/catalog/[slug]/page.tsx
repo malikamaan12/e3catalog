@@ -10,6 +10,7 @@ import { Footer } from "@/components/Footer";
 import Link from "next/link";
 import Image from "next/image";
 import AvailabilityTimeline from "@/components/product/AvailabilityTimeline";
+import { KitComponentsList } from "@/components/catalog/KitComponentsList";
 
 // Lazy-load heavy components — only mount when tab is active
 // Lazy-load heavy components — only mount when tab is active
@@ -384,6 +385,11 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
                                         )}
                                     </>
                                 )}
+                            </div>
+
+                            {/* Bill of Materials / Package Components (if Kit) */}
+                            <div className="mb-8">
+                                <KitComponentsList productId={product.id} />
                             </div>
 
                             {/* ── Technical Specifications (Radix UI) ── */}

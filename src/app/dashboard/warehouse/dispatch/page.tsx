@@ -7,10 +7,12 @@ import {
     MapPin, 
     ChevronRight, 
     ScanLine,
-    FileSignature
+    FileSignature,
+    ArrowRightLeft
 } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
+import { CrossHiresManager } from "@/components/warehouse/CrossHiresManager";
 export default async function DispatchPipelinePage(props: { searchParams: Promise<{ tab?: string }> }) {
     const searchParams = await props.searchParams;
     const activeTab = searchParams.tab || 'outgoing';
@@ -77,10 +79,24 @@ export default async function DispatchPipelinePage(props: { searchParams: Promis
                 >
                     Incoming (Bump-Out)
                 </Link>
+                <Link 
+                    href="/dashboard/warehouse/dispatch?tab=cross_hires"
+                    className={`px-6 py-3 rounded-lg font-bold text-[10px] uppercase tracking-[0.2em] transition-all flex items-center gap-1.5 ${
+                        activeTab === 'cross_hires' 
+                            ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/20 font-black' 
+                            : 'text-[var(--color-slate)] hover:text-[var(--color-warm-white)] hover:bg-white/5'
+                    }`}
+                >
+                    <ArrowRightLeft className="w-3.5 h-3.5" />
+                    Cross-Hire Sub-Rentals
+                </Link>
             </div>
 
-            <div className="flex flex-col gap-6">
-                {activeBookings.length === 0 ? (
+            {activeTab === 'cross_hires' ? (
+                <CrossHiresManager />
+            ) : (
+                <div className="flex flex-col gap-6">
+                    {activeBookings.length === 0 ? (
                     <div className="text-center py-24 glass rounded-3xl border-2 border-dashed border-white/5 text-[var(--color-slate)] italic shadow-inner">
                         No active dispatches found in the pipeline.
                     </div>
@@ -182,7 +198,8 @@ export default async function DispatchPipelinePage(props: { searchParams: Promis
                         );
                     })
                 )}
-            </div>
+                </div>
+            )}
         </div>
     );
 }

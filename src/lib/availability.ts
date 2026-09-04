@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { products, bookings, inventoryOverrides, inventoryUnits } from "./db/schema";
+import { products, bookings, inventoryOverrides, inventoryUnits, productKitItems } from "./db/schema";
 import { eq, and, or, lte, gte, inArray, ne } from "drizzle-orm";
 import { addHours, subHours, parseISO, format } from "date-fns";
 import { BOOKING_STATUS } from "./constants";
@@ -79,13 +79,58 @@ export function isUnitAllocatable(unit: {
  * Core Availability Engine
  * 
  * Handles:
- * 1. Basic date overlap detection
- * 2. Buffer days (installation + dismantling time)
- * 3. Multi-shift same-day turnarounds with hour-level precision
- * 4. Manual inventory overrides (maintenance, manual holds)
- * 5. Strict deduction of physical maintenance and non-allocatable units
+ * 1. Kit / Package Bill of Materials (BOM) recursive child item availability
+ * 2. Basic date overlap detection
+ * 3. Buffer days (installation + dismantling time)
+ * 4. Multi-shift same-day turnarounds with hour-level precision
+ * 5. Manual inventory overrides (maintenance, manual holds)
+ * 6. Strict deduction of physical maintenance and non-allocatable units
  */
 export async function checkAvailability(req: AvailabilityRequest): Promise<AvailabilityResult> {
+    // 0. Check if this product is a Composite Kit / Package
+    const kitItems = await db.query.productKitItems.findMany({
+        where: eq(productKitItems.parentProductId, req.productId),
+    });
+
+    if (kitItems.length > 0) {
+        let minKitsAvailable = Infinity;
+        let totalChildBooked = 0;
+        let totalChildMaintenance = 0;
+        let totalChildUnits = 0;
+        let totalConflictingBookings = 0;
+
+        for (const item of kitItems) {
+            const childResult = await checkAvailability({
+                ...req,
+                productId: item.childProductId,
+                quantity: req.quantity * item.quantity,
+            });
+
+            const kitsFromThisChild = Math.floor(childResult.unitsAvailable / item.quantity);
+            if (kitsFromThisChild < minKitsAvailable) {
+                minKitsAvailable = kitsFromThisChild;
+            }
+            totalChildBooked += childResult.unitsBooked;
+            totalChildMaintenance += childResult.unitsMaintenance;
+            totalChildUnits += childResult.totalUnits;
+            totalConflictingBookings += childResult.conflictingBookings;
+        }
+
+        const effectiveKitsAvailable = minKitsAvailable === Infinity ? 0 : minKitsAvailable;
+
+        return {
+            available: effectiveKitsAvailable >= req.quantity,
+            unitsAvailable: Math.max(0, effectiveKitsAvailable),
+            unitsBooked: totalChildBooked,
+            unitsMaintenance: totalChildMaintenance,
+            totalUnits: totalChildUnits,
+            requestedQuantity: req.quantity,
+            effectiveStart: req.startDate,
+            effectiveEnd: req.endDate,
+            conflictingBookings: totalConflictingBookings,
+        };
+    }
+
     // 1. Fetch product details
     const product = await db.query.products.findFirst({
         where: eq(products.id, req.productId),

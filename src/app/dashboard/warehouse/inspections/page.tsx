@@ -5,10 +5,11 @@ import {
     ShieldAlert, Search, Loader2, Plus, X, CheckCircle2,
     Clock, ChevronDown, Save, Camera, ArrowRightLeft, MapPin,
     Wrench, Boxes, Zap, AlertTriangle, PenTool, CheckSquare,
-    DollarSign, PackageCheck
+    DollarSign, PackageCheck, FileText
 } from "lucide-react";
 import { format } from "date-fns";
 import QRScannerModal from "@/components/warehouse/QRScannerModal";
+import { DamageClaimModal } from "@/components/warehouse/DamageClaimModal";
 
 type InspectionLog = {
     id: string;
@@ -70,6 +71,26 @@ type SparePart = {
     isLowStock?: boolean;
 };
 
+type DamageClaim = {
+    id: string;
+    claimNumber: string;
+    bookingId: string;
+    inventoryUnitId: string | null;
+    incidentDescription: string;
+    severity: string;
+    partsCost: number;
+    laborCost: number;
+    totalClaimAmount: number;
+    securityDepositHeld: number;
+    amountDeducted: number;
+    amountRefunded: number;
+    status: string;
+    filedBy: string | null;
+    createdAt: string;
+    booking?: { id: string; customerName: string; projectName: string | null };
+    inventoryUnit?: { id: string; assetTagCode: string };
+};
+
 const INSPECTION_TYPES = ["routine", "damage", "return", "pre_rental"];
 const CONDITIONS = ["excellent", "good", "fair", "poor", "maintenance_required"];
 
@@ -96,7 +117,18 @@ const PRIORITY_COLOR: Record<string, string> = {
 };
 
 export default function InspectionsPage() {
-    const [mainTab, setMainTab] = useState<"inspections" | "work_orders" | "spare_parts">("inspections");
+    const [mainTab, setMainTab] = useState<"inspections" | "work_orders" | "spare_parts" | "damage_claims">("inspections");
+
+    // ─── Damage Claims State ───
+    const [damageClaims, setDamageClaims] = useState<DamageClaim[]>([]);
+    const [loadingClaims, setLoadingClaims] = useState(false);
+    const [claimModalOpen, setClaimModalOpen] = useState(false);
+    const [selectedClaimData, setSelectedClaimData] = useState<{
+        bookingId?: string;
+        unitId?: string;
+        assetTag?: string;
+        productName?: string;
+    } | null>(null);
 
     // ─── Inspection Logs State ───
     const [logs, setLogs] = useState<InspectionLog[]>([]);
@@ -205,11 +237,25 @@ export default function InspectionsPage() {
         }
     }, []);
 
+    const loadDamageClaims = useCallback(async () => {
+        setLoadingClaims(true);
+        try {
+            const res = await fetch("/api/warehouse/damage-claims");
+            const data = await res.json();
+            if (data.claims) setDamageClaims(data.claims);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setLoadingClaims(false);
+        }
+    }, []);
+
     useEffect(() => {
-        if (mainTab === "inspections") loadLogs();
+        if (mainTab === "inspections") { loadLogs(); loadDamageClaims(); }
         if (mainTab === "work_orders") { loadWorkOrders(); loadSpareParts(); }
         if (mainTab === "spare_parts") loadSpareParts();
-    }, [mainTab, loadLogs, loadWorkOrders, loadSpareParts]);
+        if (mainTab === "damage_claims") loadDamageClaims();
+    }, [mainTab, loadLogs, loadWorkOrders, loadSpareParts, loadDamageClaims]);
 
     // ─── Inspection Handlers ───
     const handleInspectionScan = async (tag: string) => {
@@ -490,6 +536,17 @@ export default function InspectionsPage() {
                         <Boxes className="w-4 h-4" />
                         Spare Parts ({parts.length})
                     </button>
+                    <button
+                        onClick={() => setMainTab("damage_claims")}
+                        className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-2 transition-all ${
+                            mainTab === "damage_claims" 
+                                ? "bg-red-500 text-white shadow-md" 
+                                : "text-slate-400 hover:text-white"
+                        }`}
+                    >
+                        <AlertTriangle className="w-4 h-4" />
+                        Damage Claims ({damageClaims.length})
+                    </button>
                 </div>
             </div>
 
@@ -502,17 +559,29 @@ export default function InspectionsPage() {
                         <span className="text-xs font-bold uppercase tracking-widest text-slate-400">
                             Physical Asset Logs ({logs.length})
                         </span>
-                        <button
-                            onClick={() => setShowForm(!showForm)}
-                            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all shadow-md ${
-                                showForm
-                                    ? "bg-slate-800 text-slate-300"
-                                    : "bg-amber-500 hover:bg-amber-400 text-slate-950"
-                            }`}
-                        >
-                            {showForm ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-                            {showForm ? "Cancel" : "New Physical Audit"}
-                        </button>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => {
+                                    setSelectedClaimData(null);
+                                    setClaimModalOpen(true);
+                                }}
+                                className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider bg-red-500/15 hover:bg-red-500 text-red-400 hover:text-white border border-red-500/30 transition-all shadow-md"
+                            >
+                                <AlertTriangle className="h-4 w-4" />
+                                File Damage Claim
+                            </button>
+                            <button
+                                onClick={() => setShowForm(!showForm)}
+                                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all shadow-md ${
+                                    showForm
+                                        ? "bg-slate-800 text-slate-300"
+                                        : "bg-amber-500 hover:bg-amber-400 text-slate-950"
+                                }`}
+                            >
+                                {showForm ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                                {showForm ? "Cancel" : "New Physical Audit"}
+                            </button>
+                        </div>
                     </div>
 
                     {showForm && (
@@ -641,7 +710,23 @@ export default function InspectionsPage() {
                                     {log.notes && <p className="text-xs text-slate-300 italic">"{log.notes}"</p>}
                                     <div className="text-[10px] text-slate-500 flex items-center justify-between pt-2 border-t border-slate-800">
                                         <span>Inspector: {log.inspectorName || "Staff"}</span>
-                                        <span>{format(new Date(log.createdAt), "MMM d, HH:mm")}</span>
+                                        <div className="flex items-center gap-3">
+                                            <span>{format(new Date(log.createdAt), "MMM d, HH:mm")}</span>
+                                            {(log.inspectionType === "damage" || log.conditionAfter === "poor" || log.conditionAfter === "maintenance_required") && (
+                                                <button
+                                                    onClick={() => {
+                                                        setSelectedClaimData({
+                                                            unitId: log.unitId,
+                                                            assetTag: log.assetTagCode,
+                                                        });
+                                                        setClaimModalOpen(true);
+                                                    }}
+                                                    className="px-2 py-0.5 rounded bg-red-500/20 hover:bg-red-500 text-red-400 hover:text-white font-black text-[9px] uppercase tracking-wider flex items-center gap-1 transition-colors"
+                                                >
+                                                    <AlertTriangle className="w-2.5 h-2.5" /> Claim Deposit
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             ))
@@ -1089,6 +1174,154 @@ export default function InspectionsPage() {
                     </div>
                 </div>
             )}
+
+            {/* ─────────────────────────────────────────────────────────────
+                TAB 4: DAMAGE CLAIMS & SECURITY DEPOSIT DEDUCTION ENGINE
+            ───────────────────────────────────────────────────────────── */}
+            {mainTab === "damage_claims" && (
+                <div className="space-y-6">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div>
+                            <span className="text-xs font-bold uppercase tracking-widest text-slate-400">
+                                Damage Claims & Deposit Retention ({damageClaims.length})
+                            </span>
+                            <p className="text-xs text-slate-500 mt-0.5">
+                                Automated financial offsets against client security deposit with official legal assessment vouchers.
+                            </p>
+                        </div>
+                        <button
+                            onClick={() => {
+                                setSelectedClaimData(null);
+                                setClaimModalOpen(true);
+                            }}
+                            className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider bg-red-500 hover:bg-red-400 text-white transition-all shadow-md self-start sm:self-auto"
+                        >
+                            <Plus className="h-4 w-4" />
+                            File Damage Claim
+                        </button>
+                    </div>
+
+                    {/* Summary Metrics */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-1">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Total Claims Filed</span>
+                            <div className="text-2xl font-black text-white font-[family-name:var(--font-heading)]">
+                                {damageClaims.length}
+                            </div>
+                            <span className="text-[10px] text-slate-500">Recorded post-bump-out</span>
+                        </div>
+                        <div className="p-5 rounded-2xl bg-slate-900 border border-red-500/20 space-y-1">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-red-400">Deposit Deductions</span>
+                            <div className="text-2xl font-black text-red-400 font-[family-name:var(--font-heading)]">
+                                QAR {damageClaims.reduce((s, c) => s + (Number(c.amountDeducted) || 0), 0).toLocaleString()}
+                            </div>
+                            <span className="text-[10px] text-red-400/70">Retained for repairs</span>
+                        </div>
+                        <div className="p-5 rounded-2xl bg-slate-900 border border-emerald-500/20 space-y-1">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400">Refunds Remitted</span>
+                            <div className="text-2xl font-black text-emerald-400 font-[family-name:var(--font-heading)]">
+                                QAR {damageClaims.reduce((s, c) => s + (Number(c.amountRefunded) || 0), 0).toLocaleString()}
+                            </div>
+                            <span className="text-[10px] text-emerald-400/70">Surplus returned to clients</span>
+                        </div>
+                    </div>
+
+                    {/* Claims Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {loadingClaims ? (
+                            <div className="col-span-full py-16 text-center text-slate-500">
+                                <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-red-500" />
+                                Loading Damage Claims...
+                            </div>
+                        ) : damageClaims.length === 0 ? (
+                            <div className="col-span-full py-16 text-center text-slate-500 border border-slate-800 rounded-2xl">
+                                No damage claims recorded. All equipment returned intact.
+                            </div>
+                        ) : (
+                            damageClaims.map(claim => (
+                                <div 
+                                    key={claim.id} 
+                                    className="p-5 rounded-2xl bg-slate-900 border border-slate-800 hover:border-red-500/40 transition-all space-y-3.5 shadow-md flex flex-col justify-between"
+                                >
+                                    <div className="space-y-2">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-xs font-mono font-bold text-red-400">{claim.claimNumber}</span>
+                                            <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded border border-red-500/30 bg-red-500/10 text-red-300">
+                                                {claim.severity.replace('_', ' ')}
+                                            </span>
+                                        </div>
+
+                                        <div>
+                                            <h3 className="text-sm font-bold text-white">
+                                                {claim.booking?.customerName || "Customer Claim"}
+                                            </h3>
+                                            <p className="text-xs text-slate-400 truncate">
+                                                {claim.booking?.projectName ? `Project: ${claim.booking.projectName}` : `Booking Ref: ${claim.bookingId?.slice(0, 8)}...`}
+                                            </p>
+                                            {claim.inventoryUnit && (
+                                                <span className="inline-block mt-1 text-[10px] font-mono bg-white/5 px-2 py-0.5 rounded text-amber-400">
+                                                    Unit: {claim.inventoryUnit.assetTagCode}
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        <p className="text-xs text-slate-300 line-clamp-2 bg-slate-950/60 p-2.5 rounded-xl border border-slate-800">
+                                            {claim.incidentDescription}
+                                        </p>
+                                    </div>
+
+                                    <div className="space-y-2 pt-2 border-t border-slate-800">
+                                        <div className="grid grid-cols-2 gap-2 text-[11px]">
+                                            <div>
+                                                <span className="text-slate-500 block">Total Claim</span>
+                                                <span className="font-bold text-white">QAR {Number(claim.totalClaimAmount || 0).toLocaleString()}</span>
+                                            </div>
+                                            <div>
+                                                <span className="text-slate-500 block">Deposit Held</span>
+                                                <span className="font-bold text-slate-300">QAR {Number(claim.securityDepositHeld || 0).toLocaleString()}</span>
+                                            </div>
+                                            <div>
+                                                <span className="text-red-400 block">Deducted</span>
+                                                <span className="font-black text-red-400">- QAR {Number(claim.amountDeducted || 0).toLocaleString()}</span>
+                                            </div>
+                                            <div>
+                                                <span className="text-emerald-400 block">Refund Balance</span>
+                                                <span className="font-black text-emerald-400">QAR {Number(claim.amountRefunded || 0).toLocaleString()}</span>
+                                            </div>
+                                        </div>
+
+                                        <div className="pt-2 flex items-center justify-between">
+                                            <span className="text-[10px] font-mono text-slate-500">
+                                                {claim.createdAt ? format(new Date(claim.createdAt), "MMM d, yyyy") : ""}
+                                            </span>
+                                            <a
+                                                href={`/api/pdf/damage-claim/${claim.id}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[10px] font-black uppercase tracking-wider transition-colors"
+                                            >
+                                                <FileText className="w-3 h-3" /> PDF Voucher
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+            )}
+
+            <DamageClaimModal
+                isOpen={claimModalOpen}
+                onClose={() => setClaimModalOpen(false)}
+                bookingId={selectedClaimData?.bookingId}
+                unitId={selectedClaimData?.unitId}
+                assetTag={selectedClaimData?.assetTag}
+                productName={selectedClaimData?.productName}
+                onClaimFiled={() => {
+                    loadDamageClaims();
+                }}
+            />
 
             {scannerOpen && (
                 <QRScannerModal
