@@ -5,9 +5,10 @@ import {
     QrCode, Plus, Search, Printer, CheckCircle2,
     Package, RefreshCcw, ScanLine, X, Camera,
     Building2, List, History as HistoryIcon,
-    MapPin, AlertTriangle
+    MapPin, AlertTriangle, TrendingUp
 } from "lucide-react";
 import { QRCodeCanvas } from "qrcode.react";
+import FleetRoiCockpit from "@/components/fleet/FleetRoiCockpit";
 
 // Types matching the admin fleet
 interface InventoryUnit {
@@ -28,6 +29,7 @@ interface InventoryUnit {
 }
 
 export default function WarehouseFleetPage() {
+    const [activeTab, setActiveTab] = useState<"registry" | "roi">("registry");
     const [units, setUnits] = useState<InventoryUnit[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
@@ -76,10 +78,33 @@ export default function WarehouseFleetPage() {
                     <h1 className="text-3xl font-[family-name:var(--font-heading)] font-black uppercase tracking-tight text-[var(--color-warm-white)] italic">
                         Fleet <span className="text-[var(--color-gold)]">Intelligence</span>
                     </h1>
-                    <p className="text-[var(--color-slate)] text-[10px] font-black uppercase tracking-[0.2em] opacity-60">Global Asset Management & Telemetry</p>
+                    <p className="text-[var(--color-slate)] text-[10px] font-black uppercase tracking-[0.2em] opacity-60">Global Asset Management, Capital ROI & Telemetry</p>
                 </div>
                 
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-[var(--color-surface)] border border-white/10 shadow-xl">
+                        <button 
+                            onClick={() => setActiveTab("registry")}
+                            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all text-[10px] font-black uppercase tracking-wider ${
+                                activeTab === "registry" 
+                                    ? "bg-[var(--color-gold)] text-[var(--color-navy)] shadow-md" 
+                                    : "text-[var(--color-slate)] hover:text-white"
+                            }`}
+                        >
+                            <Package className="w-3.5 h-3.5" /> Physical Registry
+                        </button>
+                        <button 
+                            onClick={() => setActiveTab("roi")}
+                            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all text-[10px] font-black uppercase tracking-wider ${
+                                activeTab === "roi" 
+                                    ? "bg-[var(--color-gold)] text-[var(--color-navy)] shadow-md" 
+                                    : "text-[var(--color-slate)] hover:text-white"
+                            }`}
+                        >
+                            <TrendingUp className="w-3.5 h-3.5" /> Capital ROI & Maintenance
+                        </button>
+                    </div>
+
                     <button onClick={fetchFleet} aria-label="Refresh fleet index" className="p-3 rounded-xl glass border border-white/10 hover:text-white transition-all text-[var(--color-slate)] shadow-xl">
                         <RefreshCcw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                     </button>
@@ -89,28 +114,34 @@ export default function WarehouseFleetPage() {
                 </div>
             </div>
 
-            {/* Search & Filters */}
-            <div className="p-6 md:p-8 flex flex-col md:flex-row gap-4 items-center border-b border-white/5 bg-black/20">
-                <div className="relative flex-1 w-full group">
-                    <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--color-slate)] opacity-40 group-focus-within:text-[var(--color-gold)] group-focus-within:opacity-100 transition-all" />
-                    <input 
-                        type="text" 
-                        placeholder="FILTER BY ASSET TAG, SKU IDENTITY, OR SERIAL PROTOCOL..."
-                        aria-label="Filter fleet by asset tag, SKU, or serial"
-                        className="w-full bg-black/40 border border-white/5 rounded-2xl pl-12 pr-4 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-[var(--color-warm-white)] placeholder:text-white/5 focus:outline-none focus:border-[var(--color-gold)]/50 transition-all shadow-inner"
-                        value={searchQuery} 
-                        onChange={e => setSearchQuery(e.target.value)} 
-                    />
+            {activeTab === "roi" ? (
+                <div className="p-6 md:p-8">
+                    <FleetRoiCockpit />
                 </div>
-                <div className="flex items-center gap-2 bg-[var(--color-surface)] border border-white/10 rounded-2xl p-1 shadow-2xl">
-                    <button 
-                        onClick={() => setGroupByProduct(!groupByProduct)} 
-                        className={`flex items-center gap-2 px-6 py-3 rounded-xl transition-all text-[10px] font-black uppercase tracking-widest ${groupByProduct ? 'bg-[var(--color-gold)] text-[var(--color-navy)] shadow-lg shadow-[var(--color-gold)]/20' : 'text-[var(--color-slate)] hover:text-white hover:bg-white/5'}`}
-                    >
-                        <List className="w-4 h-4" /> {groupByProduct ? 'Ungrouped' : 'Grouped by SKU'}
-                    </button>
-                </div>
-            </div>
+            ) : (
+                <>
+                    {/* Search & Filters */}
+                    <div className="p-6 md:p-8 flex flex-col md:flex-row gap-4 items-center border-b border-white/5 bg-black/20">
+                        <div className="relative flex-1 w-full group">
+                            <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--color-slate)] opacity-40 group-focus-within:text-[var(--color-gold)] group-focus-within:opacity-100 transition-all" />
+                            <input 
+                                type="text" 
+                                placeholder="FILTER BY ASSET TAG, SKU IDENTITY, OR SERIAL PROTOCOL..."
+                                aria-label="Filter fleet by asset tag, SKU, or serial"
+                                className="w-full bg-black/40 border border-white/5 rounded-2xl pl-12 pr-4 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-[var(--color-warm-white)] placeholder:text-white/5 focus:outline-none focus:border-[var(--color-gold)]/50 transition-all shadow-inner"
+                                value={searchQuery} 
+                                onChange={e => setSearchQuery(e.target.value)} 
+                            />
+                        </div>
+                        <div className="flex items-center gap-2 bg-[var(--color-surface)] border border-white/10 rounded-2xl p-1 shadow-2xl">
+                            <button 
+                                onClick={() => setGroupByProduct(!groupByProduct)} 
+                                className={`flex items-center gap-2 px-6 py-3 rounded-xl transition-all text-[10px] font-black uppercase tracking-widest ${groupByProduct ? 'bg-[var(--color-gold)] text-[var(--color-navy)] shadow-lg shadow-[var(--color-gold)]/20' : 'text-[var(--color-slate)] hover:text-white hover:bg-white/5'}`}
+                            >
+                                <List className="w-4 h-4" /> {groupByProduct ? 'Ungrouped' : 'Grouped by SKU'}
+                            </button>
+                        </div>
+                    </div>
 
             {/* Content Area */}
             <div className="p-4 md:p-8 flex flex-col gap-3">
@@ -191,6 +222,8 @@ export default function WarehouseFleetPage() {
                     </div>
                 ))}
             </div>
+            </>
+            )}
         </div>
     );
 }

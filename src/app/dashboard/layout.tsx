@@ -6,13 +6,14 @@ import { useEffect, useState } from "react";
 import {
     LayoutDashboard, FileText, CalendarDays, ShoppingBag,
     ShoppingCart, Sparkles, User, Globe, LogOut, Menu, X,
-    Truck, Archive, AlertTriangle, PackagePlus
+    Truck, Archive, AlertTriangle, PackagePlus, Building2
 } from "lucide-react";
 
 const CLIENT_NAV_ITEMS = [
     { href: "/dashboard/client/overview", label: "Dashboard", icon: LayoutDashboard, exact: true },
     { href: "/dashboard/client/quotes", label: "My Quotes", icon: FileText, exact: false },
     { href: "/dashboard/client/bookings", label: "My Bookings", icon: CalendarDays, exact: false },
+    { href: "/dashboard/client/organization", label: "Corporate Account", icon: Building2, exact: false },
     { divider: true },
     { href: "/catalog", label: "Browse Catalog", icon: ShoppingBag },
     { href: "/cart", label: "My Cart", icon: ShoppingCart },

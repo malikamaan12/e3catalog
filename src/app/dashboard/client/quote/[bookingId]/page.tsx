@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { bookings } from "@/lib/db/schema";
+import { bookings, organizationMembers, bookingApprovalRequests } from "@/lib/db/schema";
 import { eq, and, or, asc } from "drizzle-orm";
 import { getCurrentUser } from "@/lib/auth";
 import { redirect, notFound } from "next/navigation";
@@ -94,6 +94,46 @@ export default async function QuoteSignOffPage({ params }: { params: Promise<{ b
         startDate: firstBooking.startDate,
         endDate: firstBooking.endDate,
         items: allUserBookings,
+        organizationId: firstBooking.organizationId || null,
+        costCenterId: firstBooking.costCenterId || null,
+        internalApprovalStatus: firstBooking.internalApprovalStatus || "not_required",
+    };
+
+    // Query Corporate Organization & Membership
+    const membership = await db.query.organizationMembers.findFirst({
+        where: eq(organizationMembers.userId, user.id),
+        with: {
+            organization: {
+                with: {
+                    costCenters: true,
+                },
+            },
+        },
+    });
+
+    // Query any active internal approval request for this booking
+    const approvalRequest = await db.query.bookingApprovalRequests.findFirst({
+        where: or(
+            eq(bookingApprovalRequests.bookingId, firstBooking.id),
+            eq(bookingApprovalRequests.bookingId, projectId)
+        ),
+        with: {
+            costCenter: true,
+            approver: {
+                columns: {
+                    name: true,
+                    email: true,
+                },
+            },
+        },
+        orderBy: (tbl, { desc }) => [desc(tbl.createdAt)],
+    });
+
+    const corporateContext = {
+        membership: membership || null,
+        organization: membership?.organization || null,
+        costCenters: membership?.organization?.costCenters || [],
+        approvalRequest: approvalRequest || null,
     };
 
     return (
@@ -102,6 +142,7 @@ export default async function QuoteSignOffPage({ params }: { params: Promise<{ b
                 booking={unifiedBooking} 
                 financials={financials} 
                 user={user} 
+                corporateContext={corporateContext}
             />
         </div>
     );

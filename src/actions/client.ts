@@ -55,6 +55,14 @@ export async function approveBookingWithSignature(bookingId: string, signatureDa
             return { error: `This proposal is already ${firstBooking.status} and cannot be approved.` };
         }
 
+        // Corporate Approval Gate: Prevent digital signing if internal corporate requisition is pending or rejected
+        if (firstBooking.internalApprovalStatus === "pending_approval") {
+            return { error: "This commercial proposal is currently pending internal corporate sign-off and cannot be signed yet." };
+        }
+        if (firstBooking.internalApprovalStatus === "rejected") {
+            return { error: "This commercial proposal was rejected during internal corporate review." };
+        }
+
         // 3. Authoritative Live Availability Revalidation before confirming
         const availabilityCheck = await validateProjectAvailability(
             projectBookings.map(b => ({

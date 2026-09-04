@@ -374,6 +374,20 @@ export const inventoryUnits = pgTable("inventory_units", {
     binId: varchar("bin_id", { length: 255 }).references(() => warehouseBins.id),
     shelfLocation: varchar("shelf_location", { length: 255 }), // e.g. "Rack A3 / Shelf 2"
     purchaseDate: timestamp("purchase_date"),
+    
+    // Financial & Depreciation Ledger
+    acquisitionCost: real("acquisition_cost").default(0),
+    salvageValue: real("salvage_value").default(0),
+    usefulLifeYears: integer("useful_life_years").default(5),
+    totalRentalDays: integer("total_rental_days").default(0),
+    rentalDaysSinceLastMaintenance: integer("rental_days_since_last_maintenance").default(0),
+    operatingHours: real("operating_hours").default(0),
+    cumulativeRevenue: real("cumulative_revenue").default(0),
+    cumulativeMaintenanceCost: real("cumulative_maintenance_cost").default(0),
+    healthScore: integer("health_score").default(100),
+    lastMaintenanceDate: timestamp("last_maintenance_date"),
+    preventiveMaintenanceIntervalDays: integer("preventive_maintenance_interval_days").default(30),
+
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (table) => {
@@ -383,6 +397,7 @@ export const inventoryUnits = pgTable("inventory_units", {
         assetTagIdx: index("inventory_units_tag_idx").on(table.assetTagCode),
         statusIdx: index("inventory_units_status_idx").on(table.availabilityStatus),
         binIdIdx: index("inventory_units_bin_id_idx").on(table.binId),
+        healthScoreIdx: index("inventory_units_health_score_idx").on(table.healthScore),
     };
 });
 
@@ -550,6 +565,13 @@ export const bookings = pgTable("bookings", {
     // Digital Sign-Off
     signatureData: text("signature_data"), // Base64 signature
     signedAt: timestamp("signed_at"),
+
+    // Enterprise Corporate Account Linkage
+    organizationId: varchar("organization_id", { length: 255 }),
+    costCenterId: varchar("cost_center_id", { length: 255 }),
+    internalApprovalStatus: varchar("internal_approval_status", { length: 50 }).notNull().default("not_required"), // not_required | pending_approval | approved | rejected
+    internalApprovedAt: timestamp("internal_approved_at"),
+    internalApprovedBy: varchar("internal_approved_by", { length: 255 }),
 }, (table) => {
     return {
         productIdIdx: index("bookings_product_id_idx").on(table.productId),
@@ -559,6 +581,9 @@ export const bookings = pgTable("bookings", {
         statusIdx: index("bookings_status_idx").on(table.status),
         startDateIdx: index("bookings_start_date_idx").on(table.startDate),
         endDateIdx: index("bookings_end_date_idx").on(table.endDate),
+        orgIdIdx: index("bookings_organization_id_idx").on(table.organizationId),
+        costCenterIdx: index("bookings_cost_center_id_idx").on(table.costCenterId),
+        internalApprovalIdx: index("bookings_internal_approval_idx").on(table.internalApprovalStatus),
     };
 });
 
@@ -1063,6 +1088,89 @@ export const fleetGpsPings = pgTable("fleet_gps_pings", {
     return {
         dispatchLogIdx: index("fleet_gps_pings_dispatch_idx").on(table.dispatchLogId),
         createdAtIdx: index("fleet_gps_pings_created_idx").on(table.createdAt),
+    };
+});
+
+// ─── Enterprise Client Organizations ───
+export const clientOrganizations = pgTable("client_organizations", {
+    id: varchar("id", { length: 255 }).primaryKey(),
+    name: varchar("name", { length: 255 }).notNull(),
+    slug: varchar("slug", { length: 255 }).notNull().unique(),
+    crNumber: varchar("cr_number", { length: 100 }),
+    taxId: varchar("tax_id", { length: 100 }),
+    billingAddress: varchar("billing_address", { length: 500 }),
+    creditLimit: real("credit_limit").notNull().default(50000), // Default QAR 50,000 corporate line
+    creditUsed: real("credit_used").notNull().default(0),
+    paymentTerms: varchar("payment_terms", { length: 100 }).notNull().default("net_30"), // due_on_receipt | net_15 | net_30 | net_60
+    approvalThresholdAmount: real("approval_threshold_amount").notNull().default(5000), // Orders above this require internal sign-off
+    status: varchar("status", { length: 50 }).notNull().default("active"), // active | suspended | pending_review
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => {
+    return {
+        slugIdx: index("client_organizations_slug_idx").on(table.slug),
+        statusIdx: index("client_organizations_status_idx").on(table.status),
+    };
+});
+
+// ─── Corporate Organization Members ───
+export const organizationMembers = pgTable("organization_members", {
+    id: varchar("id", { length: 255 }).primaryKey(),
+    organizationId: varchar("organization_id", { length: 255 }).notNull().references(() => clientOrganizations.id, { onDelete: "cascade" }),
+    userId: varchar("user_id", { length: 255 }).notNull().references(() => users.id, { onDelete: "cascade" }),
+    role: varchar("role", { length: 50 }).notNull().default("member"), // org_admin | approver | member | finance
+    title: varchar("title", { length: 100 }), // e.g. "Director of Production"
+    spendLimitPerBooking: real("spend_limit_per_booking").notNull().default(5000),
+    canApprove: boolean("can_approve").notNull().default(false),
+    status: varchar("status", { length: 50 }).notNull().default("active"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => {
+    return {
+        orgUserIdx: index("org_members_org_user_idx").on(table.organizationId, table.userId),
+        userIdIdx: index("org_members_user_idx").on(table.userId),
+        roleIdx: index("org_members_role_idx").on(table.role),
+    };
+});
+
+// ─── Corporate Project Cost Centers ───
+export const organizationCostCenters = pgTable("organization_cost_centers", {
+    id: varchar("id", { length: 255 }).primaryKey(),
+    organizationId: varchar("organization_id", { length: 255 }).notNull().references(() => clientOrganizations.id, { onDelete: "cascade" }),
+    code: varchar("code", { length: 50 }).notNull(), // e.g. "CC-QND-2026"
+    name: varchar("name", { length: 255 }).notNull(),
+    budgetAmount: real("budget_amount").notNull().default(100000),
+    allocatedSpent: real("allocated_spent").notNull().default(0),
+    status: varchar("status", { length: 50 }).notNull().default("active"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => {
+    return {
+        orgIdx: index("org_cost_centers_org_idx").on(table.organizationId),
+        codeIdx: index("org_cost_centers_code_idx").on(table.code),
+    };
+});
+
+// ─── Booking Corporate Approval Requisitions ───
+export const bookingApprovalRequests = pgTable("booking_approval_requests", {
+    id: varchar("id", { length: 255 }).primaryKey(),
+    bookingId: varchar("booking_id", { length: 255 }).notNull().references(() => bookings.id, { onDelete: "cascade" }),
+    organizationId: varchar("organization_id", { length: 255 }).notNull().references(() => clientOrganizations.id, { onDelete: "cascade" }),
+    costCenterId: varchar("cost_center_id", { length: 255 }).references(() => organizationCostCenters.id),
+    requestedById: varchar("requested_by_id", { length: 255 }).notNull().references(() => users.id),
+    approverId: varchar("approver_id", { length: 255 }).references(() => users.id),
+    amount: real("amount").notNull(),
+    thresholdTriggered: boolean("threshold_triggered").notNull().default(false),
+    status: varchar("status", { length: 50 }).notNull().default("pending"), // pending | approved | rejected | bypassed
+    notes: text("notes"),
+    decidedAt: timestamp("decided_at"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => {
+    return {
+        bookingIdx: index("booking_approval_requests_booking_idx").on(table.bookingId),
+        orgIdx: index("booking_approval_requests_org_idx").on(table.organizationId),
+        statusIdx: index("booking_approval_requests_status_idx").on(table.status),
     };
 });
 
@@ -2422,6 +2530,55 @@ export const fleetGpsPingsRelations = relations(fleetGpsPings, ({ one }) => ({
     }),
     driver: one(users, {
         fields: [fleetGpsPings.driverId],
+        references: [users.id],
+    }),
+}));
+
+export const clientOrganizationsRelations = relations(clientOrganizations, ({ many }) => ({
+    members: many(organizationMembers),
+    costCenters: many(organizationCostCenters),
+    approvalRequests: many(bookingApprovalRequests),
+    bookings: many(bookings),
+}));
+
+export const organizationMembersRelations = relations(organizationMembers, ({ one }) => ({
+    organization: one(clientOrganizations, {
+        fields: [organizationMembers.organizationId],
+        references: [clientOrganizations.id],
+    }),
+    user: one(users, {
+        fields: [organizationMembers.userId],
+        references: [users.id],
+    }),
+}));
+
+export const organizationCostCentersRelations = relations(organizationCostCenters, ({ one, many }) => ({
+    organization: one(clientOrganizations, {
+        fields: [organizationCostCenters.organizationId],
+        references: [clientOrganizations.id],
+    }),
+    bookings: many(bookings),
+}));
+
+export const bookingApprovalRequestsRelations = relations(bookingApprovalRequests, ({ one }) => ({
+    booking: one(bookings, {
+        fields: [bookingApprovalRequests.bookingId],
+        references: [bookings.id],
+    }),
+    organization: one(clientOrganizations, {
+        fields: [bookingApprovalRequests.organizationId],
+        references: [clientOrganizations.id],
+    }),
+    costCenter: one(organizationCostCenters, {
+        fields: [bookingApprovalRequests.costCenterId],
+        references: [organizationCostCenters.id],
+    }),
+    requestedBy: one(users, {
+        fields: [bookingApprovalRequests.requestedById],
+        references: [users.id],
+    }),
+    approver: one(users, {
+        fields: [bookingApprovalRequests.approverId],
         references: [users.id],
     }),
 }));

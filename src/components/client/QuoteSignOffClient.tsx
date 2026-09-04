@@ -11,7 +11,13 @@ import {
     ArrowRight, 
     Loader2,
     CheckCircle,
-    Download
+    Download,
+    Building2,
+    CheckCircle2,
+    Clock,
+    CreditCard,
+    Layers,
+    AlertCircle
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -29,14 +35,91 @@ interface QuoteSignOffClientProps {
     booking: any;
     financials: any;
     user: any;
+    corporateContext?: any;
 }
 
-export default function QuoteSignOffClient({ booking, financials, user }: QuoteSignOffClientProps) {
+export default function QuoteSignOffClient({ booking, financials, user, corporateContext }: QuoteSignOffClientProps) {
     const [activeTab, setActiveTab] = useState<"review" | "negotiate" | "sign">("review");
     const [isPending, startTransition] = useTransition();
     const [isSuccess, setIsSuccess] = useState(booking.status === "approved" || booking.status === "booked");
     const [approvalError, setApprovalError] = useState("");
     const [clientQid, setClientQid] = useState("");
+
+    // Corporate governance state
+    const [selectedCostCenterId, setSelectedCostCenterId] = useState(
+        booking.costCenterId || corporateContext?.costCenters?.[0]?.id || ""
+    );
+    const [internalApprovalStatus, setInternalApprovalStatus] = useState(
+        booking.internalApprovalStatus || corporateContext?.approvalRequest?.status || "not_required"
+    );
+    const [activeApprovalReq, setActiveApprovalReq] = useState(corporateContext?.approvalRequest || null);
+    const [isSubmittingApproval, setIsSubmittingApproval] = useState(false);
+
+    const org = corporateContext?.organization;
+    const member = corporateContext?.membership;
+    const costCenters = corporateContext?.costCenters || [];
+    const isCorporate = Boolean(org);
+
+    const spendLimit = Number(member?.spendLimitPerBooking) || 5000;
+    const thresholdAmount = Number(org?.approvalThresholdAmount) || 5000;
+    const grandTotal = financials.grandTotal || 0;
+    const requiresInternalSignoff = isCorporate && (
+        grandTotal > spendLimit || 
+        grandTotal > thresholdAmount || 
+        internalApprovalStatus === "pending_approval"
+    );
+    const isInternallyApproved = internalApprovalStatus === "approved" || (!requiresInternalSignoff && internalApprovalStatus !== "pending_approval" && internalApprovalStatus !== "rejected");
+    const canSignOff = member?.canApprove || member?.role === "org_admin" || ["admin", "super_admin"].includes(user.role);
+
+    const handleSubmitCorporateApproval = async () => {
+        setIsSubmittingApproval(true);
+        try {
+            const res = await fetch("/api/corporate/approvals", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    bookingId: booking.projectId || booking.id,
+                    costCenterId: selectedCostCenterId || undefined,
+                    notes: "Submitted via quote sign-off portal",
+                }),
+            });
+            const data = await res.json();
+            if (res.ok && data.approvalRequest) {
+                setInternalApprovalStatus("pending_approval");
+                setActiveApprovalReq(data.approvalRequest);
+                toast.success("Requisition submitted for corporate review!");
+            } else {
+                toast.error(data.error || "Failed to submit approval request");
+            }
+        } catch (e: any) {
+            toast.error(e.message || "Error submitting requisition");
+        } finally {
+            setIsSubmittingApproval(false);
+        }
+    };
+
+    const handleAuthorizeApproval = async () => {
+        if (!activeApprovalReq?.id) return;
+        setIsSubmittingApproval(true);
+        try {
+            const res = await fetch(`/api/corporate/approvals/${activeApprovalReq.id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action: "approve", notes: "Authorized directly in digital sign-off room" }),
+            });
+            const data = await res.json();
+            if (res.ok) {
+                setInternalApprovalStatus("approved");
+                toast.success("Corporate internal sign-off authorized!");
+            } else {
+                toast.error(data.error || "Approval failed");
+            }
+        } catch (e: any) {
+            toast.error(e.message || "Error approving requisition");
+        } finally {
+            setIsSubmittingApproval(false);
+        }
+    };
 
     const handleSignatureSave = (signatureData: string) => {
         setApprovalError("");
@@ -231,6 +314,88 @@ export default function QuoteSignOffClient({ booking, financials, user }: QuoteS
                                 </div>
                             </div>
 
+                            {/* Corporate Governance & Cost Center Card */}
+                            {isCorporate && (
+                                <div className="p-6 rounded-3xl bg-surface/80 border border-white/10 shadow-xl space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <Building2 className="w-4 h-4 text-gold" />
+                                            <span className="text-xs font-bold text-white uppercase tracking-wider">
+                                                {org.name}
+                                            </span>
+                                        </div>
+                                        <span className="text-[10px] font-mono text-slate-400">
+                                            Limit: {Number(spendLimit).toLocaleString()} QAR
+                                        </span>
+                                    </div>
+
+                                    {/* Cost Center Selector */}
+                                    {costCenters.length > 0 && (
+                                        <div>
+                                            <label className="block text-[10px] font-black uppercase tracking-wider text-slate mb-1">
+                                                Assign Cost Center / Project Code
+                                            </label>
+                                            <select
+                                                value={selectedCostCenterId}
+                                                onChange={e => setSelectedCostCenterId(e.target.value)}
+                                                className="w-full bg-navy/60 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-gold font-mono"
+                                            >
+                                                {costCenters.map((cc: any) => (
+                                                    <option key={cc.id} value={cc.id}>
+                                                        {cc.code} - {cc.name}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    )}
+
+                                    {/* Internal Sign-Off Banner */}
+                                    {internalApprovalStatus === "pending_approval" ? (
+                                        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 space-y-2">
+                                            <div className="flex items-center gap-2 text-xs font-bold">
+                                                <Clock className="w-4 h-4 animate-spin text-amber-400" />
+                                                Requisition Pending Corporate Sign-Off
+                                            </div>
+                                            <p className="text-[10px] text-slate-300">
+                                                This proposal has been routed to corporate finance/signatories for expenditure sign-off.
+                                            </p>
+                                            {canSignOff && (
+                                                <button
+                                                    onClick={handleAuthorizeApproval}
+                                                    disabled={isSubmittingApproval}
+                                                    className="w-full py-2.5 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 font-black text-xs uppercase tracking-wider hover:bg-emerald-500/30 transition-all flex items-center justify-center gap-2"
+                                                >
+                                                    <CheckCircle2 className="w-4 h-4" />
+                                                    {isSubmittingApproval ? "Authorizing..." : "Approve Now as Authorized Signatory"}
+                                                </button>
+                                            )}
+                                        </div>
+                                    ) : internalApprovalStatus === "approved" ? (
+                                        <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 flex items-center gap-2.5 text-xs font-bold">
+                                            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                                            <span>Corporate Sign-Off Authorized</span>
+                                        </div>
+                                    ) : requiresInternalSignoff ? (
+                                        <div className="p-4 rounded-2xl bg-gold/10 border border-gold/30 space-y-2">
+                                            <div className="flex items-center gap-2 text-xs font-bold text-gold">
+                                                <AlertCircle className="w-4 h-4" />
+                                                Corporate Approval Required
+                                            </div>
+                                            <p className="text-[10px] text-slate-300">
+                                                The total amount ({grandTotal.toLocaleString()} QAR) exceeds your authorized booking threshold ({spendLimit.toLocaleString()} QAR).
+                                            </p>
+                                            <button
+                                                onClick={handleSubmitCorporateApproval}
+                                                disabled={isSubmittingApproval}
+                                                className="w-full py-2.5 rounded-xl bg-gold text-navy font-black text-xs uppercase tracking-wider hover:scale-102 transition-all flex items-center justify-center gap-2"
+                                            >
+                                                {isSubmittingApproval ? "Submitting..." : "Submit for Corporate Sign-Off"}
+                                            </button>
+                                        </div>
+                                    ) : null}
+                                </div>
+                            )}
+
                             {/* Terms highlight */}
                             <div className="p-5 rounded-2xl bg-gold/5 border border-gold/10">
                                 <h4 className="text-[10px] font-black text-gold uppercase tracking-widest mb-1.5 flex items-center gap-2">
@@ -243,13 +408,23 @@ export default function QuoteSignOffClient({ booking, financials, user }: QuoteS
                             </div>
 
                             {/* Action Button */}
-                            <button 
-                                onClick={() => setActiveTab("sign")}
-                                className="w-full h-16 rounded-2xl bg-gold text-navy font-black text-xs uppercase tracking-[0.3em] flex items-center justify-center gap-3 transition-all hover:scale-[1.02] active:scale-[0.98] shadow-2xl shadow-gold/20"
-                            >
-                                Proceed to Digital Signing
-                                <ArrowRight className="w-4 h-4" />
-                            </button>
+                            {requiresInternalSignoff && !isInternallyApproved ? (
+                                <button 
+                                    disabled
+                                    className="w-full h-16 rounded-2xl bg-white/5 border border-white/10 text-slate-500 font-black text-xs uppercase tracking-[0.2em] flex items-center justify-center gap-2 cursor-not-allowed"
+                                >
+                                    <Clock className="w-4 h-4 text-amber-500" />
+                                    Corporate Approval Pending Sign-Off
+                                </button>
+                            ) : (
+                                <button 
+                                    onClick={() => setActiveTab("sign")}
+                                    className="w-full h-16 rounded-2xl bg-gold text-navy font-black text-xs uppercase tracking-[0.3em] flex items-center justify-center gap-3 transition-all hover:scale-[1.02] active:scale-[0.98] shadow-2xl shadow-gold/20"
+                                >
+                                    Proceed to Digital Signing
+                                    <ArrowRight className="w-4 h-4" />
+                                </button>
+                            )}
                         </div>
                     )}
 
