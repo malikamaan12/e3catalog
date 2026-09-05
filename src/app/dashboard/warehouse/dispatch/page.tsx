@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
-import { CrossHiresManager } from "@/components/warehouse/CrossHiresManager";
+import CrossHireCockpit from "@/components/cross-hire/CrossHireCockpit";
 import DispatchRouteManager from "@/components/transport/DispatchRouteManager";
 import LiveFleetRadar from "@/components/transport/LiveFleetRadar";
 import FlightCaseManager from "@/components/warehouse/FlightCaseManager";
@@ -137,7 +137,7 @@ export default async function DispatchPipelinePage(props: { searchParams: Promis
             ) : activeTab === 'clusters' ? (
                 <DispatchRouteManager />
             ) : activeTab === 'cross_hires' ? (
-                <CrossHiresManager />
+                <CrossHireCockpit />
             ) : (
                 <div className="flex flex-col gap-6">
                     {activeBookings.length === 0 ? (

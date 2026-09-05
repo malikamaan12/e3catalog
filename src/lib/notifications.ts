@@ -13,13 +13,14 @@ import { notifications, notificationOutbox } from "./db/schema";
 import { eq, and, or, lte, inArray } from "drizzle-orm";
 import { v4 as uuid } from "uuid";
 import { sendEmail } from "./email";
+import { sendWhatsAppMessage, sendSmsMessage } from "./whatsapp";
 
 export interface DispatchNotificationParams {
     eventType: string;
     recipientId: string;
     recipientEmail?: string;
     recipientPhone?: string;
-    channel?: "in_app" | "email" | "whatsapp";
+    channel?: "in_app" | "email" | "whatsapp" | "sms";
     title: string;
     message: string;
     type?: string;
@@ -151,6 +152,52 @@ export async function processNotificationOutbox(batchLimit = 20): Promise<{ proc
                     succeeded++;
                 } else {
                     throw new Error(res.error || "Provider failed to send email");
+                }
+            } else if (item.channel === "whatsapp" && item.recipientPhone) {
+                const payload = (item.payload as Record<string, any>) || {};
+                const template = (item.templateName as any) || "deal_room_ready";
+                const res = await sendWhatsAppMessage({
+                    to: item.recipientPhone,
+                    template,
+                    params: payload,
+                    idempotencyKey: item.id,
+                });
+
+                if (res.success) {
+                    await db
+                        .update(notificationOutbox)
+                        .set({
+                            status: "delivered",
+                            deliveredAt: new Date(),
+                            updatedAt: new Date(),
+                            providerResponse: { delivered: true, provider: res.provider, messageId: res.messageId },
+                        })
+                        .where(eq(notificationOutbox.id, item.id));
+                    succeeded++;
+                } else {
+                    throw new Error(res.error || "Failed to send WhatsApp notification");
+                }
+            } else if (item.channel === "sms" && item.recipientPhone) {
+                const payload = (item.payload as Record<string, any>) || {};
+                const res = await sendSmsMessage({
+                    to: item.recipientPhone,
+                    message: payload.message || payload.text || "Notification from E3 Rentals",
+                    idempotencyKey: item.id,
+                });
+
+                if (res.success) {
+                    await db
+                        .update(notificationOutbox)
+                        .set({
+                            status: "delivered",
+                            deliveredAt: new Date(),
+                            updatedAt: new Date(),
+                            providerResponse: { delivered: true, provider: res.provider, messageId: res.messageId },
+                        })
+                        .where(eq(notificationOutbox.id, item.id));
+                    succeeded++;
+                } else {
+                    throw new Error(res.error || "Failed to send SMS notification");
                 }
             } else {
                 // In-app or other channel

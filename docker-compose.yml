@@ -1,0 +1,69 @@
+version: "3.9"
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: e3-rentals-app
+    restart: unless-stopped
+    ports:
+      - "5001:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres123}@postgres:5432/${POSTGRES_DB:-rental_db}?sslmode=disable
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-e3_production_secret_key_98234710}
+      - NEXTAUTH_URL=http://localhost:5001
+      - REDIS_URL=redis://redis:6379
+      - WHATSAPP_SANDBOX_MODE=true
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - e3-network
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: e3-rentals-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres123}
+      POSTGRES_DB: ${POSTGRES_DB:-rental_db}
+    volumes:
+      - e3_postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - e3-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: e3-rentals-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - e3_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - e3-network
+
+networks:
+  e3-network:
+    driver: bridge
+
+volumes:
+  e3_postgres_data:
+  e3_redis_data:
