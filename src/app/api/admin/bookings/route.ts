@@ -8,7 +8,7 @@ export async function GET() {
     const { user, error } = await requireAdmin(["admin", "super_admin", "sales_rep", "warehouse_manager", "vendor"]);
     if (error) return error;
 
-    const isSuperAdmin = user.role === 'super_admin' || user.role === 'admin';
+    const isSuperAdmin = user.role === 'super_admin' || user.role === 'admin' || user.role === 'warehouse_manager';
     const targetVendorId = isSuperAdmin ? null : (user as any).vendorId;
 
     if (!isSuperAdmin && !targetVendorId) {

@@ -1,0 +1,24 @@
+{
+  "name": "E3 Rentals · Logistics & Warehouse OS",
+  "short_name": "E3 Ops",
+  "description": "Offline-first warehouse inventory scan bump & driver proof-of-delivery OS",
+  "start_url": "/dashboard/warehouse",
+  "display": "standalone",
+  "background_color": "#0b0f19",
+  "theme_color": "#0f172a",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -7,11 +7,13 @@ import { MarketingPopup } from "@/components/landing/MarketingPopup";
 import { Toaster } from "react-hot-toast";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { SmoothScroll } from "@/components/SmoothScroll";
+import ServiceWorkerRegister from "@/components/common/ServiceWorkerRegister";
 
 const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "https://e3catalog.vercel.app");
 
 export const metadata: Metadata = {
   metadataBase: new URL(baseUrl),
+  manifest: "/manifest.json",
   title: "Premium Event Equipment Rentals in Qatar | E3 Digital Operating System",
   description: "Elevate your corporate events and exhibitions in Qatar. E3 Rentals offers premium AV, staging, and event equipment with instant 3D models, real-time availability, and MOCI-compliant professional quotes.",
   keywords: "premium event rentals Qatar, corporate event equipment Doha, exhibition supplies Qatar, 3D event planning Qatar, Civil Defence approved event structures, MOCI approved tent rentals, KAHRAMAA compliant event lighting, event logistics Qatar",
@@ -62,6 +64,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="antialiased" suppressHydrationWarning={true}>
+        <ServiceWorkerRegister />
         <SiteSettingsProvider>
           <SmoothScroll />
           <MarketingBanner />

@@ -66,7 +66,8 @@ test.describe("Complete Connected Deal Room, Logistics Radar & POD E2E Lifecycle
       bookingId: f.bookingId,
       driverName: "Tariq Al-Balooshi",
       vehiclePlateNumber: "QA-55421",
-      dispatchStatus: "in_transit",
+      transportCompany: "E3 Internal Fleet",
+      totalGrossWeight: 120,
       dispatchedAt: new Date(),
     });
   });

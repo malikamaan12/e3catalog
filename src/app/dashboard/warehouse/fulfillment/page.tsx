@@ -17,6 +17,8 @@ import {
 import { format } from "date-fns";
 import QRScannerModal from "@/components/warehouse/QRScannerModal";
 import { finalizeTransport } from "@/actions/dispatch";
+import { offlineBuffer } from "@/lib/offline-sync-buffer";
+import OfflineSyncBanner from "@/components/warehouse/OfflineSyncBanner";
 
 type ScanEntry = {
     id: string;
@@ -109,15 +111,33 @@ export default function FulfillmentPage() {
         setAssetTag("");
         setLoading(true);
 
-        try {
-            const body: any = { assetTag: cleanTag, action };
-            if (action === "dispatch") body.bookingId = bookingId;
-            if (action === "return") {
-                body.condition = returnCondition;
-                body.notes = returnNotes || undefined;
-                body.bookingId = bookingId || "auto";
-            }
+        const body: any = { assetTag: cleanTag, action };
+        if (action === "dispatch") body.bookingId = bookingId;
+        if (action === "return") {
+            body.condition = returnCondition;
+            body.notes = returnNotes || undefined;
+            body.bookingId = bookingId || "auto";
+        }
 
+        const isOffline = typeof navigator !== "undefined" && !navigator.onLine;
+        if (isOffline) {
+            offlineBuffer.enqueueAction({
+                actionType: "fulfillment_scan",
+                endpoint: "/api/admin/fulfillment",
+                payload: body,
+                description: `Offline Scan (${action.toUpperCase()}): ${cleanTag}`,
+            });
+            updateEntry(scanId, { 
+                status: "success", 
+                message: `Buffered offline (${cleanTag}). Syncs when signal returns.` 
+            });
+            setLastScanResult({ status: "success", timestamp: Date.now() });
+            setLoading(false);
+            setTimeout(() => inputRef.current?.focus(), 100);
+            return;
+        }
+
+        try {
             const res = await fetch("/api/admin/fulfillment", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -133,8 +153,17 @@ export default function FulfillmentPage() {
                 setLastScanResult({ status: "error", timestamp: Date.now() });
             }
         } catch {
-            updateEntry(scanId, { status: "error", message: "Network error. Try again." });
-            setLastScanResult({ status: "error", timestamp: Date.now() });
+            offlineBuffer.enqueueAction({
+                actionType: "fulfillment_scan",
+                endpoint: "/api/admin/fulfillment",
+                payload: body,
+                description: `Offline Scan (${action.toUpperCase()}): ${cleanTag}`,
+            });
+            updateEntry(scanId, { 
+                status: "success", 
+                message: `Network dropped. Buffered locally (${cleanTag}).` 
+            });
+            setLastScanResult({ status: "success", timestamp: Date.now() });
         } finally {
             setLoading(false);
             setTimeout(() => inputRef.current?.focus(), 100);
@@ -207,6 +236,9 @@ export default function FulfillmentPage() {
                 </h1>
                 <p className="text-[var(--color-slate)] text-xs mt-1 font-medium tracking-wide uppercase opacity-60">Bump-{action === "dispatch" ? "In" : "Out"} · Multi-input scanner protocol</p>
             </header>
+
+            {/* Offline Sync Banner */}
+            <OfflineSyncBanner className="w-full" />
 
             {/* Action Toggle */}
             <div className="flex gap-2 p-1.5 bg-[var(--color-surface)] rounded-xl border border-white/10 w-full shadow-2xl">

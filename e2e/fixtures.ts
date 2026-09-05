@@ -161,6 +161,7 @@ export async function setupE2EFixtures(): Promise<E2ETestFixtures> {
         try {
             await client.query(`DELETE FROM "client_payments" WHERE "booking_id" = $1;`, [bookingId]);
             await client.query(`DELETE FROM "invoices" WHERE "id" = $1;`, [invoiceId]);
+            await client.query(`DELETE FROM "booking_unit_assignments" WHERE "booking_id" = $1;`, [bookingId]).catch(() => {});
             await client.query(`DELETE FROM "bookings" WHERE "id" = $1;`, [bookingId]);
             await client.query(`DELETE FROM "inventory_units" WHERE "product_id" = $1;`, [productId]);
             await client.query(`DELETE FROM "products" WHERE "id" = $1;`, [productId]);

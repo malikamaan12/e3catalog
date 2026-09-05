@@ -8,6 +8,8 @@ import {
     RefreshCw, Navigation
 } from "lucide-react";
 import SignaturePad from "@/components/common/SignaturePad";
+import { offlineBuffer } from "@/lib/offline-sync-buffer";
+import OfflineSyncBanner from "@/components/warehouse/OfflineSyncBanner";
 
 interface DeliveryRun {
     id: string;
@@ -62,18 +64,36 @@ export default function DriverHandoverPage() {
                     const lng = pos.coords.longitude;
                     setLastCoordinates(`${lat.toFixed(4)}° N, ${lng.toFixed(4)}° E`);
                     if (runs.length > 0) {
-                        await fetch("/api/driver/gps", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({
-                                dispatchLogId: runs[0].id,
-                                latitude: lat,
-                                longitude: lng,
-                                speed: pos.coords.speed ? Math.round(pos.coords.speed * 3.6) : 48,
-                                vehiclePlate: runs[0].vehiclePlateNumber,
-                                status: "in_transit"
-                            })
-                        }).catch(() => {});
+                        const gpsPayload = {
+                            dispatchLogId: runs[0].id,
+                            latitude: lat,
+                            longitude: lng,
+                            speed: pos.coords.speed ? Math.round(pos.coords.speed * 3.6) : 48,
+                            vehiclePlate: runs[0].vehiclePlateNumber,
+                            status: "in_transit"
+                        };
+
+                        if (typeof navigator !== "undefined" && !navigator.onLine) {
+                            offlineBuffer.enqueueAction({
+                                actionType: "driver_gps",
+                                endpoint: "/api/driver/gps",
+                                payload: gpsPayload,
+                                description: `GPS Ping (${runs[0].vehiclePlateNumber})`,
+                            });
+                        } else {
+                            await fetch("/api/driver/gps", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify(gpsPayload)
+                            }).catch(() => {
+                                offlineBuffer.enqueueAction({
+                                    actionType: "driver_gps",
+                                    endpoint: "/api/driver/gps",
+                                    payload: gpsPayload,
+                                    description: `GPS Ping (${runs[0].vehiclePlateNumber})`,
+                                });
+                            });
+                        }
                     }
                 },
                 () => {
@@ -148,20 +168,38 @@ export default function DriverHandoverPage() {
                 }
             }
 
+            const podPayload = {
+                bookingId: selectedRun.id,
+                recipientName,
+                recipientPhone,
+                recipientNationalId: recipientQid,
+                signatureData: signature,
+                deliveryStatus,
+                notes,
+                latitude,
+                longitude,
+            };
+
+            const isOffline = typeof navigator !== "undefined" && !navigator.onLine;
+            if (isOffline) {
+                offlineBuffer.enqueueAction({
+                    actionType: "driver_pod",
+                    endpoint: "/api/driver/pod",
+                    payload: podPayload,
+                    description: `POD: ${recipientName} (${selectedRun.projectName || selectedRun.customerName})`,
+                });
+                setSuccessMessage("Offline mode: Proof of Delivery buffered locally! Will automatically sync when signal returns.");
+                setTimeout(() => {
+                    setSelectedRun(null);
+                    fetchRuns();
+                }, 2000);
+                return;
+            }
+
             const res = await fetch("/api/driver/pod", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    bookingId: selectedRun.id,
-                    recipientName,
-                    recipientPhone,
-                    recipientNationalId: recipientQid,
-                    signatureData: signature,
-                    deliveryStatus,
-                    notes,
-                    latitude,
-                    longitude,
-                })
+                body: JSON.stringify(podPayload)
             });
 
             const result = await res.json();
@@ -175,7 +213,25 @@ export default function DriverHandoverPage() {
                 alert(result.error || "Failed to record Proof of Delivery");
             }
         } catch (err: any) {
-            alert("Network error: " + err.message);
+            offlineBuffer.enqueueAction({
+                actionType: "driver_pod",
+                endpoint: "/api/driver/pod",
+                payload: {
+                    bookingId: selectedRun.id,
+                    recipientName,
+                    recipientPhone,
+                    recipientNationalId: recipientQid,
+                    signatureData: signature,
+                    deliveryStatus,
+                    notes,
+                },
+                description: `POD: ${recipientName} (${selectedRun.projectName || selectedRun.customerName})`,
+            });
+            setSuccessMessage("Network dropped: Proof of Delivery buffered locally! Will automatically sync when signal returns.");
+            setTimeout(() => {
+                setSelectedRun(null);
+                fetchRuns();
+            }, 2000);
         } finally {
             setSubmitting(false);
         }
@@ -210,6 +266,9 @@ export default function DriverHandoverPage() {
 
             {/* Content Container */}
             <div className="max-w-2xl mx-auto px-4 pt-6 space-y-4">
+                {/* Offline Sync Banner */}
+                <OfflineSyncBanner className="w-full" />
+
                 {/* Status Counter */}
                 <div className="grid grid-cols-2 gap-3">
                     <div className="bg-slate-900/90 border border-slate-800/80 rounded-2xl p-4 shadow-sm">
