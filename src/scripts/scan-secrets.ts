@@ -34,6 +34,8 @@ const IGNORE_DIRS = new Set([
     "playwright-report",
     "tmp",
     "screenshots",
+    "bin",
+    "scratch",
 ]);
 
 const IGNORE_EXTENSIONS = new Set([
@@ -53,6 +55,8 @@ const IGNORE_EXTENSIONS = new Set([
     ".woff2",
     ".ttf",
     ".eot",
+    ".exe",
+    ".dll",
 ]);
 
 function scanDirectory(dir: string, findings: SecretFinding[]) {

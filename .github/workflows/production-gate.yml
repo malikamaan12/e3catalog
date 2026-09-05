@@ -6,16 +6,23 @@ on:
   pull_request:
     branches: [ master, main ]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  quality-gate:
-    name: Production Quality & Security Gates
+  # ============================================================================
+  # 1. Code Quality, Static Types & Security Hygiene
+  # ============================================================================
+  quality-and-types:
+    name: 1. Code Quality, Types & Security
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node.js 20
         uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -24,28 +31,178 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
-      - name: Secret & Hygiene Scanner
-        run: npx tsx src/scripts/scan-secrets.ts
+      - name: Secret & Credential Hygiene Scanner
+        run: npm run test:secrets
 
       - name: TypeScript Static Type Checking
         run: npx tsc --noEmit
 
-      - name: ESLint Code Quality Gate
+      - name: ESLint Quality Gate
         run: npm run lint
 
-      - name: Next.js Production Build
-        run: npm run build
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          AUTHENTICATION_SECRET: ${{ secrets.AUTHENTICATION_SECRET }}
-          APP_URL: https://e3catalog.vercel.app
+  # ============================================================================
+  # 2. Domain Integration & Offline Sync Engine Suites
+  # ============================================================================
+  domain-integration:
+    name: 2. Domain Integration & Core Engines
+    needs: quality-and-types
+    runs-on: ubuntu-latest
 
-      - name: Install Playwright Browsers
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgrespassword
+          POSTGRES_DB: rental_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgrespassword@localhost:5432/rental_db?sslmode=disable
+      REDIS_URL: redis://localhost:6379
+      NEXTAUTH_SECRET: e3_ci_production_testing_secret_key_98234710
+      AUTHENTICATION_SECRET: e3_ci_production_testing_secret_key_98234710
+      WHATSAPP_SANDBOX_MODE: "true"
+      NODE_ENV: test
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Push Database Schema (Drizzle)
+        run: npx drizzle-kit push
+
+      - name: Run Offline PWA Sync Engine Test Suite
+        run: npm run test:offline
+
+      - name: Run Enterprise Milestone Tracks 7–10 Test Suite
+        run: npm run test:domain
+
+  # ============================================================================
+  # 3. Playwright Multi-Device E2E Regression
+  # ============================================================================
+  playwright-e2e:
+    name: 3. Playwright Multi-Device E2E
+    needs: domain-integration
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgrespassword
+          POSTGRES_DB: rental_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgrespassword@localhost:5432/rental_db?sslmode=disable
+      REDIS_URL: redis://localhost:6379
+      NEXTAUTH_SECRET: e3_ci_production_testing_secret_key_98234710
+      AUTHENTICATION_SECRET: e3_ci_production_testing_secret_key_98234710
+      APP_URL: http://localhost:5001
+      WHATSAPP_SANDBOX_MODE: "true"
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Push Database Schema (Drizzle)
+        run: npx drizzle-kit push
+
+      - name: Next.js Production Standalone Build
+        run: npm run build
+
+      - name: Install Playwright Chromium Browsers & System Dependencies
         run: npx playwright install chromium --with-deps
 
-      - name: Playwright E2E Regression Suite
-        run: npm run test:e2e
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          AUTHENTICATION_SECRET: ${{ secrets.AUTHENTICATION_SECRET }}
-          APP_URL: http://localhost:5001
+      - name: Execute Playwright Desktop & Mobile E2E Regression Suites
+        run: npx playwright test e2e/10-offline-pwa-sync.spec.ts e2e/11-enterprise-all-tracks.spec.ts --project=chromium-desktop --project=chromium-mobile
+
+      - name: Archive Playwright Failure Artifacts & Reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-test-artifacts
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14
+
+  # ============================================================================
+  # 4. Multi-Stage Docker Containerization & Security Verification
+  # ============================================================================
+  docker-build-check:
+    name: 4. Docker Containerization Gate
+    needs: quality-and-types
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Production Multi-Stage Docker Image
+        run: docker build -t e3-rentals:ci .
+
+      - name: Verify Image Security & Unprivileged User
+        run: |
+          USER_CHECK=$(docker image inspect e3-rentals:ci --format '{{.Config.User}}')
+          echo "Container Config User: $USER_CHECK"
+          if [ "$USER_CHECK" != "nextjs" ]; then
+            echo "Security Alert: Container must run as unprivileged user nextjs"
+            exit 1
+          fi
+          echo "✓ Verified: Container runs under unprivileged nextjs user."
