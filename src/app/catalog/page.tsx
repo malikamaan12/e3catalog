@@ -11,7 +11,7 @@ import {
     LayoutGrid, Layers, Building2, Frame, Link2, Lightbulb, Mic2,
     Monitor, Zap, Wind, Armchair, Palette, Flag, Navigation,
     Shield, Gamepad2, Trophy, Laptop2, Truck, ShieldCheck, HardHat, 
-    Calendar as CalendarIcon
+    Calendar as CalendarIcon, Download, FileText, X
 } from "lucide-react";
 
 interface Product {
@@ -102,6 +102,38 @@ function CatalogContent() {
     const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
     const [totalCount, setTotalCount] = useState(0);
     const [isFilterOpen, setIsFilterOpen] = useState(false);
+    const [showDownloadModal, setShowDownloadModal] = useState(false);
+    const [downloadingCatalog, setDownloadingCatalog] = useState(false);
+    const [catalogVendorFilter, setCatalogVendorFilter] = useState("");
+
+    const handleDownloadCatalog = async (options?: { category?: string; vendorId?: string }) => {
+        try {
+            setDownloadingCatalog(true);
+            const params = new URLSearchParams();
+            if (options?.category) params.set("category", options.category);
+            if (options?.vendorId) params.set("vendorId", options.vendorId);
+            
+            const res = await fetch(`/api/pdf/catalog?${params.toString()}`);
+            if (!res.ok) throw new Error("Failed to generate catalog");
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            const filename = options?.vendorId 
+                ? `E3-Rentals-Vendor-Catalog.pdf` 
+                : (options?.category ? `E3-Rentals-${options.category}-Catalog.pdf` : `E3-Rentals-Complete-Fleet-Catalog.pdf`);
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+            setShowDownloadModal(false);
+        } catch (error) {
+            console.error("Failed to download catalog:", error);
+        } finally {
+            setDownloadingCatalog(false);
+        }
+    };
 
     // Sentinel ref for IntersectionObserver (infinite scroll trigger)
     const sentinelRef = useRef<HTMLDivElement>(null);
@@ -206,13 +238,23 @@ function CatalogContent() {
             <div className="min-h-screen pt-28 pb-16">
                 <div className="max-w-[2000px] mx-auto px-6 md:px-12 xl:px-20">
                     {/* Header */}
-                    <div className="mb-10">
-                        <h1 className="font-[family-name:var(--font-heading)] text-3xl md:text-5xl font-bold text-[var(--color-warm-white)] mb-3">
-                            Equipment Catalog
-                        </h1>
-                        <p className="text-[var(--color-slate)] text-lg">
-                            Browse our full fleet of event equipment. Click any item for full specs, documentation, and to request a quote.
-                        </p>
+                    <div className="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
+                        <div>
+                            <h1 className="font-[family-name:var(--font-heading)] text-3xl md:text-5xl font-bold text-[var(--color-warm-white)] mb-3">
+                                Equipment Catalog
+                            </h1>
+                            <p className="text-[var(--color-slate)] text-lg">
+                                Browse our full fleet of event equipment. Click any item for full specs, documentation, and to request a quote.
+                            </p>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => setShowDownloadModal(true)}
+                            className="inline-flex items-center gap-2.5 px-6 py-3.5 rounded-2xl bg-gradient-to-r from-gold/20 via-gold/10 to-transparent hover:from-gold/30 hover:via-gold/20 border border-gold/40 text-gold text-xs font-black uppercase tracking-widest transition-all shadow-xl shadow-gold/10 shrink-0 self-start md:self-auto hover:scale-105 active:scale-95 min-h-[46px]"
+                        >
+                            <Download className="w-4 h-4" />
+                            <span>Download Catalog (PDF)</span>
+                        </button>
                     </div>
 
                     {/* Search Bar */}
@@ -513,6 +555,119 @@ function CatalogContent() {
                     Configure View
                 </button>
             </div>
+
+            {/* ── Download Catalog Modal ── */}
+            <AnimatePresence>
+                {showDownloadModal && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => !downloadingCatalog && setShowDownloadModal(false)}
+                            className="absolute inset-0 bg-black/80 backdrop-blur-md"
+                        />
+
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                            className="relative w-full max-w-lg bg-[#0d152a] border border-white/15 rounded-[2.5rem] p-6 sm:p-8 shadow-2xl overflow-hidden"
+                        >
+                            {/* Accent blur */}
+                            <div className="absolute top-0 right-0 w-36 h-36 bg-gold/10 blur-[60px] pointer-events-none" />
+
+                            <div className="flex items-start justify-between gap-4 mb-6">
+                                <div>
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-gold">Official Document Exporter</span>
+                                    </div>
+                                    <h3 className="font-[family-name:var(--font-heading)] text-xl sm:text-2xl font-bold text-white">
+                                        Download Equipment Catalog
+                                    </h3>
+                                    <p className="text-slate-400 text-xs mt-1">
+                                        Export high-res PDF catalog including daily rates, electrical specs, flight case dimensions, and QCDD DIN 4102-B1 certifications.
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={() => !downloadingCatalog && setShowDownloadModal(false)}
+                                    className="w-9 h-9 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-colors"
+                                >
+                                    <X className="w-4 h-4" />
+                                </button>
+                            </div>
+
+                            <div className="space-y-4 mb-6">
+                                {/* Option 1: Complete Fleet */}
+                                <div className="p-4 rounded-2xl bg-white/5 border border-white/10 hover:border-gold/30 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                    <div>
+                                        <p className="text-xs font-bold text-white uppercase tracking-wider">Complete Master Fleet</p>
+                                        <p className="text-[11px] text-slate-400 mt-0.5">All 20+ equipment categories & 2,500+ active assets</p>
+                                    </div>
+                                    <button
+                                        disabled={downloadingCatalog}
+                                        onClick={() => handleDownloadCatalog()}
+                                        className="px-4 py-2.5 rounded-xl bg-gold text-navy font-black text-xs uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-lg shadow-gold/20 flex items-center justify-center gap-2 shrink-0 disabled:opacity-50"
+                                    >
+                                        <Download className="w-3.5 h-3.5" /> Complete PDF
+                                    </button>
+                                </div>
+
+                                {/* Option 2: Filter by Selected Category */}
+                                {selectedCategory && (
+                                    <div className="p-4 rounded-2xl bg-white/5 border border-gold/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                        <div>
+                                            <p className="text-xs font-bold text-gold uppercase tracking-wider">Current Category</p>
+                                            <p className="text-[11px] text-slate-300 mt-0.5 capitalize">{selectedCategory.replace("-", " ")} Equipment Only</p>
+                                        </div>
+                                        <button
+                                            disabled={downloadingCatalog}
+                                            onClick={() => handleDownloadCatalog({ category: selectedCategory })}
+                                            className="px-4 py-2.5 rounded-xl bg-gold/20 hover:bg-gold/30 border border-gold/40 text-gold font-black text-xs uppercase tracking-widest hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-2 shrink-0 disabled:opacity-50"
+                                        >
+                                            <Download className="w-3.5 h-3.5" /> Category PDF
+                                        </button>
+                                    </div>
+                                )}
+
+                                {/* Option 3: Filter by Vendor */}
+                                <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-3">
+                                    <div>
+                                        <p className="text-xs font-bold text-white uppercase tracking-wider">Vendor Equipment Partner</p>
+                                        <p className="text-[11px] text-slate-400 mt-0.5">Download a specific vendor’s verified inventory fleet</p>
+                                    </div>
+                                    <div className="flex flex-col sm:flex-row gap-2">
+                                        <select
+                                            value={catalogVendorFilter}
+                                            onChange={(e) => setCatalogVendorFilter(e.target.value)}
+                                            className="bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs text-white flex-1 focus:border-gold focus:outline-none"
+                                        >
+                                            <option value="">Select Vendor Partner...</option>
+                                            {vendorsList.map((v) => (
+                                                <option key={v.id} value={v.id}>{v.companyName}</option>
+                                            ))}
+                                        </select>
+                                        <button
+                                            disabled={downloadingCatalog || !catalogVendorFilter}
+                                            onClick={() => handleDownloadCatalog({ vendorId: catalogVendorFilter })}
+                                            className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-gold hover:text-navy text-white font-black text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 shrink-0 disabled:opacity-40 disabled:hover:bg-white/10 disabled:hover:text-white"
+                                        >
+                                            <Download className="w-3.5 h-3.5" /> Vendor PDF
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {downloadingCatalog && (
+                                <div className="p-4 rounded-xl bg-gold/10 border border-gold/20 flex items-center justify-center gap-3 text-gold text-xs font-bold uppercase tracking-widest animate-pulse">
+                                    <div className="w-4 h-4 border-2 border-gold border-t-transparent rounded-full animate-spin" />
+                                    <span>Rendering Multi-Page Catalog PDF...</span>
+                                </div>
+                            )}
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
 
             <Footer />
         </>

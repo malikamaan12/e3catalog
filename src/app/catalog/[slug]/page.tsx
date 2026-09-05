@@ -114,6 +114,29 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
     // Availability state
     const [availability, setAvailability] = useState<{ available: boolean; unitsAvailable: number } | null>(null);
     const [checkingAvailability, setCheckingAvailability] = useState(false);
+    const [downloadingSpecSheet, setDownloadingSpecSheet] = useState(false);
+
+    const handleDownloadSpecSheet = async () => {
+        if (!product) return;
+        try {
+            setDownloadingSpecSheet(true);
+            const res = await fetch(`/api/pdf/product/${product.slug || product.id}`);
+            if (!res.ok) throw new Error("Failed to generate spec sheet");
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `SpecSheet-${product.slug || product.id}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        } catch (error) {
+            console.error("Error downloading spec sheet:", error);
+        } finally {
+            setDownloadingSpecSheet(false);
+        }
+    };
 
     // Auto-check availability whenever dates or quantity change
     useEffect(() => {
@@ -363,14 +386,14 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
                                 {product.description}
                             </p>
 
-                            {/* Price */}
-                            <div className="flex items-baseline gap-4 mb-6">
+                            {/* Price and Download Spec Sheet CTA */}
+                            <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
                                 {product.showPrice === false ? (
                                     <div className="text-xl font-semibold text-[var(--color-slate)] border border-[var(--color-border-subtle)] px-4 py-2 rounded-lg bg-[var(--color-navy-lighter)]">
                                         Price upon request
                                     </div>
                                 ) : (
-                                    <>
+                                    <div className="flex items-baseline gap-4">
                                         <div>
                                             {product.priceRangeMax && <span className="text-sm font-medium text-[var(--color-slate)] mr-2 block mb-1">Starting from</span>}
                                             <span className="text-3xl font-bold gradient-text-gold">{product.pricePerDay} QAR</span>
@@ -383,8 +406,28 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
                                                 <span className="text-sm text-[var(--color-slate)] ml-0.5">/hr</span>
                                             </div>
                                         )}
-                                    </>
+                                    </div>
                                 )}
+
+                                <button
+                                    type="button"
+                                    onClick={handleDownloadSpecSheet}
+                                    disabled={downloadingSpecSheet}
+                                    className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-gold/15 border border-white/10 hover:border-gold/40 text-slate-200 hover:text-gold text-xs font-bold uppercase tracking-wider flex items-center gap-2 transition-all shadow-lg min-h-[44px]"
+                                    title="Download technical specification data sheet (PDF)"
+                                >
+                                    {downloadingSpecSheet ? (
+                                        <>
+                                            <div className="w-3.5 h-3.5 border-2 border-gold border-t-transparent rounded-full animate-spin" />
+                                            <span>Generating PDF...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <span className="text-base">📄</span>
+                                            <span>Spec Sheet (PDF)</span>
+                                        </>
+                                    )}
+                                </button>
                             </div>
 
                             {/* Bill of Materials / Package Components (if Kit) */}
@@ -437,6 +480,22 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
                                             <div className="space-y-1">
                                                 <span className="text-slate/40 font-black text-[9px] uppercase tracking-[0.2em] block">Fleet Availability</span>
                                                 <p className="text-white font-bold text-sm md:text-base">{product.totalUnits} Units Available</p>
+                                            </div>
+
+                                            {/* Spec Sheet Download Banner */}
+                                            <div className="col-span-2 md:col-span-3 pt-6 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4">
+                                                <div>
+                                                    <p className="text-xs font-bold text-white uppercase tracking-wider">Engineered Technical Spec Sheet</p>
+                                                    <p className="text-[10px] text-slate-400">Export official A4 dossier with electrical load, dimensions & QCDD fire rating.</p>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={handleDownloadSpecSheet}
+                                                    disabled={downloadingSpecSheet}
+                                                    className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-gold/20 hover:bg-gold/30 border border-gold/40 text-gold text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all shadow-lg min-h-[40px]"
+                                                >
+                                                    {downloadingSpecSheet ? "Compiling..." : "📥 Download Full Spec Sheet"}
+                                                </button>
                                             </div>
                                         </div>
                                     </Accordion.Content>

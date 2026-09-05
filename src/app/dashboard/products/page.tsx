@@ -14,7 +14,8 @@ import {
     Image as ImageIcon, 
     ArrowUpRight,
     Loader2,
-    ShieldCheck
+    ShieldCheck,
+    FileText
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -59,6 +60,30 @@ export default function VendorProductsPage() {
     const [statusFilter, setStatusFilter] = useState("ALL");
     const [showWizard, setShowWizard] = useState(false);
     const [editingProduct, setEditingProduct] = useState<VendorProduct | null>(null);
+    const [exportingCatalog, setExportingCatalog] = useState(false);
+
+    const handleExportCatalog = async () => {
+        try {
+            setExportingCatalog(true);
+            const res = await fetch("/api/pdf/catalog");
+            if (!res.ok) throw new Error("Failed to export catalog");
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `E3-Rentals-Vendor-Equipment-Catalog.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+            toast.success("Vendor equipment catalog downloaded successfully");
+        } catch (error) {
+            console.error("Export catalog error:", error);
+            toast.error("Failed to export catalog PDF");
+        } finally {
+            setExportingCatalog(false);
+        }
+    };
 
     const loadData = async () => {
         setLoading(true);
@@ -160,12 +185,34 @@ export default function VendorProductsPage() {
                     </p>
                 </div>
 
-                <button 
-                    onClick={() => { setEditingProduct(null); setShowWizard(true); }}
-                    className="px-6 py-3 rounded-2xl bg-gold text-navy font-black text-xs uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl shadow-gold/20 flex items-center gap-2"
-                >
-                    <Plus className="w-4 h-4" /> List New Equipment
-                </button>
+                <div className="flex flex-wrap items-center gap-3">
+                    <button
+                        type="button"
+                        onClick={handleExportCatalog}
+                        disabled={exportingCatalog || products.length === 0}
+                        className="px-5 py-3 rounded-2xl bg-white/5 hover:bg-gold/15 border border-white/10 hover:border-gold/30 text-white hover:text-gold font-black text-xs uppercase tracking-widest transition-all flex items-center gap-2 shadow-lg disabled:opacity-40 min-h-[44px]"
+                        title="Download vendor equipment catalog PDF"
+                    >
+                        {exportingCatalog ? (
+                            <>
+                                <Loader2 className="w-4 h-4 animate-spin text-gold" />
+                                <span>Exporting Catalog...</span>
+                            </>
+                        ) : (
+                            <>
+                                <FileText className="w-4 h-4 text-gold" />
+                                <span>Export Vendor Catalog (PDF)</span>
+                            </>
+                        )}
+                    </button>
+
+                    <button 
+                        onClick={() => { setEditingProduct(null); setShowWizard(true); }}
+                        className="px-6 py-3 rounded-2xl bg-gold text-navy font-black text-xs uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl shadow-gold/20 flex items-center gap-2 min-h-[44px]"
+                    >
+                        <Plus className="w-4 h-4" /> List New Equipment
+                    </button>
+                </div>
             </header>
 
             {/* Metrics Overview Cards */}

@@ -12,6 +12,7 @@
     "test:domain": "npx tsx scratch/test-tracks-7-10.ts",
     "test:offline": "npx tsx scratch/test-offline-sync-engine.ts",
     "test:secrets": "npx tsx src/scripts/scan-secrets.ts",
+    "test:catalog": "npx tsx scratch/test-catalog-downloads.ts",
     "test:ci": "npm run lint && npx tsc --noEmit && npm run test:secrets"
   },
   "dependencies": {
