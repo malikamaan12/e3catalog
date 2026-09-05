@@ -170,6 +170,7 @@ export async function setupE2EFixtures(): Promise<E2ETestFixtures> {
             await client.query(`DELETE FROM "notification_outbox" WHERE "recipient_id" = ANY($1::varchar[]);`, [userIds]);
             await client.query(`DELETE FROM "cron_job_runs" WHERE "triggered_by" = ANY($1::varchar[]);`, [userIds]);
             await client.query(`DELETE FROM "audit_logs" WHERE "actor_id" = ANY($1::varchar[]);`, [userIds]);
+            await client.query(`DELETE FROM "system_logs" WHERE "admin_id" = ANY($1::varchar[]);`, [userIds]);
             await client.query(`DELETE FROM "user_sessions" WHERE "user_id" = ANY($1::varchar[]);`, [userIds]);
             await client.query(`DELETE FROM "users" WHERE "id" = ANY($1::varchar[]);`, [userIds]);
         } finally {
