@@ -10,7 +10,7 @@ import { dummyProducts } from './dummyData'; // Relative import since we are in 
 
 const pool = new Pool({
     host: "aws-1-ap-northeast-1.pooler.supabase.com",
-    port: 5432,
+    port: 6543,
     user: "postgres.kwswkoysskkxuezbfmyt",
     password: "Malik12amaan@#",
     database: "postgres",
@@ -58,15 +58,17 @@ async function bulkAddProducts() {
                     short_description, dimensions, weight, power_requirements, materials,
                     price_per_day, show_price, price_type, unit, min_order_qty,
                     featured, requires_license, requires_approval,
-                    thumbnail_url, created_at, updated_at
+                    thumbnail_url, is_published, status, created_at, updated_at
                 ) VALUES (
                     $1, 'E3-ENT', $2, $3, $4, $5,
                     $6, $7, $8, $9, $10,
                     $11, true, 'daily', 'unit', 1,
                     false, false, false,
-                    $12, NOW(), NOW()
+                    $12, true, 'published', NOW(), NOW()
                 )
                 ON CONFLICT (item_code) DO UPDATE SET
+                    is_published = true,
+                    status = 'published',
                     updated_at = NOW()
                 `,
                 [

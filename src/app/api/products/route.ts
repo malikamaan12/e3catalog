@@ -205,10 +205,10 @@ export async function GET(req: NextRequest) {
         }
 
         // ── 2. Resolve category filter ─────────────────────────────────────
-        let categoryFilter: ReturnType<typeof eq> | undefined;
+        let categoryFilter: ReturnType<typeof inArray> | ReturnType<typeof eq> | undefined;
         if (categorySlug) {
-            let catId = getCache<string>(CACHE_KEYS.categorySlug(categorySlug));
-            if (!catId) {
+            let catIds = getCache<string[]>(`cat_slug_ids::${categorySlug}`);
+            if (!catIds) {
                 const cat = await db
                     .select({ id: categories.id })
                     .from(categories)
@@ -216,14 +216,22 @@ export async function GET(req: NextRequest) {
                     .limit(1);
                 if (!cat.length) {
                     return NextResponse.json(
-                        { products: [], nextCursor: null, hasMore: false },
+                        { products: [], nextCursor: null, hasMore: false, totalMatchingFound: 0 },
                         { headers: { "Cache-Control": "private, s-maxage=30" } }
                     );
                 }
-                catId = cat[0].id;
-                setCache(CACHE_KEYS.categorySlug(categorySlug), catId, 300 * 1000); // 5 min cache
+                const parentId = cat[0].id;
+                // Also include any subcategories under this parent category
+                const childCats = await db
+                    .select({ id: categories.id })
+                    .from(categories)
+                    .where(eq(categories.parentId, parentId));
+                catIds = [parentId, ...childCats.map((c) => c.id)];
+                setCache(`cat_slug_ids::${categorySlug}`, catIds, 300 * 1000); // 5 min cache
             }
-            categoryFilter = eq(products.categoryId, catId);
+            categoryFilter = catIds.length === 1 
+                ? eq(products.categoryId, catIds[0])
+                : inArray(products.categoryId, catIds);
         }
 
         // ── 3. Build search filter ─────────────────────────────────────────
@@ -263,7 +271,12 @@ export async function GET(req: NextRequest) {
             minPrice !== null ? gte(products.pricePerDay, minPrice) : undefined,
             maxPrice !== null ? lte(products.pricePerDay, maxPrice) : undefined,
             eq(products.isPublished, true),
-            or(eq(products.status, "published"), isNull(products.status)),
+            or(
+                eq(products.status, "published"),
+                eq(products.status, "active"),
+                eq(products.status, "approved"),
+                isNull(products.status)
+            ),
         ].filter(Boolean);
 
         const whereClause = filters.length > 0 ? and(...(filters as any)) : undefined;
@@ -357,10 +370,16 @@ export async function GET(req: NextRequest) {
         return NextResponse.json(responseBody, {
             headers: { "Cache-Control": "private, s-maxage=30" },
         });
-    } catch (e) {
+    } catch (e: any) {
         console.error("Error fetching products:", e);
         return NextResponse.json(
-            { products: [], nextCursor: null, hasMore: false },
+            { 
+                products: [], 
+                nextCursor: null, 
+                hasMore: false, 
+                totalMatchingFound: 0,
+                error: e?.message || "Data connection failure while retrieving products" 
+            },
             { status: 500 }
         );
     }

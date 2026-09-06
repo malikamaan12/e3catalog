@@ -11,7 +11,7 @@ import {
     LayoutGrid, Layers, Building2, Frame, Link2, Lightbulb, Mic2,
     Monitor, Zap, Wind, Armchair, Palette, Flag, Navigation,
     Shield, Gamepad2, Trophy, Laptop2, Truck, ShieldCheck, HardHat, 
-    Calendar as CalendarIcon, Download, FileText, X
+    Calendar as CalendarIcon, Download, X
 } from "lucide-react";
 
 interface Product {
@@ -97,6 +97,7 @@ function CatalogContent() {
     
     const [loading, setLoading] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
+    const [fetchError, setFetchError] = useState<string | null>(null);
     const [hasMore, setHasMore] = useState(false);
     const [nextCursor, setNextCursor] = useState<string | null>(null);
     const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
@@ -167,7 +168,12 @@ function CatalogContent() {
         cursor: string | null,
         replace: boolean
     ) => {
-        if (replace) setLoading(true); else setLoadingMore(true);
+        if (replace) {
+            setLoading(true);
+            setFetchError(null);
+        } else {
+            setLoadingMore(true);
+        }
 
         try {
             const params = new URLSearchParams({ limit: "50" });
@@ -179,6 +185,9 @@ function CatalogContent() {
             if (cursor) params.set("cursor", cursor);
 
             const res = await fetch(`/api/products?${params.toString()}`);
+            if (!res.ok) {
+                throw new Error(`Data connection error (${res.status}: ${res.statusText})`);
+            }
             const data = await res.json();
 
             if (data && Array.isArray(data.products)) {
@@ -186,19 +195,29 @@ function CatalogContent() {
                 setHasMore(data.hasMore ?? false);
                 setNextCursor(data.nextCursor ?? null);
                 setTotalCount(data.totalMatchingFound ?? 0);
+            } else {
+                if (replace) setProducts([]);
             }
-        } catch (err) {
+        } catch (err: any) {
             console.error("Fetch error:", err);
+            if (replace) {
+                setFetchError(err.message || "Failed to load catalog assets. Please verify data connection.");
+            }
         } finally {
             if (replace) {
                 setLoading(false);
-                // Staggered entrance for premium feel
+                // Staggered entrance for premium feel without permanently hiding elements
                 setTimeout(() => {
-                    gsap.fromTo(".product-card-anim", 
-                        { y: 30, opacity: 0 }, 
-                        { y: 0, opacity: 1, duration: 0.8, stagger: 0.05, ease: "power3.out" }
-                    );
-                }, 100);
+                    if (typeof window !== "undefined") {
+                        const items = document.querySelectorAll(".product-card-anim");
+                        if (items.length > 0) {
+                            gsap.fromTo(items, 
+                                { y: 20, opacity: 0 }, 
+                                { y: 0, opacity: 1, duration: 0.6, stagger: 0.03, ease: "power2.out" }
+                            );
+                        }
+                    }
+                }, 50);
             } else {
                 setLoadingMore(false);
             }
@@ -417,19 +436,47 @@ function CatalogContent() {
                                         <div key={i} className="bg-[#0d152a] rounded-[2rem] border border-white/5 h-[400px] animate-pulse" />
                                     ))}
                                 </div>
+                            ) : fetchError ? (
+                                <div className="text-center py-24 glass rounded-[3rem] border border-red-500/20 bg-red-500/5 p-8">
+                                    <div className="text-5xl mb-4">⚠️</div>
+                                    <h3 className="font-[family-name:var(--font-heading)] text-2xl font-bold text-white mb-2">
+                                        Data Connection Error
+                                    </h3>
+                                    <p className="text-slate-300 max-w-md mx-auto text-sm mb-6">{fetchError}</p>
+                                    <button
+                                        onClick={() => fetchProducts(selectedCategory, debouncedSearch, selectedVendor, startDate, endDate, null, true)}
+                                        className="px-6 py-3 rounded-2xl bg-gold text-navy font-black text-xs uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl shadow-gold/20 cursor-pointer"
+                                    >
+                                        Retry Connection
+                                    </button>
+                                </div>
                             ) : products.length === 0 ? (
                                 <div className="text-center py-32 glass rounded-[3rem] border-dashed border-2 border-white/5">
                                     <div className="text-6xl mb-6 opacity-20">📡</div>
                                     <h3 className="font-[family-name:var(--font-heading)] text-2xl font-bold text-white mb-2">
                                         No assets located
                                     </h3>
-                                    <p className="text-slate max-w-xs mx-auto text-sm">Modify your search parameters or select a wider category range.</p>
+                                    <p className="text-slate max-w-xs mx-auto text-sm mb-6">Modify your search parameters or select a wider category range.</p>
+                                    {(selectedCategory || debouncedSearch || selectedVendor || startDate || endDate) && (
+                                        <button 
+                                            onClick={() => {
+                                                setSelectedCategory("");
+                                                setSearchQuery("");
+                                                setSelectedVendor("");
+                                                setStartDate("");
+                                                setEndDate("");
+                                            }}
+                                            className="px-6 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-bold uppercase tracking-wider text-white transition-all cursor-pointer"
+                                        >
+                                            Clear All Filters
+                                        </button>
+                                    )}
                                 </div>
                             ) : (
                                 <>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 3xl:grid-cols-5 min-[2200px]:grid-cols-6 gap-6 md:gap-8">
                                         {products.map((product) => (
-                                            <div key={product.id} className="product-card-anim opacity-0">
+                                            <div key={product.id} className="product-card-anim">
                                                 <ProductCard {...product} />
                                             </div>
                                         ))}
