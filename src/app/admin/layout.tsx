@@ -139,7 +139,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }
 
     return (
-        <div className="min-h-screen pt-20 relative">
+        <div className="min-h-screen pt-20 relative overflow-x-hidden">
             <Sidebar 
                 items={visibleNavItems}
                 superAdminItems={superAdminItems}
@@ -153,7 +153,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <AdminSearch isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
 
             <main 
-                className={`transition-all duration-300 p-6 md:p-10 ${
+                className={`transition-all duration-300 p-4 sm:p-6 md:p-8 min-w-0 max-w-full overflow-x-hidden ${
                     isCollapsed ? "lg:ml-[100px]" : "lg:ml-[280px]"
                 }`}
             >

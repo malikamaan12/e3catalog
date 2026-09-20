@@ -137,6 +137,7 @@ function FleetPageContent() {
     const [sidebarFilter, setSidebarFilter] = useState<{ id: string; type: string } | null>(null);
     const [expanded, setExpanded] = useState<Set<string>>(new Set());
     const [groupByProduct, setGroupByProduct] = useState(false);
+    const [showMobileNavigator, setShowMobileNavigator] = useState(false);
 
     // Modals
     const [showInspectionModal, setShowInspectionModal] = useState<string | null>(null);
@@ -262,15 +263,15 @@ function FleetPageContent() {
     const handleViewPassport = (assetTagCode: string) => window.open(`/passport/${assetTagCode}`, '_blank');
 
     return (
-        <div className="flex gap-6 min-h-[80vh]">
-            {/* ─── Sidebar ─── */}
-            <aside className="w-64 shrink-0 hidden lg:block">
-                <div className="glass border border-white/10 rounded-2xl p-3 sticky top-6 max-h-[80vh] overflow-y-auto">
+        <div className="flex flex-col xl:flex-row gap-6 min-h-[80vh] min-w-0 max-w-full">
+            {/* ─── Desktop Sidebar ─── */}
+            <aside className="w-64 shrink-0 hidden xl:block">
+                <div className="glass border border-white/10 rounded-2xl p-3 sticky top-6 max-h-[80vh] overflow-y-auto custom-scrollbar">
                     <h3 className="text-[10px] font-black text-[var(--color-gold)] uppercase tracking-widest mb-3 px-3">Asset Navigator</h3>
                     <button
                         onClick={() => setSidebarFilter(null)}
                         className={`w-full flex items-center gap-2 px-3 py-2 text-xs rounded-lg transition-all mb-1 ${
-                            !sidebarFilter ? 'bg-[var(--color-gold)]/20 text-[var(--color-gold)]' : 'text-[var(--color-slate)] hover:bg-white/5'
+                            !sidebarFilter ? 'bg-[var(--color-gold)]/20 text-[var(--color-gold)] font-bold' : 'text-[var(--color-slate)] hover:bg-white/5'
                         }`}
                     >
                         <Package className="w-3.5 h-3.5" />
@@ -290,10 +291,47 @@ function FleetPageContent() {
                 </div>
             </aside>
 
+            {/* ─── Mobile / Tablet Navigator Drawer ─── */}
+            {showMobileNavigator && (
+                <div className="fixed inset-0 bg-black/75 backdrop-blur-md z-[70] flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={() => setShowMobileNavigator(false)}>
+                    <div className="glass border border-white/10 rounded-t-[2.5rem] sm:rounded-3xl p-5 w-full sm:max-w-md max-h-[85vh] overflow-y-auto animate-in slide-in-from-bottom-10 shadow-2xl" onClick={e => e.stopPropagation()}>
+                        <div className="w-12 h-1.5 bg-white/20 rounded-full mx-auto mb-4 sm:hidden" />
+                        <div className="flex items-center justify-between pb-3 border-b border-white/10 mb-3">
+                            <h3 className="text-xs font-black text-[var(--color-gold)] uppercase tracking-widest flex items-center gap-2">
+                                <Building2 className="w-4 h-4" /> Asset Navigator
+                            </h3>
+                            <button onClick={() => setShowMobileNavigator(false)} className="p-1.5 hover:bg-white/10 rounded-full text-slate-400 hover:text-white">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        <button
+                            onClick={() => { setSidebarFilter(null); setShowMobileNavigator(false); }}
+                            className={`w-full flex items-center gap-2 px-3 py-2.5 text-xs rounded-xl transition-all mb-2 ${
+                                !sidebarFilter ? 'bg-[var(--color-gold)]/20 text-[var(--color-gold)] font-bold' : 'text-slate-300 hover:bg-white/5'
+                            }`}
+                        >
+                            <Package className="w-4 h-4" />
+                            <span className="font-bold flex-1 text-left">All Assets</span>
+                            <span className="text-[10px] bg-white/10 px-2 py-0.5 rounded-full font-mono">{units.length}</span>
+                        </button>
+                        <div className="divide-y divide-white/5 space-y-1">
+                            {tree.map(node => (
+                                <TreeItem
+                                    key={node.id} node={node} depth={0}
+                                    activeId={sidebarFilter?.id || null}
+                                    onSelect={(id, type) => { setSidebarFilter({ id, type }); setShowMobileNavigator(false); }}
+                                    expanded={expanded} toggleExpand={toggleExpand}
+                                />
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* ─── Main Content ─── */}
-            <div className="flex-1 space-y-6">
+            <div className="flex-1 min-w-0 max-w-full space-y-6">
                 {/* Header */}
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <div>
                         <h1 className="text-2xl font-black text-[var(--color-warm-white)] flex items-center gap-3">
                             <Package className="w-7 h-7 text-[var(--color-gold)]" />
@@ -353,13 +391,24 @@ function FleetPageContent() {
                 </div>
 
                 {/* Search Bar */}
-                <div className="glass border border-white/10 rounded-2xl p-3 flex items-center gap-3">
-                    <div className="relative flex-1">
+                <div className="glass border border-white/10 rounded-2xl p-3 flex items-center gap-2 sm:gap-3 flex-wrap sm:flex-nowrap">
+                    <div className="relative flex-1 min-w-[200px]">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--color-slate)]" />
                         <input type="text" placeholder="Search asset tag, product, vendor..."
                             className="w-full bg-black/40 border border-white/10 rounded-xl pl-10 pr-4 py-2 outline-none focus:border-[var(--color-gold)] transition-all text-sm text-white"
                             value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
                     </div>
+
+                    {/* Mobile Navigator Button */}
+                    <button 
+                        onClick={() => setShowMobileNavigator(true)} 
+                        className="xl:hidden flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[var(--color-gold)]/10 border border-[var(--color-gold)]/20 text-[var(--color-gold)] text-xs font-bold hover:bg-[var(--color-gold)]/20 transition-all shrink-0"
+                        title="Open Asset Navigator Filter"
+                    >
+                        <Filter className="w-3.5 h-3.5" />
+                        <span>Filter {sidebarFilter ? `(1)` : ''}</span>
+                    </button>
+
                     <button onClick={fetchFleet} className="p-2 rounded-xl border border-white/10 hover:bg-white/5 transition-all text-[var(--color-slate)]" title="Refresh">
                         <RefreshCcw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                     </button>
@@ -372,23 +421,23 @@ function FleetPageContent() {
                 </div>
 
                 {/* Table (Desktop) / Cards (Mobile) */}
-                <div className="glass border border-white/10 rounded-2xl overflow-hidden">
-                    <div className="hidden md:block overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
+                <div className="glass border border-white/10 rounded-2xl overflow-hidden min-w-0 max-w-full shadow-2xl">
+                    <div className="hidden md:block overflow-x-auto custom-scrollbar w-full">
+                        <table className="w-full text-left border-collapse min-w-[780px]">
                             <thead className="bg-white/5 border-b border-white/10">
                                 <tr>
                                     <th className="p-3 w-10 text-center">
-                                        <input type="checkbox" className="accent-[var(--color-gold)]"
+                                        <input type="checkbox" className="accent-[var(--color-gold)] cursor-pointer"
                                             checked={selectedIds.length === filteredUnits.length && filteredUnits.length > 0}
                                             onChange={e => setSelectedIds(e.target.checked ? filteredUnits.map(u => u.id) : [])} />
                                     </th>
-                                    <th className="p-3 text-[10px] font-black uppercase text-[var(--color-gold)] tracking-widest">Asset Tag</th>
-                                    <th className="p-3 text-[10px] font-black uppercase text-[var(--color-gold)] tracking-widest">Product</th>
-                                    {isAdmin && <th className="p-3 text-[10px] font-black uppercase text-[var(--color-gold)] tracking-widest">Vendor</th>}
-                                    <th className="p-3 text-[10px] font-black uppercase text-[var(--color-gold)] tracking-widest">Status</th>
-                                    <th className="p-3 text-[10px] font-black uppercase text-[var(--color-gold)] tracking-widest">Location</th>
-                                    <th className="p-3 text-[10px] font-black uppercase text-[var(--color-gold)] tracking-widest">Condition</th>
-                                    <th className="p-3 text-[10px] font-black uppercase text-[var(--color-gold)] tracking-widest text-center">Actions</th>
+                                    <th className="p-3 text-[10px] font-black uppercase text-[var(--color-gold)] tracking-widest whitespace-nowrap">Asset Tag</th>
+                                    <th className="p-3 text-[10px] font-black uppercase text-[var(--color-gold)] tracking-widest whitespace-nowrap">Product</th>
+                                    {isAdmin && <th className="p-3 text-[10px] font-black uppercase text-[var(--color-gold)] tracking-widest whitespace-nowrap">Vendor</th>}
+                                    <th className="p-3 text-[10px] font-black uppercase text-[var(--color-gold)] tracking-widest whitespace-nowrap">Status</th>
+                                    <th className="p-3 text-[10px] font-black uppercase text-[var(--color-gold)] tracking-widest whitespace-nowrap">Location</th>
+                                    <th className="p-3 text-[10px] font-black uppercase text-[var(--color-gold)] tracking-widest whitespace-nowrap">Condition</th>
+                                    <th className="p-3 text-[10px] font-black uppercase text-[var(--color-gold)] tracking-widest text-center sticky right-0 bg-[#0a0f1d] border-l border-white/10 shadow-[-8px_0_12px_rgba(0,0,0,0.4)] z-10 whitespace-nowrap">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-white/5">
@@ -967,48 +1016,61 @@ function AssetRow({
 }) {
     return (
         <tr className="hover:bg-white/5 transition-colors group border-b border-white/5 last:border-0">
-            <td className="p-3 text-center">
-                <input type="checkbox" className="accent-[var(--color-gold)]"
+            <td className="p-3 text-center w-10">
+                <input type="checkbox" className="accent-[var(--color-gold)] cursor-pointer"
                     checked={isSelected} onChange={onSelect} />
             </td>
-            <td className="p-3 whitespace-nowrap min-w-[100px]">
-                <span className="font-black text-white font-mono text-xs">{unit.assetTagCode}</span>
-                <br/><span className="text-[10px] text-[var(--color-slate)] font-mono opacity-50">{unit.serialNumber || '—'}</span>
+            <td className="p-3 whitespace-nowrap w-[130px]">
+                <span className="font-black text-white font-mono text-xs block">{unit.assetTagCode}</span>
+                <span className="text-[10px] text-[var(--color-slate)] font-mono opacity-50 block mt-0.5">{unit.serialNumber || '—'}</span>
             </td>
-            <td className="p-3 whitespace-nowrap min-w-[200px]">
-                <span className="text-sm font-bold text-white uppercase tracking-tight leading-none block">{unit.productName}</span>
-                <span className="text-[10px] text-[var(--color-slate)] capitalize block mt-1 opacity-70">{unit.categoryName}</span>
+            <td className="p-3 min-w-[180px] max-w-[240px]">
+                <span className="text-sm font-bold text-white uppercase tracking-tight leading-tight block truncate" title={unit.productName}>{unit.productName}</span>
+                <span className="text-[10px] text-[var(--color-slate)] capitalize block mt-0.5 opacity-70 truncate">{unit.categoryName}</span>
             </td>
-            {isAdmin && <td className="p-3 whitespace-nowrap min-w-[150px]"><span className="text-[10px] font-black text-[var(--color-gold)] bg-[var(--color-gold)]/10 px-2 py-1 rounded-full border border-[var(--color-gold)]/20 uppercase tracking-widest">{unit.vendorName || "Platform"}</span></td>}
-            <td className="p-3 whitespace-nowrap">
-                <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-widest ${availabilityColors[unit.availabilityStatus] || ''}`}>
+            {isAdmin && (
+                <td className="p-3 whitespace-nowrap max-w-[170px]">
+                    <span 
+                        className="text-[10px] font-black text-[var(--color-gold)] bg-[var(--color-gold)]/10 px-2 py-1 rounded-full border border-[var(--color-gold)]/20 uppercase tracking-widest inline-block max-w-[150px] truncate"
+                        title={unit.vendorName || "Platform"}
+                    >
+                        {unit.vendorName || "Platform"}
+                    </span>
+                </td>
+            )}
+            <td className="p-3 whitespace-nowrap w-[120px]">
+                <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-widest inline-block ${availabilityColors[unit.availabilityStatus] || ''}`}>
                     {unit.availabilityStatus.replace(/_/g, ' ')}
                 </span>
             </td>
-            <td className="p-3 font-mono whitespace-nowrap min-w-[150px]">
-                <span className="text-[10px] text-white font-bold block leading-none">{unit.warehouseName || 'Unassigned'}</span>
-                <span className="text-[9px] text-[var(--color-slate)] uppercase tracking-[0.2em] font-black mt-1.5 block opacity-50">{unit.shelfLocation || '—'}</span>
+            <td className="p-3 font-mono whitespace-nowrap min-w-[130px] max-w-[160px]">
+                <span className="text-[10px] text-white font-bold block leading-none truncate" title={unit.warehouseName || 'Unassigned'}>
+                    {unit.warehouseName || 'Unassigned'}
+                </span>
+                <span className="text-[9px] text-[var(--color-slate)] uppercase tracking-[0.2em] font-black mt-1 block opacity-50 truncate" title={unit.shelfLocation || '—'}>
+                    {unit.shelfLocation || '—'}
+                </span>
             </td>
-            <td className="p-3 whitespace-nowrap">
-                <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-wider ${conditionColors[unit.conditionStatus] || ''}`}>
+            <td className="p-3 whitespace-nowrap w-[110px]">
+                <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-wider inline-block ${conditionColors[unit.conditionStatus] || ''}`}>
                     {unit.conditionStatus.replace(/_/g, ' ')}
                 </span>
             </td>
-            <td className="p-3 text-right">
-                <div className="flex items-center justify-end gap-1 opacity-40 group-hover:opacity-100 transition-opacity">
-                    <button onClick={onUpdateLocation} className="p-1.5 rounded-lg hover:bg-blue-500 hover:text-white transition-all" title="Update Location">
+            <td className="p-3 text-right whitespace-nowrap sticky right-0 bg-[#0a0f1d] border-l border-white/10 shadow-[-8px_0_12px_rgba(0,0,0,0.4)] z-10">
+                <div className="flex items-center justify-end gap-1">
+                    <button onClick={onUpdateLocation} className="p-1.5 rounded-lg hover:bg-blue-500 hover:text-white text-blue-400 transition-all" title="Update Location">
                         <MapPin className="w-3.5 h-3.5" />
                     </button>
-                    <button onClick={() => setViewLogsUnit(unit)} className="p-1.5 rounded-lg hover:bg-white/10 text-white transition-all" title="View History">
+                    <button onClick={() => setViewLogsUnit(unit)} className="p-1.5 rounded-lg hover:bg-white/10 text-slate-300 hover:text-white transition-all" title="View History">
                         <HistoryIcon className="w-3.5 h-3.5" />
                     </button>
-                    <button onClick={() => onViewPassport(unit.assetTagCode)} className="p-1.5 rounded-lg hover:bg-[var(--color-gold)] hover:text-navy transition-all" title="View Passport">
+                    <button onClick={() => onViewPassport(unit.assetTagCode)} className="p-1.5 rounded-lg hover:bg-[var(--color-gold)] hover:text-navy text-[var(--color-gold)] transition-all" title="View Passport">
                         <Eye className="w-3.5 h-3.5" />
                     </button>
-                    <button onClick={onInspect} className="p-1.5 rounded-lg hover:bg-emerald-500 hover:text-white transition-all" title="Log Inspection">
+                    <button onClick={onInspect} className="p-1.5 rounded-lg hover:bg-emerald-500 hover:text-white text-emerald-400 transition-all" title="Log Inspection">
                         <CheckCircle2 className="w-3.5 h-3.5" />
                     </button>
-                    <button onClick={onMaintenance} className={`p-1.5 rounded-lg transition-all ${unit.availabilityStatus === 'in_maintenance' ? 'bg-orange-500 text-white' : 'hover:bg-red-500 hover:text-white'}`} title={unit.availabilityStatus === 'in_maintenance' ? 'Return to Warehouse' : 'Mark Maintenance'}>
+                    <button onClick={onMaintenance} className={`p-1.5 rounded-lg transition-all ${unit.availabilityStatus === 'in_maintenance' ? 'bg-orange-500 text-white' : 'hover:bg-red-500 hover:text-white text-slate-400'}`} title={unit.availabilityStatus === 'in_maintenance' ? 'Return to Warehouse' : 'Mark Maintenance'}>
                         <Wrench className="w-3.5 h-3.5" />
                     </button>
                 </div>
@@ -1029,18 +1091,19 @@ function AssetCard({
     onUpdateLocation: () => void
 }) {
     return (
-        <div className="p-4 border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
-            <div className="flex items-start justify-between gap-4 mb-3">
-                <div className="flex items-start gap-3">
-                    <input type="checkbox" className="accent-[var(--color-gold)] mt-1"
+        <div className="p-4 border-b border-white/5 last:border-0 hover:bg-white/[0.02] transition-colors space-y-3">
+            {/* Top row: Checkbox, Asset Tag & Status badges */}
+            <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start gap-3 min-w-0">
+                    <input type="checkbox" className="accent-[var(--color-gold)] mt-1 cursor-pointer"
                         checked={isSelected} onChange={onSelect} />
-                    <div onClick={onSelect} className="cursor-pointer">
-                        <span className="font-black text-white font-mono text-xs block">{unit.assetTagCode}</span>
-                        <span className="text-[10px] text-[var(--color-slate)] font-mono opacity-50 block mt-0.5">{unit.serialNumber || 'No Serial'}</span>
+                    <div onClick={onSelect} className="cursor-pointer min-w-0">
+                        <span className="font-black text-white font-mono text-xs block truncate">{unit.assetTagCode}</span>
+                        <span className="text-[10px] text-[var(--color-slate)] font-mono opacity-50 block mt-0.5 truncate">{unit.serialNumber || 'No Serial'}</span>
                     </div>
                 </div>
-                <div className="flex flex-col items-end gap-1.5">
-                     <span className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-widest ${availabilityColors[unit.availabilityStatus] || ''}`}>
+                <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
+                    <span className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-widest ${availabilityColors[unit.availabilityStatus] || ''}`}>
                         {unit.availabilityStatus.replace(/_/g, ' ')}
                     </span>
                     <span className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider ${conditionColors[unit.conditionStatus] || ''}`}>
@@ -1049,38 +1112,48 @@ function AssetCard({
                 </div>
             </div>
             
-            <div className="mb-4">
-                <span className="text-sm font-bold text-white uppercase tracking-tight leading-none block">{unit.productName}</span>
-                <span className="text-[10px] text-[var(--color-slate)] capitalize block mt-1 opacity-70">{unit.categoryName}</span>
-                {isAdmin && <span className="text-[9px] font-black text-[var(--color-gold)] bg-[var(--color-gold)]/10 px-2 py-0.5 rounded-full border border-[var(--color-gold)]/20 uppercase tracking-widest inline-block mt-2">{unit.vendorName || "Platform"}</span>}
-            </div>
-
-            <div className="flex items-center justify-between gap-4">
-                <div className="flex flex-col gap-1">
-                    <span className="text-[10px] text-white font-bold flex items-center gap-1.5">
-                        <MapPin className="w-3 h-3 text-[var(--color-slate)]" />
-                        {unit.warehouseName || 'Unassigned'}
-                    </span>
-                    {unit.shelfLocation && (
-                         <span className="text-[9px] text-[var(--color-slate)] uppercase tracking-widest font-black ml-4.5 opacity-50">{unit.shelfLocation}</span>
+            {/* Middle: Product & Category & Vendor */}
+            <div className="min-w-0">
+                <span className="text-sm font-bold text-white uppercase tracking-tight leading-tight block truncate" title={unit.productName}>
+                    {unit.productName}
+                </span>
+                <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                    <span className="text-[10px] text-[var(--color-slate)] capitalize opacity-80">{unit.categoryName}</span>
+                    {isAdmin && (
+                        <span className="text-[9px] font-black text-[var(--color-gold)] bg-[var(--color-gold)]/10 px-2 py-0.5 rounded-full border border-[var(--color-gold)]/20 uppercase tracking-widest max-w-[200px] truncate" title={unit.vendorName}>
+                            {unit.vendorName || "Platform"}
+                        </span>
                     )}
                 </div>
+            </div>
 
-                <div className="flex items-center gap-1">
-                    <button onClick={onUpdateLocation} className="p-2.5 rounded-lg bg-blue-500/10 text-blue-400 hover:bg-blue-500 hover:text-white transition-all shadow-sm" title="Update Location">
-                        <MapPin className="w-4.5 h-4.5" />
+            {/* Bottom: Location & Action buttons */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2.5 border-t border-white/5">
+                <div className="flex items-center gap-2 min-w-0">
+                    <MapPin className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                    <div className="min-w-0 text-xs">
+                        <span className="text-white font-bold truncate block">{unit.warehouseName || 'Unassigned Warehouse'}</span>
+                        {unit.shelfLocation && (
+                            <span className="text-[10px] text-[var(--color-slate)] font-mono opacity-60 truncate block">{unit.shelfLocation}</span>
+                        )}
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-1.5 justify-end flex-wrap">
+                    <button onClick={onUpdateLocation} className="p-2 rounded-xl bg-blue-500/10 text-blue-400 hover:bg-blue-500 hover:text-white transition-all border border-blue-500/20" title="Update Location">
+                        <MapPin className="w-4 h-4" />
                     </button>
-                    <button onClick={() => setViewLogsUnit(unit)} className="p-2.5 rounded-lg bg-white/5 text-white hover:bg-white/10 transition-all shadow-sm" title="View History">
-                        <HistoryIcon className="w-4.5 h-4.5" />
+                    <button onClick={() => setViewLogsUnit(unit)} className="p-2 rounded-xl bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white transition-all border border-white/10" title="View History">
+                        <HistoryIcon className="w-4 h-4" />
                     </button>
-                    <button onClick={() => onViewPassport(unit.assetTagCode)} className="p-2.5 rounded-lg bg-[var(--color-gold)]/10 text-[var(--color-gold)] hover:bg-[var(--color-gold)] hover:text-navy transition-all shadow-sm" title="View Passport">
-                        <Eye className="w-4.5 h-4.5" />
+                    <button onClick={() => onViewPassport(unit.assetTagCode)} className="p-2 rounded-xl bg-[var(--color-gold)]/10 text-[var(--color-gold)] hover:bg-[var(--color-gold)] hover:text-black transition-all border border-[var(--color-gold)]/20" title="View Passport">
+                        <Eye className="w-4 h-4" />
                     </button>
-                    <button onClick={onInspect} className="p-2.5 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500 hover:text-white transition-all shadow-sm" title="Log Inspection">
-                        <CheckCircle2 className="w-4.5 h-4.5" />
+                    <button onClick={onInspect} className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500 hover:text-white transition-all border border-emerald-500/20" title="Log Inspection">
+                        <CheckCircle2 className="w-4 h-4" />
                     </button>
-                    <button onClick={onMaintenance} className={`p-2.5 rounded-lg transition-all shadow-sm ${unit.availabilityStatus === 'in_maintenance' ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20' : 'bg-white/5 text-slate-400 hover:bg-red-500 hover:text-white'}`} title={unit.availabilityStatus === 'in_maintenance' ? 'Return to Warehouse' : 'Mark Maintenance'}>
-                        <Wrench className="w-4.5 h-4.5" />
+                    <button onClick={onMaintenance} className={`p-2 rounded-xl transition-all border ${unit.availabilityStatus === 'in_maintenance' ? 'bg-orange-500 text-white border-orange-400 shadow-md shadow-orange-500/20' : 'bg-white/5 text-slate-400 border-white/10 hover:bg-red-500 hover:text-white'}`} title={unit.availabilityStatus === 'in_maintenance' ? 'Return to Warehouse' : 'Mark Maintenance'}>
+                        <Wrench className="w-4 h-4" />
                     </button>
                 </div>
             </div>

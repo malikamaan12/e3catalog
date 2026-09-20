@@ -273,6 +273,8 @@ export function Navbar() {
                                         <DrawerItem><MobileLink href="/admin" label="🏠 Dashboard" close={() => setMobileOpen(false)} /></DrawerItem>
                                         <DrawerItem>{hasProductsAccess && <MobileLink href="/admin/products" label={isVendor ? "📦 My Catalog" : "📦 Products"} close={() => setMobileOpen(false)} />}</DrawerItem>
                                         <DrawerItem>{hasInventoryAccess && <MobileLink href="/admin/inventory" label="🏗️ Inventory" close={() => setMobileOpen(false)} />}</DrawerItem>
+                                        <DrawerItem>{hasInventoryAccess && <MobileLink href="/admin/warehouses" label="🏢 Warehouses" close={() => setMobileOpen(false)} />}</DrawerItem>
+                                        <DrawerItem>{hasInventoryAccess && <MobileLink href="/admin/fleet" label="🚛 Fleet & Logistics" close={() => setMobileOpen(false)} />}</DrawerItem>
                                         <DrawerItem>{isAnyAdmin && <MobileLink href="/admin/bookings" label="📅 Bookings" close={() => setMobileOpen(false)} />}</DrawerItem>
                                         <DrawerItem>{isSalesRepAdmin && <MobileLink href="/admin/categories" label="🏷️ Categories" close={() => setMobileOpen(false)} />}</DrawerItem>
                                         <DrawerItem><div className="h-px bg-white/5 my-6 mx-2" /></DrawerItem>
