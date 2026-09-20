@@ -45,6 +45,7 @@ const ROLE_PERMISSIONS: Record<string, Set<PermissionKey>> = {
         "modify_inventory",
         "override_lifecycle_state",
         "review_vendor_kyc",
+        "view_audit_logs",
         "manage_platform_settings",
         "export_sensitive_data",
         "manage_users",
