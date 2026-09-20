@@ -96,8 +96,12 @@ export default function VerifyEmailPage() {
         <div className="min-h-screen bg-slate-950 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
             <div className="sm:mx-auto sm:w-full sm:max-w-md">
                 <div className="text-center">
-                    <Link href="/" className="inline-block text-2xl font-bold tracking-tight text-white mb-2">
-                        E3 <span className="text-amber-500">Rentals</span>
+                    <Link href="/" className="inline-flex justify-center mb-4 group">
+                        <img
+                            src="/logo.png"
+                            alt="E3 Rentals Logo"
+                            className="h-10 w-auto object-contain group-hover:scale-105 transition-transform duration-300"
+                        />
                     </Link>
                     <h2 className="text-xl font-semibold text-slate-100">Account Verification</h2>
                 </div>

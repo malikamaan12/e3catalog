@@ -60,11 +60,12 @@ export default function SignupPage() {
             <div className="absolute bottom-0 left-0 -ml-32 -mb-32 w-96 h-96 rounded-full bg-navy-400/20 blur-3xl opacity-50 pointer-events-none" />
 
             <div className="sm:mx-auto sm:w-full sm:max-w-md relative z-10">
-                <Link href="/" className="flex items-center justify-center gap-2 mb-8 group">
-                    <Box className="h-10 w-10 text-gold group-hover:scale-110 transition-transform duration-300" />
-                    <span className="text-2xl font-bold tracking-tight text-white uppercase font-outfit">
-                        E3 <span className="font-light text-navy-300">Rentals</span>
-                    </span>
+                <Link href="/" className="flex items-center justify-center mb-8 group">
+                    <img
+                        src="/logo.png"
+                        alt="E3 Rentals Logo"
+                        className="h-12 md:h-14 w-auto object-contain group-hover:scale-105 transition-transform duration-300"
+                    />
                 </Link>
                 <h2 className="mt-6 text-center text-3xl font-bold tracking-tight text-white font-outfit">
                     Create a Client Account

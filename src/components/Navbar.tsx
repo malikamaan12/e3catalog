@@ -84,7 +84,7 @@ export function Navbar() {
                     <img
                         src="/logo.png"
                         alt="E3 Rentals Logo"
-                        className="h-10 md:h-12 w-auto object-contain block"
+                        className="h-9 md:h-11 w-auto object-contain block group-hover:scale-105 transition-transform duration-300"
                         onError={(e) => {
                             // Fallback if image fails
                             e.currentTarget.style.display = 'none';
