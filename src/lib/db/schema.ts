@@ -306,6 +306,53 @@ export const productTags = pgTable("product_tags", {
     tagId: varchar("tag_id", { length: 255 }).notNull().references(() => tags.id),
 });
 
+// ─── Warehouse Layout & Spatial Digital Twin Types ───
+export interface WarehouseLayoutElement {
+    id: string;
+    type: "rack" | "passage" | "dock_door" | "staging" | "quarantine" | "obstacle" | "packing_station";
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    rotation?: number;
+    label: string;
+    zoneId?: string;
+    zoneCode?: string;
+    rackCode?: string;
+    aisle?: string;
+    levels?: number;
+    capacityPerLevel?: number;
+    color?: string;
+    status?: "active" | "maintenance" | "dead_spot";
+    orientation?: "horizontal" | "vertical";
+}
+
+export interface WarehousePassage {
+    id: string;
+    name: string;
+    type: "forklift_main" | "pedestrian_lane" | "cross_aisle";
+    x1: number;
+    y1: number;
+    x2: number;
+    y2: number;
+    width: number;
+}
+
+export interface WarehouseLayoutConfig {
+    dimensions: {
+        widthMeters: number;
+        lengthMeters: number;
+        gridCols: number;
+        gridRows: number;
+        gridScaleMeters: number;
+    };
+    elements: WarehouseLayoutElement[];
+    passages?: WarehousePassage[];
+    defaultAisleWidth?: number;
+    updatedAt?: string;
+    version?: number;
+}
+
 // ─── Vendor Warehouses ───
 export const vendorWarehouses = pgTable("vendor_warehouses", {
     id: varchar("id", { length: 255 }).primaryKey(),
@@ -314,6 +361,7 @@ export const vendorWarehouses = pgTable("vendor_warehouses", {
     address: varchar("address", { length: 500 }),
     city: varchar("city", { length: 255 }),
     isDefault: boolean("is_default").default(false),
+    layoutConfig: jsonb("layout_config").$type<WarehouseLayoutConfig>(),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import { 
     Grid, 
     Plus, 
@@ -246,6 +247,16 @@ export default function WarehouseZonesPage() {
                             <option key={w.id} value={w.id}>{w.name}</option>
                         ))}
                     </select>
+
+                    {selectedWarehouseId && (
+                        <Link
+                            href={`/admin/warehouses/${selectedWarehouseId}/layout`}
+                            className="flex items-center gap-1.5 bg-[var(--color-gold)] text-black text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl shadow-lg shadow-amber-500/10 hover:brightness-110 transition-all"
+                        >
+                            <Grid className="w-4 h-4" />
+                            Floor Plan Digital Twin
+                        </Link>
+                    )}
 
                     <button
                         onClick={() => setShowPutawayModal(true)}

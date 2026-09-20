@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import {
     Warehouse, Plus, Trash2, Edit3, MapPin, Star, X, Package,
-    CheckCircle2, AlertTriangle
+    CheckCircle2, AlertTriangle, Grid, Sparkles, Eye
 } from "lucide-react";
 
 interface WarehouseData {
@@ -184,11 +185,23 @@ export default function WarehousesPage() {
                                 )}
                                 {w.city && <p className="text-xs text-[var(--color-slate)] mb-3">{w.city}</p>}
 
-                                <div className="flex items-center gap-2 mt-4 mb-6">
+                                <div className="flex flex-wrap items-center gap-2 mt-4 mb-5">
                                     <div className="px-3 py-1 rounded-lg bg-white/5 border border-white/10 text-[10px] font-black text-white/60 uppercase tracking-widest flex items-center gap-1">
                                         <Package className="w-3 h-3" /> {w.unitCount} Units
                                     </div>
+                                    <div className="px-2.5 py-1 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-[10px] font-black text-cyan-400 uppercase tracking-widest flex items-center gap-1">
+                                        <Grid className="w-3 h-3" /> Digital Twin
+                                    </div>
                                 </div>
+
+                                {/* Primary Action: Interactive Floor Plan */}
+                                <Link
+                                    href={`/admin/warehouses/${w.id}/layout`}
+                                    className="w-full mb-3 py-2.5 rounded-xl bg-[var(--color-gold)] text-black font-bold text-xs uppercase tracking-wider hover:brightness-110 shadow-lg shadow-amber-500/10 transition-all flex items-center justify-center gap-2 group"
+                                >
+                                    <Grid className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                                    <span>Interactive Floor Plan</span>
+                                </Link>
 
                                 <div className="flex gap-2">
                                     {!w.isDefault && (
