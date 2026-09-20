@@ -364,6 +364,7 @@ export const inventoryUnits = pgTable("inventory_units", {
     productId: varchar("product_id", { length: 255 }).notNull().references(() => products.id),
     vendorId: varchar("vendor_id", { length: 255 }).notNull().references(() => vendors.id),
     assetTagCode: varchar("asset_tag_code", { length: 255 }).notNull().unique(), // e.g. E3-TRUSS-001
+    rfidTag: varchar("rfid_tag", { length: 100 }),
     serialNumber: varchar("serial_number", { length: 255 }),
     conditionStatus: varchar("condition_status", { length: 50 }).notNull().default("excellent"),
     availabilityStatus: varchar("availability_status", { length: 50 }).notNull().default("in_warehouse"),
@@ -395,6 +396,7 @@ export const inventoryUnits = pgTable("inventory_units", {
         productIdIdx: index("inventory_units_product_id_idx").on(table.productId),
         vendorIdIdx: index("inventory_units_vendor_id_idx").on(table.vendorId),
         assetTagIdx: index("inventory_units_tag_idx").on(table.assetTagCode),
+        rfidTagIdx: index("inventory_units_rfid_tag_idx").on(table.rfidTag),
         statusIdx: index("inventory_units_status_idx").on(table.availabilityStatus),
         binIdIdx: index("inventory_units_bin_id_idx").on(table.binId),
         healthScoreIdx: index("inventory_units_health_score_idx").on(table.healthScore),

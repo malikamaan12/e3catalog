@@ -4,6 +4,7 @@ import { inspectionLogs, inventoryUnits, users } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { getSession } from "@/lib/auth";
+import { createWorkOrderAndClaimFromReturn } from "@/lib/warehouse/maintenance-bridge";
 
 // POST — Create a new inspection log
 export async function POST(req: NextRequest) {
@@ -40,8 +41,23 @@ export async function POST(req: NextRequest) {
             updatedAt: new Date(),
         };
 
-        if (conditionAfter === "maintenance_required") {
+        let workOrderInfo = undefined;
+        let damageClaimInfo = undefined;
+
+        if (["maintenance_required", "damaged", "poor", "needs_repair"].includes(conditionAfter)) {
             updates.availabilityStatus = "in_maintenance";
+            const bridgeRes = await createWorkOrderAndClaimFromReturn({
+                unitId,
+                inspectionLogId: log[0].id,
+                conditionAfter,
+                reportedIssue: notes || `Inspection flagged condition: ${conditionAfter}`,
+                actorId: session.id,
+                actorName: session.email || "Technician",
+            });
+            if (bridgeRes.success) {
+                workOrderInfo = bridgeRes.workOrder;
+                damageClaimInfo = bridgeRes.damageClaim;
+            }
         } else if (["excellent", "good"].includes(conditionAfter)) {
             // Only move back to in_warehouse if it was previously in maintenance
             // Don't override 'on_rent' status if they are just doing a routine check in the field
@@ -55,7 +71,11 @@ export async function POST(req: NextRequest) {
             .set(updates)
             .where(eq(inventoryUnits.id, unitId));
 
-        return NextResponse.json(log[0], { status: 201 });
+        return NextResponse.json({
+            ...log[0],
+            workOrder: workOrderInfo,
+            damageClaim: damageClaimInfo,
+        }, { status: 201 });
     } catch (error) {
         console.error("Inspection Log Error:", error);
         return NextResponse.json({ error: "Failed to log inspection" }, { status: 500 });

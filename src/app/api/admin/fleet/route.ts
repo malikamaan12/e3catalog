@@ -23,6 +23,7 @@ export async function GET(req: NextRequest) {
             productId: inventoryUnits.productId,
             vendorId: inventoryUnits.vendorId,
             assetTagCode: inventoryUnits.assetTagCode,
+            rfidTag: inventoryUnits.rfidTag,
             serialNumber: inventoryUnits.serialNumber,
             conditionStatus: inventoryUnits.conditionStatus,
             availabilityStatus: inventoryUnits.availabilityStatus,
@@ -79,7 +80,7 @@ export async function POST(req: NextRequest) {
 
     try {
         const body = await req.json();
-        const { productId, serialNumber, assetTagCode, warehouseLocation, warehouseId, shelfLocation, conditionStatus } = body;
+        const { productId, serialNumber, assetTagCode, rfidTag, warehouseLocation, warehouseId, shelfLocation, conditionStatus } = body;
 
         // Determine Vendor ID
         let vendorIdToUse = body.vendorId;
@@ -100,6 +101,7 @@ export async function POST(req: NextRequest) {
             productId,
             vendorId: vendorIdToUse,
             assetTagCode: assetTagCode || `E3-${Math.random().toString(36).substring(2, 7).toUpperCase()}-${String(Date.now()).slice(-3)}`,
+            rfidTag: rfidTag ? rfidTag.trim().toUpperCase() : null,
             serialNumber: serialNumber || null,
             warehouseLocation: warehouseLocation || null,
             warehouseId: warehouseId || null,
@@ -114,7 +116,7 @@ export async function POST(req: NextRequest) {
     } catch (error: any) {
         console.error("Fleet Creation Error:", error);
         if (error.code === "23505") {
-            return NextResponse.json({ error: "Asset tag code already exists. Please use a unique code." }, { status: 409 });
+            return NextResponse.json({ error: "Asset tag code or RFID tag already exists. Please use a unique identifier." }, { status: 409 });
         }
         return NextResponse.json({ error: "Failed to create unit" }, { status: 500 });
     }
@@ -143,6 +145,7 @@ export async function PATCH(req: NextRequest) {
         if (updates.shelfLocation !== undefined) allowedFields.shelfLocation = updates.shelfLocation;
         if (updates.lastInspectionDate) allowedFields.lastInspectionDate = new Date(updates.lastInspectionDate);
         if (updates.serialNumber !== undefined) allowedFields.serialNumber = updates.serialNumber;
+        if (updates.rfidTag !== undefined) allowedFields.rfidTag = updates.rfidTag ? updates.rfidTag.trim().toUpperCase() : null;
 
         const updated = await db.update(inventoryUnits)
             .set({ 

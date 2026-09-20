@@ -5,7 +5,7 @@ import {
     QrCode, Plus, Search, Printer, CheckCircle2,
     Package, RefreshCcw, ScanLine, X, Camera,
     Building2, List, History as HistoryIcon,
-    MapPin, AlertTriangle, TrendingUp
+    MapPin, AlertTriangle, TrendingUp, Radio, Tag, Check, Loader2
 } from "lucide-react";
 import { QRCodeCanvas } from "qrcode.react";
 import FleetRoiCockpit from "@/components/fleet/FleetRoiCockpit";
@@ -18,6 +18,7 @@ interface InventoryUnit {
     vendorId: string;
     vendorName: string;
     assetTagCode: string;
+    rfidTag?: string | null;
     serialNumber: string;
     conditionStatus: 'excellent' | 'good' | 'fair' | 'maintenance_required' | 'retired';
     availabilityStatus: 'in_warehouse' | 'on_rent' | 'in_maintenance';
@@ -38,6 +39,13 @@ export default function WarehouseFleetPage() {
     // Simplification for warehouse view: List view with grouping toggle
     const [groupByProduct, setGroupByProduct] = useState(false);
 
+    // RFID Commissioning Modal state
+    const [commissionModalOpen, setCommissionModalOpen] = useState(false);
+    const [commissionIdentifier, setCommissionIdentifier] = useState("");
+    const [commissionRfid, setCommissionRfid] = useState("");
+    const [commissionLoading, setCommissionLoading] = useState(false);
+    const [commissionFeedback, setCommissionFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
     const fetchFleet = useCallback(async () => {
         setLoading(true);
         try {
@@ -52,6 +60,42 @@ export default function WarehouseFleetPage() {
             setLoading(false);
         }
     }, []);
+
+    const handleCommissionSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!commissionIdentifier.trim() || !commissionRfid.trim()) return;
+        setCommissionLoading(true);
+        setCommissionFeedback(null);
+        try {
+            const res = await fetch("/api/admin/fleet/pair-rfid", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    identifier: commissionIdentifier.trim(),
+                    rfidTag: commissionRfid.trim(),
+                }),
+            });
+            const data = await res.json();
+            if (res.ok) {
+                setCommissionFeedback({ type: "success", text: data.message || "RFID Tag paired successfully!" });
+                setCommissionRfid("");
+                fetchFleet();
+            } else {
+                setCommissionFeedback({ type: "error", text: data.error || "Failed to pair RFID tag." });
+            }
+        } catch {
+            setCommissionFeedback({ type: "error", text: "Network error while pairing tag." });
+        } finally {
+            setCommissionLoading(false);
+        }
+    };
+
+    const openCommissionForUnit = (unit: InventoryUnit) => {
+        setCommissionIdentifier(unit.assetTagCode);
+        setCommissionRfid(unit.rfidTag || "");
+        setCommissionFeedback(null);
+        setCommissionModalOpen(true);
+    };
 
     useEffect(() => {
         fetchFleet();
@@ -107,6 +151,17 @@ export default function WarehouseFleetPage() {
 
                     <button onClick={fetchFleet} aria-label="Refresh fleet index" className="p-3 rounded-xl glass border border-white/10 hover:text-white transition-all text-[var(--color-slate)] shadow-xl">
                         <RefreshCcw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                    </button>
+                    <button 
+                        onClick={() => {
+                            setCommissionIdentifier("");
+                            setCommissionRfid("");
+                            setCommissionFeedback(null);
+                            setCommissionModalOpen(true);
+                        }}
+                        className="flex items-center gap-2 px-4 py-3 rounded-xl bg-purple-600/20 border border-purple-500/40 text-purple-300 font-black text-[10px] uppercase tracking-[0.15em] hover:bg-purple-600/30 transition-all shadow-xl"
+                    >
+                        <Radio className="w-3.5 h-3.5 text-purple-400 animate-pulse" /> Pair RFID
                     </button>
                     <button className="flex items-center gap-3 px-6 py-3 rounded-xl bg-[var(--color-gold)] text-[var(--color-navy)] font-black text-[10px] uppercase tracking-[0.2em] hover:scale-105 active:scale-95 transition-all shadow-2xl shadow-[var(--color-gold)]/20">
                         <Plus className="w-4 h-4" /> Add Asset
@@ -179,7 +234,25 @@ export default function WarehouseFleetPage() {
                                             {unit.availabilityStatus.replace('_', ' ')}
                                         </span>
                                     </div>
-                                    <span className="text-[9px] font-black text-[var(--color-slate)] uppercase tracking-[0.2em] opacity-40">Serial: {unit.serialNumber || 'UNLOGGED_PROTOCOL'}</span>
+                                    <div className="flex flex-wrap items-center gap-2 mt-1">
+                                        <span className="text-[9px] font-black text-[var(--color-slate)] uppercase tracking-[0.2em] opacity-40">Serial: {unit.serialNumber || 'UNLOGGED_PROTOCOL'}</span>
+                                        {unit.rfidTag ? (
+                                            <span 
+                                                onClick={() => openCommissionForUnit(unit)}
+                                                className="text-[8px] font-black uppercase px-2 py-0.5 rounded border border-purple-500/40 bg-purple-500/10 text-purple-300 flex items-center gap-1 cursor-pointer hover:bg-purple-500/20 transition-colors"
+                                                title="Click to re-assign or update RFID tag"
+                                            >
+                                                <Radio className="w-2.5 h-2.5 text-purple-400" /> {unit.rfidTag}
+                                            </span>
+                                        ) : (
+                                            <button 
+                                                onClick={(e) => { e.stopPropagation(); openCommissionForUnit(unit); }}
+                                                className="text-[8px] font-black uppercase px-2 py-0.5 rounded border border-dashed border-white/20 text-[var(--color-slate)] hover:border-purple-400 hover:text-purple-300 hover:bg-purple-500/10 transition-all flex items-center gap-1"
+                                            >
+                                                <Radio className="w-2.5 h-2.5" /> + Pair RFID
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
                                 <div className="flex flex-col items-end gap-1 shrink-0">
                                     <div className="p-2 bg-white rounded-lg shadow-2xl group-hover:scale-105 transition-transform opacity-60 group-hover:opacity-100">
@@ -212,8 +285,13 @@ export default function WarehouseFleetPage() {
                         </div>
 
                         <div className="flex md:flex-col items-center justify-end gap-3 pt-4 md:pt-0 md:pl-6 border-t md:border-t-0 md:border-l border-white/5">
-                            <button aria-label="Scan barcode" className="flex-1 md:flex-none flex items-center justify-center gap-2 p-3 rounded-xl glass border border-white/10 hover:border-[var(--color-gold)]/40 hover:text-[var(--color-gold)] transition-all h-12 w-full md:w-12">
-                                <ScanLine className="w-5 h-5 shadow-inner" />
+                            <button 
+                                onClick={() => openCommissionForUnit(unit)}
+                                title="Pair / edit RFID tag"
+                                aria-label="Scan or pair RFID tag" 
+                                className="flex-1 md:flex-none flex items-center justify-center gap-2 p-3 rounded-xl glass border border-white/10 hover:border-purple-400/50 hover:text-purple-300 transition-all h-12 w-full md:w-12"
+                            >
+                                <Radio className="w-5 h-5 shadow-inner" />
                             </button>
                             <button aria-label="View asset history" className="flex-1 md:flex-none flex items-center justify-center gap-2 p-3 rounded-xl glass border border-white/10 hover:bg-white/5 transition-all h-12 w-full md:w-12">
                                 <HistoryIcon className="w-5 h-5 opacity-40" />
@@ -223,6 +301,93 @@ export default function WarehouseFleetPage() {
                 ))}
             </div>
             </>
+            )}
+
+            {/* ─── RFID Tag Commissioning Modal ─── */}
+            {commissionModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+                    <div className="relative bg-[var(--color-navy)] border border-purple-500/30 rounded-3xl p-6 md:p-8 w-full max-w-md shadow-[0_0_80px_rgba(168,85,247,0.2)]">
+                        <div className="flex items-center justify-between mb-6">
+                            <div className="flex items-center gap-3">
+                                <div className="p-3 rounded-xl bg-purple-500/20 border border-purple-500/40 text-purple-300">
+                                    <Radio className="w-5 h-5 animate-pulse" />
+                                </div>
+                                <div>
+                                    <h3 className="font-[family-name:var(--font-heading)] font-black text-lg text-white uppercase tracking-tight italic">
+                                        Pair <span className="text-purple-400">RFID Tag</span>
+                                    </h3>
+                                    <p className="text-[9px] font-black text-[var(--color-slate)] uppercase tracking-[0.2em] opacity-60">High-Speed Asset Commissioning</p>
+                                </div>
+                            </div>
+                            <button 
+                                onClick={() => setCommissionModalOpen(false)}
+                                className="p-2 rounded-lg text-[var(--color-slate)] hover:text-white hover:bg-white/5 transition-colors"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleCommissionSubmit} className="flex flex-col gap-4">
+                            <div>
+                                <label className="text-[9px] font-black text-[var(--color-slate)] uppercase tracking-wider block mb-1">
+                                    1. Target Asset Code or S/N
+                                </label>
+                                <input 
+                                    type="text"
+                                    value={commissionIdentifier}
+                                    onChange={(e) => setCommissionIdentifier(e.target.value)}
+                                    placeholder="e.g. E3-TRUSS-001"
+                                    className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white font-mono uppercase tracking-wider focus:outline-none focus:border-purple-400 transition-colors"
+                                    required
+                                />
+                            </div>
+
+                            <div>
+                                <label className="text-[9px] font-black text-[var(--color-slate)] uppercase tracking-wider block mb-1">
+                                    2. RFID EPC (Pull Sled Trigger to Scan)
+                                </label>
+                                <input 
+                                    type="text"
+                                    value={commissionRfid}
+                                    onChange={(e) => setCommissionRfid(e.target.value)}
+                                    placeholder="e.g. E280117000000201..."
+                                    className="w-full bg-black/40 border border-purple-500/40 rounded-xl px-4 py-3 text-sm text-purple-300 font-mono uppercase tracking-wider focus:outline-none focus:border-purple-400 transition-colors"
+                                    autoFocus
+                                    required
+                                />
+                            </div>
+
+                            {commissionFeedback && (
+                                <div className={`p-3 rounded-xl border text-[10px] font-bold uppercase tracking-wider flex items-center gap-2 ${
+                                    commissionFeedback.type === "success" 
+                                        ? "bg-emerald-950/60 border-emerald-500/40 text-emerald-300"
+                                        : "bg-red-950/60 border-red-500/40 text-red-300"
+                                }`}>
+                                    {commissionFeedback.type === "success" ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <AlertTriangle className="w-4 h-4 shrink-0" />}
+                                    <span>{commissionFeedback.text}</span>
+                                </div>
+                            )}
+
+                            <div className="flex items-center justify-end gap-3 mt-4 pt-4 border-t border-white/5">
+                                <button 
+                                    type="button" 
+                                    onClick={() => setCommissionModalOpen(false)}
+                                    className="px-4 py-2.5 rounded-xl border border-white/10 text-[10px] font-black uppercase tracking-wider text-[var(--color-slate)] hover:text-white transition-colors"
+                                >
+                                    Close
+                                </button>
+                                <button 
+                                    type="submit"
+                                    disabled={commissionLoading}
+                                    className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-black text-[10px] uppercase tracking-wider transition-all disabled:opacity-50 shadow-lg shadow-purple-600/30"
+                                >
+                                    {commissionLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                                    Pair & Save
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
             )}
         </div>
     );

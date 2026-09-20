@@ -12,11 +12,15 @@ import {
     Camera,
     Clock,
     Trash2,
-    FileSignature
+    FileSignature,
+    Sparkles,
+    X,
+    Layers
 } from "lucide-react";
 import { format } from "date-fns";
 import QRScannerModal from "@/components/warehouse/QRScannerModal";
-import { finalizeTransport } from "@/actions/dispatch";
+import DigitalHandoverModal from "@/components/warehouse/DigitalHandoverModal";
+import KitAuditModal from "@/components/warehouse/KitAuditModal";
 import { offlineBuffer } from "@/lib/offline-sync-buffer";
 import OfflineSyncBanner from "@/components/warehouse/OfflineSyncBanner";
 
@@ -54,9 +58,50 @@ export default function FulfillmentPage() {
     
     // Finalize Modal State
     const [finalizeModalOpen, setFinalizeModalOpen] = useState(false);
-    const [driverName, setDriverName] = useState("");
-    const [vehiclePlate, setVehiclePlate] = useState("");
-    const [isFinalizing, setIsFinalizing] = useState(false);
+
+    // Kit Audit Modal State
+    const [kitAuditOpen, setKitAuditOpen] = useState(false);
+
+    // Cross-Dock State
+    const [crossDockAlert, setCrossDockAlert] = useState<{
+        unitId: string;
+        assetTagCode: string;
+        productName: string;
+        bookingId: string;
+        projectName: string;
+        hoursUntil: number;
+        stagingBay: string;
+    } | null>(null);
+    const [crossDockExecuting, setCrossDockExecuting] = useState(false);
+
+    const executeCrossDock = async () => {
+        if (!crossDockAlert) return;
+        setCrossDockExecuting(true);
+        try {
+            const res = await fetch("/api/admin/warehouse/cross-dock", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    unitId: crossDockAlert.unitId,
+                    bookingId: crossDockAlert.bookingId,
+                    stagingBay: crossDockAlert.stagingBay,
+                }),
+            });
+            const data = await res.json();
+            if (res.ok && data.success) {
+                addEntry(crossDockAlert.assetTagCode, {
+                    id: crypto.randomUUID(),
+                    status: "success",
+                    message: `🚀 Cross-docked directly to ${crossDockAlert.projectName} (${crossDockAlert.stagingBay})`,
+                });
+                setCrossDockAlert(null);
+            }
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setCrossDockExecuting(false);
+        }
+    };
 
     const inputRef = useRef<HTMLInputElement>(null);
 
@@ -148,6 +193,26 @@ export default function FulfillmentPage() {
             if (res.ok) {
                 updateEntry(scanId, { status: "success", message: data.message || "Operation successful" });
                 setLastScanResult({ status: "success", timestamp: Date.now() });
+
+                // Check for fast-turnaround cross-dock opportunity
+                if (action === "return") {
+                    fetch(`/api/admin/warehouse/cross-dock?identifier=${encodeURIComponent(cleanTag)}`)
+                        .then(r => r.json())
+                        .then(cdData => {
+                            if (cdData.isCrossDock && cdData.targetBooking) {
+                                setCrossDockAlert({
+                                    unitId: cdData.unitId,
+                                    assetTagCode: cdData.assetTagCode,
+                                    productName: cdData.productName,
+                                    bookingId: cdData.targetBooking.id,
+                                    projectName: cdData.targetBooking.projectName || cdData.targetBooking.customerName,
+                                    hoursUntil: cdData.targetBooking.hoursUntilDeparture,
+                                    stagingBay: cdData.targetBooking.stagingBay,
+                                });
+                            }
+                        })
+                        .catch(() => {});
+                }
             } else {
                 updateEntry(scanId, { status: "error", message: data.error || "Scan failed" });
                 setLastScanResult({ status: "error", timestamp: Date.now() });
@@ -187,35 +252,102 @@ export default function FulfillmentPage() {
         ));
     }
 
+    // High-Speed RFID Burst Ingestion Handler
+    const processBatchTags = useCallback(async (incomingTags: string[]) => {
+        if (!incomingTags || incomingTags.length === 0) return;
+        const distinctTags = Array.from(new Set(incomingTags.map(t => t.trim().toUpperCase()).filter(Boolean)));
+        if (distinctTags.length === 0) return;
+
+        if (action === "dispatch" && !bookingId) {
+            setLastScanResult({ status: "error", timestamp: Date.now() });
+            distinctTags.forEach(tag => addEntry(tag, { status: "error", message: "Please select a booking first." }));
+            return;
+        }
+
+        // Add pending entries for all tags in batch
+        const batchMap = new Map<string, string>();
+        distinctTags.forEach(tag => {
+            const scanId = crypto.randomUUID();
+            batchMap.set(tag, scanId);
+            addEntry(tag, { 
+                id: scanId,
+                status: "pending", 
+                message: `Verifying in RFID batch (${distinctTags.length} items)...` 
+            });
+        });
+
+        setLoading(true);
+
+        const body: any = { 
+            tags: distinctTags, 
+            action: `bulk_${action}`,
+            bookingId: bookingId || "auto"
+        };
+        if (action === "return") {
+            body.condition = returnCondition;
+            body.notes = returnNotes || undefined;
+        }
+
+        const isOffline = typeof navigator !== "undefined" && !navigator.onLine;
+        if (isOffline) {
+            offlineBuffer.enqueueAction({
+                actionType: "fulfillment_scan",
+                endpoint: "/api/admin/fulfillment",
+                payload: body,
+                description: `Offline RFID Batch (${action.toUpperCase()}): ${distinctTags.length} items`,
+            });
+            distinctTags.forEach(tag => {
+                const scanId = batchMap.get(tag);
+                if (scanId) updateEntry(scanId, { status: "success", message: `Buffered offline in batch (${tag}).` });
+            });
+            setLastScanResult({ status: "success", timestamp: Date.now() });
+            setLoading(false);
+            return;
+        }
+
+        try {
+            const res = await fetch("/api/admin/fulfillment", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(body),
+            });
+            const data = await res.json();
+
+            if (res.ok && data.success) {
+                distinctTags.forEach(tag => {
+                    const scanId = batchMap.get(tag);
+                    if (scanId) updateEntry(scanId, { status: "success", message: data.message || `Processed in ${data.action}` });
+                });
+                setLastScanResult({ status: "success", timestamp: Date.now() });
+            } else {
+                distinctTags.forEach(tag => {
+                    const scanId = batchMap.get(tag);
+                    if (scanId) updateEntry(scanId, { status: "error", message: data.error || "Batch scan failed" });
+                });
+                setLastScanResult({ status: "error", timestamp: Date.now() });
+            }
+        } catch {
+            offlineBuffer.enqueueAction({
+                actionType: "fulfillment_scan",
+                endpoint: "/api/admin/fulfillment",
+                payload: body,
+                description: `Offline RFID Batch (${action.toUpperCase()}): ${distinctTags.length} items`,
+            });
+            distinctTags.forEach(tag => {
+                const scanId = batchMap.get(tag);
+                if (scanId) updateEntry(scanId, { status: "success", message: `Network dropped. Buffered locally (${tag}).` });
+            });
+            setLastScanResult({ status: "success", timestamp: Date.now() });
+        } finally {
+            setLoading(false);
+            setTimeout(() => inputRef.current?.focus(), 100);
+        }
+    }, [action, bookingId, returnCondition, returnNotes]);
+
     // Called when the camera scanner reads a QR code
     const handleCameraScan = (result: string) => {
         // Mode remains open for continuous warehouse bumping
-        // setScannerOpen(false); 
         processTag(result);
-    };
-
-    const handleFinalize = async () => {
-        if (!bookingId || !driverName.trim() || !vehiclePlate.trim()) return;
-        setIsFinalizing(true);
-        try {
-            const res = await finalizeTransport(bookingId, { 
-                driverName, 
-                vehiclePlateNumber: vehiclePlate 
-            });
-            
-            if (res.success) {
-                setFinalizeModalOpen(false);
-                addEntry("SYSTEM", { status: "success", message: "Dispatch Finalized. Generating Manifest..." });
-                // Trigger PDF download via standard Next API route
-                window.open(`/api/pdf/manifest/${bookingId}`, "_blank");
-            } else {
-                addEntry("SYSTEM", { status: "error", message: res.error || "Failed to finalize transport" });
-            }
-        } catch (e: any) {
-            addEntry("SYSTEM", { status: "error", message: "Network error during finalization." });
-        } finally {
-            setIsFinalizing(false);
-        }
     };
 
     const selectedBooking = bookings.find(b => b.id === bookingId);
@@ -226,19 +358,70 @@ export default function FulfillmentPage() {
                 isOpen={scannerOpen}
                 onClose={() => setScannerOpen(false)}
                 onScan={handleCameraScan}
-                title={`Scanning: ${action.toUpperCase()}`}
+                onBatchScan={processBatchTags}
+                title={`Scanning: ${action.toUpperCase()} (RFID Stream Ready)`}
                 lastResult={lastScanResult}
             />
 
-            <header className="flex flex-col gap-1">
-                <h1 className="text-3xl font-[family-name:var(--font-heading)] font-black uppercase tracking-tight text-[var(--color-warm-white)] italic">
-                    Scan to <span className="text-[var(--color-gold)]">{action === "dispatch" ? "Dispatch" : "Return"}</span>
-                </h1>
-                <p className="text-[var(--color-slate)] text-xs mt-1 font-medium tracking-wide uppercase opacity-60">Bump-{action === "dispatch" ? "In" : "Out"} · Multi-input scanner protocol</p>
+            <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <h1 className="text-3xl font-[family-name:var(--font-heading)] font-black uppercase tracking-tight text-[var(--color-warm-white)] italic">
+                        Scan to <span className="text-[var(--color-gold)]">{action === "dispatch" ? "Dispatch" : "Return"}</span>
+                    </h1>
+                    <p className="text-[var(--color-slate)] text-xs mt-1 font-medium tracking-wide uppercase opacity-60">Bump-{action === "dispatch" ? "In" : "Out"} · Multi-input scanner protocol</p>
+                </div>
+                <button
+                    onClick={() => setKitAuditOpen(true)}
+                    className="px-4 py-2.5 rounded-xl border border-purple-500/30 bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 font-bold text-xs uppercase tracking-wider flex items-center gap-2 transition-all self-start sm:self-auto shadow-lg shadow-purple-500/10"
+                >
+                    <Layers className="w-4 h-4" />
+                    Kit & Flight Case Audit
+                </button>
             </header>
 
             {/* Offline Sync Banner */}
             <OfflineSyncBanner className="w-full" />
+
+            {/* Cross-Dock Fast-Turnaround Opportunity Banner */}
+            {crossDockAlert && (
+                <div className="p-5 rounded-2xl bg-gradient-to-r from-amber-500/20 via-orange-500/15 to-amber-500/10 border-2 border-amber-500/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-2xl animate-in zoom-in-95 duration-300">
+                    <div className="flex items-start gap-3.5">
+                        <div className="p-2.5 rounded-xl bg-amber-500/25 text-amber-300 shrink-0 border border-amber-500/30">
+                            <Sparkles className="w-6 h-6 animate-pulse" />
+                        </div>
+                        <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                                <span className="text-xs font-black uppercase tracking-wider text-[var(--color-gold)]">
+                                    🚀 Fast-Turnaround Cross-Dock Opportunity
+                                </span>
+                                <span className="text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-200 border border-amber-500/30">
+                                    Departs in {crossDockAlert.hoursUntil}h
+                                </span>
+                            </div>
+                            <p className="text-xs text-slate-200 leading-relaxed">
+                                Returned unit <strong className="text-white font-mono">{crossDockAlert.assetTagCode}</strong> ({crossDockAlert.productName}) is needed for <strong className="text-amber-300">{crossDockAlert.projectName}</strong>. Bypass rack putaway!
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                        <button
+                            onClick={executeCrossDock}
+                            disabled={crossDockExecuting}
+                            className="px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider bg-[var(--color-gold)] text-black hover:brightness-110 shadow-lg shadow-amber-500/20 transition-all active:scale-95 disabled:opacity-50"
+                        >
+                            {crossDockExecuting ? "Staging..." : "Fast-Track Stage to Bay 02"}
+                        </button>
+                        <button
+                            onClick={() => setCrossDockAlert(null)}
+                            className="p-2.5 rounded-xl text-slate-400 hover:text-white bg-white/5 hover:bg-white/10 transition-colors"
+                            title="Dismiss Cross-Dock Alert"
+                        >
+                            <X className="w-4 h-4" />
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* Action Toggle */}
             <div className="flex gap-2 p-1.5 bg-[var(--color-surface)] rounded-xl border border-white/10 w-full shadow-2xl">
@@ -463,55 +646,33 @@ export default function FulfillmentPage() {
                 </div>
             )}
 
-            {/* Finalize Transport Modal */}
-            {finalizeModalOpen && (
-                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 animate-in fade-in duration-200">
-                    <div className="absolute inset-0 bg-[var(--color-navy)]/90 backdrop-blur-xl" onClick={() => !isFinalizing && setFinalizeModalOpen(false)} />
-                    <div className="relative glass border border-white/10 rounded-2xl p-8 w-full max-w-lg shadow-[0_32px_64px_rgba(0,0,0,0.5)] flex flex-col gap-8 animate-in zoom-in-95 slide-in-from-bottom-10 duration-300">
-                        <div className="flex justify-between items-start">
-                            <div className="flex flex-col gap-1">
-                                <h3 className="text-2xl font-[family-name:var(--font-heading)] font-black text-[var(--color-warm-white)] uppercase tracking-tight italic">
-                                    Finalize <span className="text-[var(--color-gold)]">Transport</span>
-                                </h3>
-                                <p className="text-[10px] text-[var(--color-slate)] uppercase font-black tracking-widest opacity-60">Generate Tri-Party Delivery Manifest</p>
-                            </div>
-                            <button onClick={() => !isFinalizing && setFinalizeModalOpen(false)} className="p-3 text-[var(--color-slate)] hover:text-white bg-white/5 rounded-full transition-all">
-                                <XCircle className="h-6 w-6" />
-                            </button>
-                        </div>
-                        
-                        <div className="flex flex-col gap-6">
-                            <div className="flex flex-col gap-2">
-                                <label className="text-[10px] font-black text-[var(--color-gold)] uppercase tracking-[0.2em] ml-1">Driver Name *</label>
-                                <input
-                                    value={driverName}
-                                    onChange={e => setDriverName(e.target.value)}
-                                    placeholder="Enter full legal name"
-                                    className="w-full bg-black/40 border-2 border-white/10 text-[var(--color-warm-white)] rounded-xl px-5 py-4 text-sm font-bold focus:outline-none focus:border-[var(--color-gold)]/50 transition-all placeholder:text-[var(--color-slate)]/20"
-                                />
-                            </div>
-                            <div className="flex flex-col gap-2">
-                                <label className="text-[10px] font-black text-[var(--color-gold)] uppercase tracking-[0.2em] ml-1">Vehicle Plate Number *</label>
-                                <input
-                                    value={vehiclePlate}
-                                    onChange={e => setVehiclePlate(e.target.value.toUpperCase())}
-                                    placeholder="e.g. KWT-9342"
-                                    className="w-full bg-black/40 border-2 border-white/10 text-[var(--color-warm-white)] rounded-xl px-5 py-4 text-sm font-bold focus:outline-none focus:border-[var(--color-gold)]/50 transition-all placeholder:text-[var(--color-slate)]/20"
-                                />
-                            </div>
-                        </div>
+            {/* Digital Handover & e-POD Signature Modal */}
+            <DigitalHandoverModal
+                isOpen={finalizeModalOpen}
+                onClose={() => setFinalizeModalOpen(false)}
+                bookingId={bookingId}
+                bookingTitle={selectedBooking ? (selectedBooking.projectName || selectedBooking.customerName) : "Outbound Booking"}
+                itemsCount={selectedBooking?.itemsCount || 0}
+                onSuccess={(result) => {
+                    addEntry("SYSTEM", { status: "success", message: result.message || "Handover authorized & signed." });
+                    window.open(result.manifestUrl, "_blank");
+                    setFinalizeModalOpen(false);
+                }}
+            />
 
-                        <button
-                            onClick={handleFinalize}
-                            disabled={!driverName.trim() || !vehiclePlate.trim() || isFinalizing}
-                            className="w-full h-16 flex items-center justify-center gap-4 rounded-xl bg-[var(--color-gold)] hover:bg-[var(--color-gold)]/90 text-[var(--color-navy)] font-black text-xs uppercase tracking-[0.25em] transition-all shadow-2xl disabled:opacity-30 disabled:grayscale active:scale-[0.98]"
-                        >
-                            {isFinalizing ? <Loader2 className="h-6 w-6 animate-spin" /> : <FileSignature className="h-6 w-6" />}
-                            {isFinalizing ? "Generating Logistics Pack..." : "Generate Manifest PDF"}
-                        </button>
-                    </div>
-                </div>
-            )}
+            {/* Flight Case & Kit Integrity Audit Modal */}
+            <KitAuditModal
+                isOpen={kitAuditOpen}
+                onClose={() => setKitAuditOpen(false)}
+                bookingId={bookingId}
+                defaultMode={action === "dispatch" ? "pack" : "return"}
+                onSuccess={(result) => {
+                    addEntry("KIT-AUDIT", {
+                        status: "success",
+                        message: `Kit audit committed (${result.action?.toUpperCase()}): ${result.verifiedCount}/${result.totalItems} items verified.`
+                    });
+                }}
+            />
         </div>
     );
 }

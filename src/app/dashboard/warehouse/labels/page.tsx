@@ -10,6 +10,7 @@ import {
 type Unit = {
     id: string;
     assetTagCode: string;
+    rfidTag?: string | null;
     serialNumber: string | null;
     productName: string | null;
     categoryName: string | null;
@@ -24,6 +25,7 @@ export default function LabelsPage() {
     const [selected, setSelected] = useState<Set<string>>(new Set());
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
+    const [printFormat, setPrintFormat] = useState<"thermal" | "a4">("thermal");
     const [printSize, setPrintSize] = useState<"small" | "medium" | "large">("medium");
 
     const load = useCallback(() => {
@@ -70,8 +72,155 @@ export default function LabelsPage() {
         const selectedUnits = units.filter(u => selected.has(u.id));
         const SITE_URL = window.location.origin;
 
+        if (printFormat === "thermal") {
+            // Standard Industrial 4" x 2" (100mm x 50mm) Thermal Transfer Continuous Roll
+            const labelsHtml = selectedUnits.map(unit => {
+                const url = `${SITE_URL}/passport/${encodeURIComponent(unit.assetTagCode)}`;
+                const cacheElem = document.getElementById(`qr-svg-${unit.id}`);
+                const qrSvg = cacheElem?.querySelector("svg")?.outerHTML || `<img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(url)}" width="110" height="110" />`;
+
+                return `
+                    <div class="thermal-label">
+                        <div class="qr-col">
+                            ${qrSvg}
+                        </div>
+                        <div class="content-col">
+                            <div class="header-section">
+                                <div class="tag-title">${unit.assetTagCode}</div>
+                                <div class="prod-title">${unit.productName || "EQUIPMENT"}</div>
+                            </div>
+                            <div class="meta-section">
+                                ${unit.serialNumber ? `<div class="meta-item">S/N: ${unit.serialNumber}</div>` : ""}
+                                ${unit.shelfLocation ? `<div class="meta-item">📍 ${unit.shelfLocation}</div>` : ""}
+                                ${unit.rfidTag ? `<div class="rfid-badge">RFID EPC: ${unit.rfidTag}</div>` : ""}
+                            </div>
+                            <div class="footer-brand">E3 RENTALS WAREHOUSE LOGISTICS</div>
+                        </div>
+                    </div>
+                `;
+            }).join("");
+
+            printWindow.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Thermal Roll Labels (${selectedUnits.length})</title>
+                    <style>
+                        @page {
+                            size: 100mm 50mm;
+                            margin: 0;
+                        }
+                        * { box-sizing: border-box; margin: 0; padding: 0; }
+                        body { 
+                            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+                            background: white; 
+                            -webkit-print-color-adjust: exact;
+                        }
+                        .thermal-label {
+                            width: 100mm;
+                            height: 50mm;
+                            page-break-after: always;
+                            display: flex;
+                            align-items: center;
+                            padding: 4mm 6mm;
+                            overflow: hidden;
+                            border-bottom: 1px dashed #ccc;
+                            background: white;
+                        }
+                        @media print {
+                            .thermal-label { border-bottom: none; }
+                        }
+                        .qr-col {
+                            width: 38mm;
+                            height: 38mm;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            margin-right: 5mm;
+                            shrink-0;
+                        }
+                        .qr-col svg {
+                            width: 100% !important;
+                            height: 100% !important;
+                            display: block;
+                        }
+                        .content-col {
+                            flex: 1;
+                            min-width: 0;
+                            height: 40mm;
+                            display: flex;
+                            flex-direction: column;
+                            justify-content: space-between;
+                        }
+                        .tag-title {
+                            font-size: 15pt;
+                            font-weight: 900;
+                            letter-spacing: 0.05em;
+                            color: #000;
+                            line-height: 1.1;
+                            border-bottom: 2px solid #000;
+                            padding-bottom: 1.5mm;
+                        }
+                        .prod-title {
+                            font-size: 9.5pt;
+                            font-weight: 700;
+                            color: #111;
+                            margin-top: 1.5mm;
+                            line-height: 1.2;
+                            white-space: nowrap;
+                            overflow: hidden;
+                            text-overflow: ellipsis;
+                        }
+                        .meta-section {
+                            display: flex;
+                            flex-direction: column;
+                            gap: 1mm;
+                            margin-top: 1mm;
+                        }
+                        .meta-item {
+                            font-size: 7.5pt;
+                            font-weight: 600;
+                            color: #333;
+                            font-family: monospace;
+                        }
+                        .rfid-badge {
+                            font-size: 6.5pt;
+                            font-weight: 900;
+                            color: #000;
+                            border: 1px solid #000;
+                            padding: 1px 3px;
+                            border-radius: 2px;
+                            display: inline-block;
+                            width: fit-content;
+                            font-family: monospace;
+                        }
+                        .footer-brand {
+                            font-size: 6pt;
+                            font-weight: 900;
+                            letter-spacing: 0.15em;
+                            color: #777;
+                            text-transform: uppercase;
+                        }
+                    </style>
+                </head>
+                <body>
+                    ${labelsHtml}
+                    <script>
+                        window.onload = () => {
+                            setTimeout(() => {
+                                window.print();
+                                window.onafterprint = () => window.close();
+                            }, 400);
+                        };
+                    </script>
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
+            return;
+        }
+
         // A4 3x6 Grid Config (Avery Standard)
-        // 3 cols, 6 rows = 18 labels per page
         const sizeConfig = {
             small:  { cols: 4, qrSize: 60,  labelPad: "6px",  tagSize: "10px", productSize: "8px",  gap: "4px",  border: "1px",  height: "45mm" },
             medium: { cols: 3, qrSize: 90,  labelPad: "10px", tagSize: "14px", productSize: "10px", gap: "8px",  border: "1.5px", height: "48mm" },
@@ -81,16 +230,20 @@ export default function LabelsPage() {
 
         const labelsHtml = selectedUnits.map(unit => {
             const url = `${SITE_URL}/passport/${encodeURIComponent(unit.assetTagCode)}`;
+            const cacheElem = document.getElementById(`qr-svg-${unit.id}`);
+            const qrSvg = cacheElem?.querySelector("svg")?.outerHTML || `<img src="https://api.qrserver.com/v1/create-qr-code/?size=${s.qrSize * 2}x${s.qrSize * 2}&data=${encodeURIComponent(url)}" width="${s.qrSize}" height="${s.qrSize}" />`;
+
             return `
                 <div class="label">
                     <div class="qr">
-                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=${s.qrSize * 2}x${s.qrSize * 2}&data=${encodeURIComponent(url)}" width="${s.qrSize}" height="${s.qrSize}" />
+                        ${qrSvg}
                     </div>
                     <div class="info">
                         <div class="tag">${unit.assetTagCode}</div>
                         <div class="product">${unit.productName || "—"}</div>
                         ${unit.serialNumber ? `<div class="sub">S/N: ${unit.serialNumber}</div>` : ""}
                         ${unit.shelfLocation ? `<div class="sub">📍 ${unit.shelfLocation}</div>` : ""}
+                        ${unit.rfidTag ? `<div class="sub" style="font-weight:bold;color:#000;">RFID: ${unit.rfidTag}</div>` : ""}
                         <div class="brand">E3 Rentals Logistics</div>
                     </div>
                 </div>
@@ -130,6 +283,8 @@ export default function LabelsPage() {
                         overflow: hidden;
                         background: white;
                     }
+                    .qr { display: flex; align-items: center; justify-content: center; }
+                    .qr svg { width: ${s.qrSize}px !important; height: ${s.qrSize}px !important; display: block; }
                     .qr img { display: block; border: 1px solid #eee; }
                     .info { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; }
                     .tag { font-size: ${s.tagSize}; font-weight: 900; letter-spacing: 0.05em; color: #000; border-bottom: 1px solid #eee; padding-bottom: 2px; margin-bottom: 4px; }
@@ -202,23 +357,50 @@ export default function LabelsPage() {
                         />
                     </div>
 
-                    {/* Print Size Selector */}
+                    {/* Output Media Selector */}
                     <div className="flex items-center gap-1.5 bg-[var(--color-surface)] border border-white/10 rounded-xl p-1.5 shadow-xl">
-                        <span className="text-[9px] font-black text-[var(--color-slate)] uppercase tracking-widest px-3 opacity-40">Size Profile:</span>
-                        {(["small", "medium", "large"] as const).map(size => (
-                            <button
-                                key={size}
-                                onClick={() => setPrintSize(size)}
-                                className={`px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-[0.1em] transition-all ${
-                                    printSize === size
-                                        ? "bg-[var(--color-gold)] text-[var(--color-navy)] shadow-lg shadow-[var(--color-gold)]/20"
-                                        : "text-[var(--color-slate)] hover:text-[var(--color-warm-white)] hover:bg-white/5"
-                                }`}
-                            >
-                                {size === "small" ? "S (Avery 2×1)" : size === "medium" ? "M (3×2)" : "L (A4 Jumbo)"}
-                            </button>
-                        ))}
+                        <span className="text-[9px] font-black text-[var(--color-slate)] uppercase tracking-widest px-3 opacity-40">Format:</span>
+                        <button
+                            onClick={() => setPrintFormat("thermal")}
+                            className={`px-3 py-2 rounded-lg text-[9px] font-black uppercase tracking-[0.1em] transition-all ${
+                                printFormat === "thermal"
+                                    ? "bg-purple-600 text-white shadow-lg shadow-purple-600/30"
+                                    : "text-[var(--color-slate)] hover:text-white hover:bg-white/5"
+                            }`}
+                        >
+                            Roll (4"×2" Thermal)
+                        </button>
+                        <button
+                            onClick={() => setPrintFormat("a4")}
+                            className={`px-3 py-2 rounded-lg text-[9px] font-black uppercase tracking-[0.1em] transition-all ${
+                                printFormat === "a4"
+                                    ? "bg-[var(--color-gold)] text-[var(--color-navy)] shadow-lg shadow-[var(--color-gold)]/20"
+                                    : "text-[var(--color-slate)] hover:text-white hover:bg-white/5"
+                            }`}
+                        >
+                            A4 Sheet
+                        </button>
                     </div>
+
+                    {/* Print Size Selector (for A4) */}
+                    {printFormat === "a4" && (
+                        <div className="flex items-center gap-1.5 bg-[var(--color-surface)] border border-white/10 rounded-xl p-1.5 shadow-xl">
+                            <span className="text-[9px] font-black text-[var(--color-slate)] uppercase tracking-widest px-3 opacity-40">A4 Profile:</span>
+                            {(["small", "medium", "large"] as const).map(size => (
+                                <button
+                                    key={size}
+                                    onClick={() => setPrintSize(size)}
+                                    className={`px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-[0.1em] transition-all ${
+                                        printSize === size
+                                            ? "bg-[var(--color-gold)] text-[var(--color-navy)] shadow-lg shadow-[var(--color-gold)]/20"
+                                            : "text-[var(--color-slate)] hover:text-[var(--color-warm-white)] hover:bg-white/5"
+                                    }`}
+                                >
+                                    {size === "small" ? "S (2×1)" : size === "medium" ? "M (3×2)" : "L (Jumbo)"}
+                                </button>
+                            ))}
+                        </div>
+                    )}
                 </div>
 
                 {/* Bulk Controls */}
@@ -314,6 +496,19 @@ export default function LabelsPage() {
                     </button>
                 </div>
             )}
+
+            {/* Hidden SVG render cache for offline local QR printing */}
+            <div id="qr-svg-cache" style={{ position: "absolute", left: "-9999px", top: "-9999px", visibility: "hidden" }}>
+                {units.map(unit => (
+                    <div key={unit.id} id={`qr-svg-${unit.id}`}>
+                        <QRCodeSVG
+                            value={`${typeof window !== "undefined" ? window.location.origin : ""}/passport/${encodeURIComponent(unit.assetTagCode)}`}
+                            size={160}
+                            level="M"
+                        />
+                    </div>
+                ))}
+            </div>
         </div>
     );
 }

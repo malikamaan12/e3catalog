@@ -13,7 +13,10 @@ import {
     Barcode, 
     Check, 
     X,
-    Sparkles
+    Sparkles,
+    Radio,
+    Zap,
+    Volume2
 } from "lucide-react";
 
 interface CycleCount {
@@ -58,6 +61,8 @@ export default function WarehouseCycleCountsPage() {
     const [scanBinInput, setScanBinInput] = useState("");
     const [toastMessage, setToastMessage] = useState<string | null>(null);
     const [actionLoading, setActionLoading] = useState(false);
+    const [rfidWandActive, setRfidWandActive] = useState(true);
+    const [sweepLoading, setSweepLoading] = useState(false);
 
     // New Count Form
     const [newForm, setNewForm] = useState({
@@ -69,6 +74,25 @@ export default function WarehouseCycleCountsPage() {
     const showToast = (msg: string) => {
         setToastMessage(msg);
         setTimeout(() => setToastMessage(null), 4000);
+    };
+
+    const playCountChime = (hasDiscrepancy: boolean) => {
+        if (typeof window === "undefined") return;
+        try {
+            const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+            if (!AudioContextClass) return;
+            const ctx = new AudioContextClass();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = hasDiscrepancy ? "sawtooth" : "sine";
+            osc.frequency.setValueAtTime(hasDiscrepancy ? 220 : 880, ctx.currentTime);
+            gain.gain.setValueAtTime(0.12, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(ctx.currentTime);
+            osc.stop(ctx.currentTime + 0.15);
+        } catch {}
     };
 
     const fetchData = async () => {
@@ -116,6 +140,110 @@ export default function WarehouseCycleCountsPage() {
     useEffect(() => {
         fetchData();
     }, []);
+
+    // RFID Wand Sled Sweep Listener (Burst Accumulator)
+    useEffect(() => {
+        if (!rfidWandActive || !selectedCount || selectedCount.status !== "in_progress") return;
+
+        let buffer = "";
+        let burstSet = new Set<string>();
+        let timer: NodeJS.Timeout | null = null;
+
+        const dispatchBurst = async (tags: string[]) => {
+            if (tags.length === 0) return;
+            setSweepLoading(true);
+            try {
+                const res = await fetch(`/api/dashboard/warehouse/cycle-counts/${selectedCount.id}`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        tags,
+                        scannedBinCode: scanBinInput.trim() || undefined,
+                    })
+                });
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    playCountChime(data.discrepanciesFound > 0);
+                    showToast(`📡 RFID Sweep: ${data.matchedCount} units verified in zone!`);
+                    fetchData();
+                }
+            } catch (e: any) {
+                console.error("RFID Sweep Dispatch Error:", e);
+            } finally {
+                setSweepLoading(false);
+            }
+        };
+
+        const handleKeyDown = (e: KeyboardEvent) => {
+            const target = e.target as HTMLElement;
+            if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA")) return;
+
+            if (e.key === "Enter" || e.key === "Tab") {
+                if (buffer.trim().length >= 3) {
+                    burstSet.add(buffer.trim().toUpperCase());
+                    buffer = "";
+                }
+                if (timer) clearTimeout(timer);
+                timer = setTimeout(() => {
+                    if (burstSet.size > 0) {
+                        dispatchBurst(Array.from(burstSet));
+                        burstSet = new Set();
+                    }
+                }, 300);
+                return;
+            }
+
+            if (e.key.length === 1) {
+                buffer += e.key;
+                if (timer) clearTimeout(timer);
+                timer = setTimeout(() => {
+                    if (buffer.trim().length >= 3) {
+                        burstSet.add(buffer.trim().toUpperCase());
+                        buffer = "";
+                    }
+                    if (burstSet.size > 0) {
+                        dispatchBurst(Array.from(burstSet));
+                        burstSet = new Set();
+                    }
+                }, 300);
+            }
+        };
+
+        window.addEventListener("keydown", handleKeyDown);
+        return () => {
+            window.removeEventListener("keydown", handleKeyDown);
+            if (timer) clearTimeout(timer);
+        };
+    }, [rfidWandActive, selectedCount, scanBinInput]);
+
+    const handleSimulateSweep = async () => {
+        if (!selectedCount) return;
+        setSweepLoading(true);
+        try {
+            const sampleTags = selectedCount.items.slice(0, 6).map(i => i.inventoryUnit?.assetTagCode).filter(Boolean) as string[];
+            if (sampleTags.length === 0) {
+                sampleTags.push("E3-TRUSS-001", "E3-LED-042");
+            }
+            const res = await fetch(`/api/dashboard/warehouse/cycle-counts/${selectedCount.id}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    tags: sampleTags,
+                    scannedBinCode: scanBinInput.trim() || undefined,
+                })
+            });
+            const data = await res.json();
+            if (res.ok && data.success) {
+                playCountChime(data.discrepanciesFound > 0);
+                showToast(`📡 Simulated RFID Sweep: Verified ${data.matchedCount} units!`);
+                fetchData();
+            }
+        } catch (e: any) {
+            alert(e.message);
+        } finally {
+            setSweepLoading(false);
+        }
+    };
 
     const handleCreateCount = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -325,48 +453,86 @@ export default function WarehouseCycleCountsPage() {
                                 </div>
                             </div>
 
-                            {/* Rapid Scan Station for this Count */}
+                            {/* Rapid Scan & RFID Wand Sweep Station for this Count */}
                             {selectedCount.status === "in_progress" && (
-                                <form onSubmit={handleScanItem} className="bg-slate-950/70 p-4 rounded-xl border border-slate-800 space-y-3">
-                                    <div className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
-                                        <Barcode className="w-4 h-4" />
-                                        Rapid Barcode / Tag Scanner
-                                    </div>
-
-                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                                        <div className="sm:col-span-2">
-                                            <input
-                                                type="text"
-                                                required
-                                                placeholder="Scan Asset Tag (e.g. E3-EXH-001-001)..."
-                                                value={scanTagInput}
-                                                onChange={(e) => setScanTagInput(e.target.value)}
-                                                className="w-full bg-slate-900 border border-slate-700 text-white font-mono text-sm px-3.5 py-2.5 rounded-xl outline-none focus:border-amber-400"
-                                            />
+                                <div className="bg-slate-950/70 p-5 rounded-2xl border border-slate-800 space-y-4">
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
+                                        <div className="flex items-center gap-2">
+                                            <div className="p-1.5 rounded-lg bg-amber-500/10 text-amber-400">
+                                                <Radio className="w-4 h-4" />
+                                            </div>
+                                            <div>
+                                                <div className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-2">
+                                                    RFID Wand Sweep &amp; Barcode Intake
+                                                    <span className={`w-2 h-2 rounded-full ${rfidWandActive ? "bg-emerald-400 animate-pulse" : "bg-slate-500"}`} />
+                                                </div>
+                                                <p className="text-[10px] text-slate-400">
+                                                    Chainway R6 / Bluetooth sled sweeps accumulate in 300ms burst window
+                                                </p>
+                                            </div>
                                         </div>
 
-                                        <div>
-                                            <input
-                                                type="text"
-                                                placeholder="Shelf Bin Code (Optional)..."
-                                                value={scanBinInput}
-                                                onChange={(e) => setScanBinInput(e.target.value)}
-                                                className="w-full bg-slate-900 border border-slate-700 text-white font-mono text-xs px-3.5 py-2.5 rounded-xl outline-none"
-                                            />
+                                        <div className="flex items-center gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={handleSimulateSweep}
+                                                disabled={sweepLoading}
+                                                className="px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 transition-all flex items-center gap-1.5"
+                                            >
+                                                <Zap className="w-3.5 h-3.5" />
+                                                {sweepLoading ? "Sweeping..." : "Simulate RFID Sweep"}
+                                            </button>
+
+                                            <button
+                                                type="button"
+                                                onClick={() => setRfidWandActive(!rfidWandActive)}
+                                                className={`px-3 py-1.5 rounded-lg text-xs font-mono font-semibold border transition-all ${
+                                                    rfidWandActive
+                                                        ? "bg-amber-500/10 text-amber-300 border-amber-500/30"
+                                                        : "bg-slate-800 text-slate-400 border-slate-700"
+                                                }`}
+                                            >
+                                                {rfidWandActive ? "Wand ON" : "Wand OFF"}
+                                            </button>
                                         </div>
                                     </div>
 
-                                    <div className="flex items-center justify-between text-[11px] text-slate-500">
-                                        <span>Works with hardware Bluetooth/USB barcode scanners (Press Enter after scan).</span>
-                                        <button
-                                            type="submit"
-                                            disabled={actionLoading}
-                                            className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-4 py-1.5 rounded-lg text-xs"
-                                        >
-                                            {actionLoading ? "Recording..." : "Record Scan"}
-                                        </button>
-                                    </div>
-                                </form>
+                                    <form onSubmit={handleScanItem} className="space-y-3">
+                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                            <div className="sm:col-span-2">
+                                                <input
+                                                    type="text"
+                                                    required
+                                                    placeholder="Scan Asset Tag (e.g. E3-EXH-001) or 24-Hex RFID EPC..."
+                                                    value={scanTagInput}
+                                                    onChange={(e) => setScanTagInput(e.target.value)}
+                                                    className="w-full bg-slate-900 border border-slate-700 text-white font-mono text-xs md:text-sm px-4 py-2.5 rounded-xl outline-none focus:border-amber-400"
+                                                />
+                                            </div>
+
+                                            <div>
+                                                <input
+                                                    type="text"
+                                                    placeholder="Confirm Bin (Optional)..."
+                                                    value={scanBinInput}
+                                                    onChange={(e) => setScanBinInput(e.target.value)}
+                                                    className="w-full bg-slate-900 border border-slate-700 text-white font-mono text-xs px-3.5 py-2.5 rounded-xl outline-none"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center justify-between text-[11px] text-slate-500">
+                                            <span>Pull RFID sled trigger in aisle to auto-ingest stream, or scan single optical barcodes.</span>
+                                            <button
+                                                type="submit"
+                                                disabled={actionLoading || !scanTagInput.trim()}
+                                                className="bg-[var(--color-gold)] hover:brightness-110 text-black font-bold px-4 py-2 rounded-xl text-xs uppercase tracking-wider transition-all disabled:opacity-40"
+                                            >
+                                                {actionLoading ? "Recording..." : "Record Single Scan"}
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
                             )}
 
                             {/* Discrepancy Breakdown Table */}

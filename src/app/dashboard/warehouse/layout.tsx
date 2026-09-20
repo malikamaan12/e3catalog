@@ -12,7 +12,9 @@ import {
     Grid,
     ArrowLeftRight,
     CheckSquare,
-    ClipboardList
+    ClipboardList,
+    Wrench,
+    Boxes
 } from "lucide-react";
 
 const WAREHOUSE_TABS = [
@@ -23,10 +25,12 @@ const WAREHOUSE_TABS = [
     { href: "/dashboard/warehouse/transfers", label: "Transfers", icon: ArrowLeftRight },
     { href: "/dashboard/warehouse/zones", label: "Zones & Bins", icon: Grid },
     { href: "/dashboard/warehouse/fleet", label: "Fleet", icon: Package },
+    { href: "/dashboard/warehouse/consumables", label: "Consumables", icon: Boxes },
     { href: "/dashboard/warehouse/inspections", label: "Inspect & QC", icon: ShieldAlert },
     { href: "/dashboard/warehouse/counts", label: "Stock Audit", icon: ClipboardList },
     { href: "/dashboard/warehouse/transport", label: "Transport", icon: Truck },
     { href: "/dashboard/warehouse/labels", label: "Labels", icon: Tag },
+    { href: "/dashboard/warehouse/setup", label: "Hardware Setup", icon: Wrench },
 ];
 
 export default function WarehouseLayout({ children }: { children: React.ReactNode }) {

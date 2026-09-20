@@ -1,6 +1,6 @@
 import { db } from "./db";
-import { fleetGpsPings, dispatchRoutes, dispatchStops, users, bookingDispatchLogs } from "./db/schema";
-import { eq, desc, and, sql, inArray } from "drizzle-orm";
+import { fleetGpsPings, dispatchRoutes, dispatchStops, bookingDispatchLogs } from "./db/schema";
+import { eq, desc, and, sql } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 
 // ─── Key Qatar Geographical Hubs & Reference Coordinates ───
@@ -38,7 +38,7 @@ export function detectQatarZone(lat: number, lng: number): string {
     let closestZone = "Central Doha";
     let minDistance = Infinity;
 
-    for (const [key, hub] of Object.entries(QATAR_HUBS)) {
+    for (const hub of Object.values(QATAR_HUBS)) {
         const dist = calculateHaversineDistanceKm(lat, lng, hub.lat, hub.lng);
         if (dist < minDistance) {
             minDistance = dist;

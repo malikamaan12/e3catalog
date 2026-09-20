@@ -18,6 +18,7 @@ import {
     X,
     Barcode
 } from "lucide-react";
+import DirectedPutawayModal from "@/components/warehouse/DirectedPutawayModal";
 
 interface Zone {
     id: string;
@@ -63,6 +64,7 @@ export default function WarehouseZonesPage() {
     const [showAddZoneModal, setShowAddZoneModal] = useState(false);
     const [showAddBinModal, setShowAddBinModal] = useState(false);
     const [showRelocateModal, setShowRelocateModal] = useState(false);
+    const [showPutawayModal, setShowPutawayModal] = useState(false);
     const [showQRModal, setShowQRModal] = useState<Bin | null>(null);
 
     // Form states
@@ -244,6 +246,14 @@ export default function WarehouseZonesPage() {
                             <option key={w.id} value={w.id}>{w.name}</option>
                         ))}
                     </select>
+
+                    <button
+                        onClick={() => setShowPutawayModal(true)}
+                        className="flex items-center gap-1.5 bg-sky-600/90 hover:bg-sky-600 text-white text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl shadow-lg shadow-sky-500/10 transition-all"
+                    >
+                        <MapPin className="w-4 h-4" />
+                        Directed Putaway
+                    </button>
 
                     <button
                         onClick={() => setShowRelocateModal(true)}
@@ -692,6 +702,16 @@ export default function WarehouseZonesPage() {
                     </div>
                 </div>
             )}
+
+            {/* Directed Putaway Modal */}
+            <DirectedPutawayModal
+                isOpen={showPutawayModal}
+                onClose={() => setShowPutawayModal(false)}
+                onPutawayComplete={() => {
+                    fetchData();
+                    showToast("Asset successfully slotted into bin!");
+                }}
+            />
         </div>
     );
 }

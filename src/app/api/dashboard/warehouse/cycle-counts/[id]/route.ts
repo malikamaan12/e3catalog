@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { inventoryCycleCounts, cycleCountItems, inventoryUnits, warehouseBins } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, or, inArray } from "drizzle-orm";
 import { requireAuth } from "@/lib/auth";
 import { USER_ROLES } from "@/lib/constants";
 import { v4 as uuid } from "uuid";
@@ -42,7 +42,7 @@ export async function GET(
     }
 }
 
-// POST: Scan asset tag into cycle count
+// POST: Scan asset tag or RFID burst into cycle count
 export async function POST(
     req: NextRequest,
     { params }: { params: Promise<{ id: string }> }
@@ -53,11 +53,7 @@ export async function POST(
 
         const { id } = await params;
         const body = await req.json();
-        const { assetTagCode, scannedBinCode } = body;
-
-        if (!assetTagCode) {
-            return NextResponse.json({ error: "assetTagCode is required." }, { status: 400 });
-        }
+        const { assetTagCode, tags, scannedBinCode } = body;
 
         const count = await db.query.inventoryCycleCounts.findFirst({
             where: eq(inventoryCycleCounts.id, id),
@@ -66,22 +62,110 @@ export async function POST(
 
         if (!count) return NextResponse.json({ error: "Cycle count not found" }, { status: 404 });
 
-        // Resolve unit
-        const unit = await db.query.inventoryUnits.findFirst({
-            where: eq(inventoryUnits.assetTagCode, assetTagCode.trim().toUpperCase()),
-            with: { bin: true, product: true }
-        });
-
-        if (!unit) {
-            return NextResponse.json({ error: `Unit with tag "${assetTagCode}" not found in database.` }, { status: 404 });
-        }
-
-        // Resolve scanned bin if provided
+        // Resolve target scanned bin if provided
         let scannedBin = null;
         if (scannedBinCode) {
             scannedBin = await db.query.warehouseBins.findFirst({
                 where: eq(warehouseBins.binCode, scannedBinCode.trim().toUpperCase())
             });
+        }
+
+        // Handle Batch RFID Wand Sweep
+        if (Array.isArray(tags) && tags.length > 0) {
+            const cleanTags = Array.from(new Set(tags.map((t: string) => t.trim().toUpperCase()).filter(Boolean)));
+            if (cleanTags.length === 0) {
+                return NextResponse.json({ error: "No valid tags provided in batch." }, { status: 400 });
+            }
+
+            // Dual EPC & Barcode query
+            const matchedUnits = await db.query.inventoryUnits.findMany({
+                where: or(
+                    inArray(inventoryUnits.assetTagCode, cleanTags),
+                    inArray(inventoryUnits.rfidTag, cleanTags)
+                ),
+                with: { bin: true, product: true }
+            });
+
+            const processedUnits: any[] = [];
+            for (const unit of matchedUnits) {
+                const existingItem = count.items.find(i => i.inventoryUnitId === unit.id);
+                let discrepancyType = "none";
+                if (scannedBin && unit.binId && scannedBin.id !== unit.binId) {
+                    discrepancyType = "wrong_bin";
+                }
+
+                if (existingItem) {
+                    await db.update(cycleCountItems)
+                        .set({
+                            scannedBinId: scannedBin?.id || unit.binId || null,
+                            scannedStatus: unit.availabilityStatus,
+                            discrepancyType,
+                            isResolved: discrepancyType === "none",
+                        })
+                        .where(eq(cycleCountItems.id, existingItem.id));
+                } else {
+                    await db.insert(cycleCountItems).values({
+                        id: uuid(),
+                        cycleCountId: id,
+                        inventoryUnitId: unit.id,
+                        productId: unit.productId,
+                        expectedBinId: unit.binId || null,
+                        scannedBinId: scannedBin?.id || null,
+                        expectedStatus: unit.availabilityStatus,
+                        scannedStatus: unit.availabilityStatus,
+                        discrepancyType: "wrong_location",
+                        isResolved: false,
+                        resolutionNotes: "Item detected via RFID sweep but was not assigned to this zone.",
+                    });
+                }
+                processedUnits.push({
+                    id: unit.id,
+                    assetTagCode: unit.assetTagCode,
+                    rfidTag: unit.rfidTag,
+                    productName: unit.product?.name,
+                    discrepancyType,
+                });
+            }
+
+            // Update count aggregate statistics
+            const allItems = await db.query.cycleCountItems.findMany({ where: eq(cycleCountItems.cycleCountId, id) });
+            const scanned = allItems.filter(i => i.discrepancyType !== "missing");
+            const discrepancies = allItems.filter(i => i.discrepancyType !== "none");
+
+            await db.update(inventoryCycleCounts)
+                .set({
+                    totalScannedUnits: scanned.length,
+                    discrepancyCount: discrepancies.length,
+                    updatedAt: new Date(),
+                })
+                .where(eq(inventoryCycleCounts.id, id));
+
+            return NextResponse.json({
+                success: true,
+                sweepMode: "rfid_burst",
+                totalSubmitted: cleanTags.length,
+                matchedCount: matchedUnits.length,
+                discrepanciesFound: discrepancies.length,
+                units: processedUnits,
+            });
+        }
+
+        // Single Tag Scan (supports Barcode OR 24-char RFID EPC)
+        if (!assetTagCode) {
+            return NextResponse.json({ error: "assetTagCode or tags array is required." }, { status: 400 });
+        }
+
+        const cleanCode = assetTagCode.trim().toUpperCase();
+        const unit = await db.query.inventoryUnits.findFirst({
+            where: or(
+                eq(inventoryUnits.assetTagCode, cleanCode),
+                eq(inventoryUnits.rfidTag, cleanCode)
+            ),
+            with: { bin: true, product: true }
+        });
+
+        if (!unit) {
+            return NextResponse.json({ error: `Unit with tag/EPC "${assetTagCode}" not found in database.` }, { status: 404 });
         }
 
         // Check if item was expected
@@ -102,7 +186,6 @@ export async function POST(
                 })
                 .where(eq(cycleCountItems.id, existingItem.id));
         } else {
-            // Unregistered item found in this zone!
             await db.insert(cycleCountItems).values({
                 id: uuid(),
                 cycleCountId: id,
@@ -136,6 +219,7 @@ export async function POST(
             unit: {
                 id: unit.id,
                 assetTagCode: unit.assetTagCode,
+                rfidTag: unit.rfidTag,
                 productName: unit.product?.name,
                 conditionStatus: unit.conditionStatus,
             },

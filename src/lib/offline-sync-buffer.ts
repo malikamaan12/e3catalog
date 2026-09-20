@@ -74,6 +74,7 @@ class OfflineSyncBufferEngine {
     }
 
     private loadFromStorage() {
+        if (typeof window === "undefined" || typeof localStorage === "undefined") return;
         try {
             const raw = localStorage.getItem(STORAGE_KEY);
             if (raw) {
@@ -86,6 +87,7 @@ class OfflineSyncBufferEngine {
     }
 
     private saveToStorage() {
+        if (typeof window === "undefined" || typeof localStorage === "undefined") return;
         try {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(this.queue));
         } catch (e) {

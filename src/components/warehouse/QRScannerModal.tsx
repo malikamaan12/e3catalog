@@ -9,6 +9,7 @@ type Props = {
     isOpen: boolean;
     onClose: () => void;
     onScan: (result: string) => void;
+    onBatchScan?: (results: string[]) => void;
     title?: string;
     lastResult?: { status: "success" | "error" | "duplicate"; message?: string; timestamp: number } | null;
 };
@@ -43,7 +44,7 @@ const playBeep = (type: "success" | "error") => {
     }
 };
 
-export default function QRScannerModal({ isOpen, onClose, onScan, title = "Hardware Scan Pipeline", lastResult }: Props) {
+export default function QRScannerModal({ isOpen, onClose, onScan, onBatchScan, title = "Hardware Scan Pipeline", lastResult }: Props) {
     const [scanning, setScanning] = useState(false);
     const [error, setError] = useState("");
     const [cameras, setCameras] = useState<{ id: string; label: string }[]>([]);
@@ -153,12 +154,26 @@ export default function QRScannerModal({ isOpen, onClose, onScan, title = "Hardw
         setManualInput("");
     };
 
-    // ─── Hardware Barcode Gun / Keyboard Wedge Listener ───
+    // ─── Hardware Barcode Gun / Keyboard Wedge Listener (RFID Stream Safe) ───
     useEffect(() => {
         if (!isOpen) return;
 
         let keyBuffer = "";
         let lastKeyTime = 0;
+        const burstSet = new Set<string>();
+        let burstTimer: NodeJS.Timeout | null = null;
+
+        const flushBurst = () => {
+            if (burstSet.size > 0) {
+                const tags = Array.from(burstSet);
+                burstSet.clear();
+                if (onBatchScan) {
+                    onBatchScan(tags);
+                } else {
+                    tags.forEach(t => onScan(t));
+                }
+            }
+        };
 
         const handleKeyDown = (e: KeyboardEvent) => {
             // Ignore if active target is a regular form input
@@ -173,9 +188,17 @@ export default function QRScannerModal({ isOpen, onClose, onScan, title = "Hardw
             lastKeyTime = now;
 
             if (e.key === "Enter") {
-                if (keyBuffer.trim().length >= 3 && !isLockedOut) {
-                    onScan(keyBuffer.trim().toUpperCase());
-                    keyBuffer = "";
+                const cleanTag = keyBuffer.trim().toUpperCase();
+                keyBuffer = "";
+                if (cleanTag.length >= 3) {
+                    if (onBatchScan) {
+                        // High-Speed RFID Burst Mode: collect incoming tags with a 300ms quiet window
+                        burstSet.add(cleanTag);
+                        if (burstTimer) clearTimeout(burstTimer);
+                        burstTimer = setTimeout(flushBurst, 300);
+                    } else if (!isLockedOut) {
+                        onScan(cleanTag);
+                    }
                 }
             } else if (e.key.length === 1) {
                 keyBuffer += e.key;
@@ -183,8 +206,12 @@ export default function QRScannerModal({ isOpen, onClose, onScan, title = "Hardw
         };
 
         window.addEventListener("keydown", handleKeyDown);
-        return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [isOpen, isLockedOut, onScan]);
+        return () => {
+            window.removeEventListener("keydown", handleKeyDown);
+            if (burstTimer) clearTimeout(burstTimer);
+            flushBurst();
+        };
+    }, [isOpen, isLockedOut, onScan, onBatchScan]);
 
     useEffect(() => {
         if (isOpen) {

@@ -104,19 +104,28 @@ export async function verifyFlightCasePack(params: {
             isPermanentChild: flightCaseContents.isPermanentChild,
             inventoryUnitId: flightCaseContents.inventoryUnitId,
             assetTagCode: inventoryUnits.assetTagCode,
+            rfidTag: inventoryUnits.rfidTag,
         })
         .from(flightCaseContents)
         .leftJoin(inventoryUnits, eq(flightCaseContents.inventoryUnitId, inventoryUnits.id))
         .where(eq(flightCaseContents.flightCaseId, flightCaseId));
 
-    // If master tag was scanned or empty list, treat as single-scan comprehensive bundle pack
-    const isSingleScanPack = scannedTags.length === 0 || scannedTags.includes(flightCase.assetTagCode);
+    // If master tag (asset code or RFID EPC) was scanned or empty list, treat as single-scan comprehensive bundle pack
+    const isMasterTagScanned = Boolean(
+        (flightCase.assetTagCode && scannedTags.includes(flightCase.assetTagCode)) ||
+        (flightCase.rfidTag && scannedTags.includes(flightCase.rfidTag))
+    );
+    const isSingleScanPack = scannedTags.length === 0 || isMasterTagScanned;
 
     const verifiedItemIds: string[] = [];
     const missingItems: typeof contents = [];
 
     for (const item of contents) {
-        if (isSingleScanPack || (item.assetTagCode && scannedTags.includes(item.assetTagCode))) {
+        const isItemScanned = isSingleScanPack || Boolean(
+            (item.assetTagCode && scannedTags.includes(item.assetTagCode)) ||
+            (item.rfidTag && scannedTags.includes(item.rfidTag))
+        );
+        if (isItemScanned) {
             verifiedItemIds.push(item.id);
         } else {
             missingItems.push(item);
@@ -172,18 +181,27 @@ export async function verifyFlightCaseReturn(params: {
             expectedQuantity: flightCaseContents.expectedQuantity,
             inventoryUnitId: flightCaseContents.inventoryUnitId,
             assetTagCode: inventoryUnits.assetTagCode,
+            rfidTag: inventoryUnits.rfidTag,
         })
         .from(flightCaseContents)
         .leftJoin(inventoryUnits, eq(flightCaseContents.inventoryUnitId, inventoryUnits.id))
         .where(eq(flightCaseContents.flightCaseId, flightCaseId));
 
     // Determine missing items
+    const isMasterReturn = Boolean(
+        (flightCase.assetTagCode && returnedTags.includes(flightCase.assetTagCode)) ||
+        (flightCase.rfidTag && returnedTags.includes(flightCase.rfidTag))
+    );
+
     const generatedClaims = [];
     for (const item of contents) {
-        const isReturned = item.assetTagCode
-            ? returnedTags.includes(item.assetTagCode)
-            : (returnedTags.includes(item.accessoryName) || returnedTags.includes(item.id) || returnedTags.includes(flightCase.assetTagCode));
-        if (!isReturned) {
+        const isItemReturned = isMasterReturn || Boolean(
+            (item.assetTagCode && returnedTags.includes(item.assetTagCode)) ||
+            (item.rfidTag && returnedTags.includes(item.rfidTag)) ||
+            returnedTags.includes(item.accessoryName) ||
+            returnedTags.includes(item.id)
+        );
+        if (!isItemReturned) {
             const penaltyFee = STANDARD_ACCESSORY_PENALTIES[item.accessoryName] || STANDARD_ACCESSORY_PENALTIES["Default Missing Accessory"];
             const claimId = uuidv4();
             await db.insert(kitMissingItemClaims).values({

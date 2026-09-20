@@ -14,7 +14,7 @@ import {
     inspectionLogs,
     systemLogs 
 } from "./db/schema";
-import { eq, and, sql, inArray, notInArray, desc, asc } from "drizzle-orm";
+import { eq, or, and, sql, inArray, notInArray, desc, asc } from "drizzle-orm";
 import { v4 as uuid } from "uuid";
 import { ASSET_STATUS, ASSIGNMENT_STATUS, USER_ROLES } from "./constants";
 import { isUnitAllocatable } from "./availability";
@@ -182,12 +182,15 @@ export async function manualAllocateUnit(params: {
         });
         if (!booking) return { success: false, error: "Booking not found" };
 
-        // 2. Fetch unit
+        // 2. Fetch unit by assetTagCode or rfidTag
         const unit = await tx.query.inventoryUnits.findFirst({
-            where: eq(inventoryUnits.assetTagCode, cleanTag),
+            where: or(
+                eq(inventoryUnits.assetTagCode, cleanTag),
+                eq(inventoryUnits.rfidTag, cleanTag)
+            ),
             with: { product: true },
         });
-        if (!unit) return { success: false, error: `Asset tag ${cleanTag} not found in inventory.` };
+        if (!unit) return { success: false, error: `Asset tag or RFID EPC ${cleanTag} not found in inventory.` };
 
         // 3. Product match validation
         if (unit.productId !== booking.productId) {
