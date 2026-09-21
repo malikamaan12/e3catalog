@@ -210,6 +210,22 @@ export default function WarehouseDigitalTwin({
                     >
                         <ZoomOut className="w-4 h-4" />
                     </button>
+                    {/* Interactive Zoom Slider */}
+                    <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-lg bg-white/5 border border-white/10 text-xs">
+                        <span className="text-[10px] text-slate-400 font-mono">Zoom</span>
+                        <input
+                            id="warehouse-zoom-slider"
+                            type="range"
+                            min="0.5"
+                            max="2.0"
+                            step="0.05"
+                            value={zoom}
+                            onChange={(e) => setZoom(Number(parseFloat(e.target.value).toFixed(2)))}
+                            className="w-20 h-1 bg-white/20 rounded-lg appearance-none cursor-pointer accent-[var(--color-gold)]"
+                            title={`Zoom Slider: ${Math.round(zoom * 100)}%`}
+                        />
+                    </div>
+
                     <button
                         onClick={handleResetZoom}
                         className="px-2 py-1 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors text-[11px] font-mono font-bold flex items-center gap-1"

@@ -8,7 +8,7 @@ import {
     Zap, ShieldCheck, QrCode, ClipboardList, Box, 
     Truck, CheckCircle2, ArrowRight, Star, 
     Monitor, LayoutGrid, Layers, Building2, 
-    ChevronRight, MoveRight
+    ChevronRight, MoveRight, ChevronLeft
 } from "lucide-react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -322,21 +322,53 @@ function FastCatalog() {
         fetchFeatured();
     }, []);
 
-    const constraintsRef = useRef(null);
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+    const handleScroll = (direction: "left" | "right") => {
+        if (!scrollContainerRef.current) return;
+        const scrollAmount = 380;
+        scrollContainerRef.current.scrollBy({
+            left: direction === "left" ? -scrollAmount : scrollAmount,
+            behavior: "smooth",
+        });
+    };
 
     return (
         <section className="py-24 z-20 relative overflow-hidden">
-            <div className="max-w-7xl mx-auto px-6 mb-12 flex items-end justify-between gap-6">
+            <div className="max-w-7xl mx-auto px-6 mb-12 flex flex-wrap items-end justify-between gap-6">
                 <div>
                     <p className="text-[10px] font-black uppercase tracking-[0.4em] text-gold mb-3">Live Inventory</p>
                     <h2 className="text-3xl md:text-5xl font-black italic tracking-tighter">FAST CATALOG</h2>
                 </div>
-                <Link href="/catalog" className="flex items-center gap-3 text-xs font-black uppercase tracking-widest hover:text-gold transition-colors group">
-                    View Full Fleet <MoveRight className="group-hover:translate-x-2 transition-transform" />
-                </Link>
+
+                <div className="flex items-center gap-4">
+                    {/* Interactive Slider Navigation Arrows */}
+                    <div className="flex items-center gap-2">
+                        <button
+                            id="fast-catalog-prev-btn"
+                            onClick={() => handleScroll("left")}
+                            className="p-3 rounded-full bg-white/5 hover:bg-white/15 border border-white/10 text-white transition-all hover:scale-105 active:scale-95"
+                            title="Slide Left"
+                        >
+                            <ChevronLeft className="w-5 h-5" />
+                        </button>
+                        <button
+                            id="fast-catalog-next-btn"
+                            onClick={() => handleScroll("right")}
+                            className="p-3 rounded-full bg-white/5 hover:bg-white/15 border border-white/10 text-white transition-all hover:scale-105 active:scale-95"
+                            title="Slide Right"
+                        >
+                            <ChevronRight className="w-5 h-5" />
+                        </button>
+                    </div>
+
+                    <Link href="/catalog" className="flex items-center gap-3 text-xs font-black uppercase tracking-widest hover:text-gold transition-colors group ml-2">
+                        View Full Fleet <MoveRight className="group-hover:translate-x-2 transition-transform" />
+                    </Link>
+                </div>
             </div>
 
-            <div ref={constraintsRef} className="px-6 md:px-12">
+            <div className="px-6 md:px-12">
                 {loading ? (
                     <div className="flex gap-6 overflow-hidden">
                         {[1, 2, 3, 4].map((i) => (
@@ -344,15 +376,14 @@ function FastCatalog() {
                         ))}
                     </div>
                 ) : products.length > 0 ? (
-                    <motion.div 
-                        drag="x"
-                        dragConstraints={constraintsRef}
-                        className="flex gap-6 cursor-grab active:cursor-grabbing"
+                    <div
+                        ref={scrollContainerRef}
+                        className="flex gap-6 overflow-x-auto scroll-smooth pb-4 scrollbar-none"
                     >
                         {products.map((product) => (
                             <ProductCard key={product.id} product={product} />
                         ))}
-                    </motion.div>
+                    </div>
                 ) : (
                     <div className="text-center py-20 bg-white/5 rounded-[2.5rem] border border-white/5">
                         <p className="text-[var(--color-slate)] uppercase tracking-widest text-xs font-bold">No featured products found.</p>
