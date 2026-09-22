@@ -237,6 +237,7 @@ export default function WarehouseLayoutPage() {
                         <RackDetailDrawer
                             rack={selectedRack}
                             onClose={() => setSelectedRack(null)}
+                            locatedTarget={locatedTarget}
                             onToggleDeadSpot={(rackId) => {
                                 alert(`Toggled dead-spot flag for rack ${selectedRack.rackCode || selectedRack.label}`);
                             }}

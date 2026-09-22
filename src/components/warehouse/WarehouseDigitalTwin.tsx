@@ -136,7 +136,7 @@ export default function WarehouseDigitalTwin({
             {/* ─── Top Control Deck & Mode Selectors ─── */}
             <div className="absolute top-4 left-4 right-4 z-20 flex flex-wrap items-center justify-between gap-3 pointer-events-none">
                 {/* Heatmap Layer Selectors */}
-                <div className="flex items-center gap-1.5 p-1.5 rounded-2xl bg-black/85 border border-white/10 backdrop-blur-xl pointer-events-auto shadow-2xl">
+                <div className="flex items-center gap-1.5 p-1.5 rounded-2xl bg-[#090d16]/95 border border-white/10 pointer-events-auto shadow-2xl">
                     <button
                         onClick={() => onHeatmapModeChange("standard")}
                         className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
@@ -173,7 +173,7 @@ export default function WarehouseDigitalTwin({
                 </div>
 
                 {/* Spatial Viewport & Camera Controls */}
-                <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-black/85 border border-white/10 backdrop-blur-xl pointer-events-auto shadow-2xl">
+                <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-[#090d16]/95 border border-white/10 pointer-events-auto shadow-2xl">
                     {/* View mode badge */}
                     <div className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 flex items-center gap-1.5 text-[10px] font-mono text-slate-300 font-bold">
                         <span className={`w-2 h-2 rounded-full ${is3DView ? "bg-purple-400 animate-pulse" : "bg-emerald-400"}`} />
@@ -239,8 +239,8 @@ export default function WarehouseDigitalTwin({
 
             {/* ─── Interactive Floating Live HUD Overlay Card ─── */}
             {hoveredElement && (
-                <div className="absolute top-20 right-4 z-30 pointer-events-none animate-in fade-in slide-in-from-right-2 duration-200">
-                    <div className="w-72 p-3.5 rounded-2xl bg-black/90 border border-white/15 backdrop-blur-2xl shadow-2xl text-white flex flex-col gap-2">
+                <div className="absolute top-20 right-4 z-30 pointer-events-none animate-in fade-in slide-in-from-right-2 duration-150">
+                    <div className="w-72 p-3.5 rounded-2xl bg-[#090d16]/95 border border-white/15 shadow-2xl text-white flex flex-col gap-2">
                         <div className="flex items-center justify-between border-b border-white/10 pb-2">
                             <div className="flex items-center gap-2">
                                 <span className="w-2.5 h-2.5 rounded-full bg-[var(--color-gold)] animate-ping" />
@@ -1005,7 +1005,7 @@ export default function WarehouseDigitalTwin({
 
                         {/* ─── Target Item Illuminated Beacon ─── */}
                         {locatedTarget?.spatialLocation && (
-                            <g>
+                            <g className="pointer-events-none">
                                 {/* Dotted animated transit path from Dock 02 to target rack */}
                                 <path
                                     d={`M ${10 * cellSize} ${4 * cellSize} L ${10 * cellSize} ${9.5 * cellSize} L ${
@@ -1021,25 +1021,60 @@ export default function WarehouseDigitalTwin({
                                     className="flow-arterial"
                                 />
 
-                                {/* Concentric pulse wave */}
+                                {/* High-visibility pulsing concentric rings centered on target */}
                                 <circle
                                     cx={(locatedTarget.spatialLocation.x + locatedTarget.spatialLocation.width / 2) * cellSize}
                                     cy={(locatedTarget.spatialLocation.y + locatedTarget.spatialLocation.height / 2) * cellSize}
-                                    r="36"
-                                    fill="none"
+                                    r="28"
+                                    fill="rgba(234, 179, 8, 0.15)"
                                     stroke="#eab308"
-                                    strokeWidth="3"
-                                    strokeOpacity="0.8"
-                                    className="animate-ping"
+                                    strokeWidth="2"
+                                    strokeDasharray="4 4"
+                                    className="flow-arterial"
                                 />
                                 <circle
                                     cx={(locatedTarget.spatialLocation.x + locatedTarget.spatialLocation.width / 2) * cellSize}
                                     cy={(locatedTarget.spatialLocation.y + locatedTarget.spatialLocation.height / 2) * cellSize}
-                                    r="10"
+                                    r="11"
                                     fill="#eab308"
                                     stroke="#000000"
                                     strokeWidth="2.5"
                                 />
+                                <circle
+                                    cx={(locatedTarget.spatialLocation.x + locatedTarget.spatialLocation.width / 2) * cellSize}
+                                    cy={(locatedTarget.spatialLocation.y + locatedTarget.spatialLocation.height / 2) * cellSize}
+                                    r="3.5"
+                                    fill="#ffffff"
+                                />
+                                {/* Target Callout Pin */}
+                                <g transform={`translate(${
+                                    (locatedTarget.spatialLocation.x + locatedTarget.spatialLocation.width / 2) * cellSize
+                                }, ${
+                                    locatedTarget.spatialLocation.y * cellSize - 14
+                                })`}>
+                                    <rect
+                                        x="-44"
+                                        y="-16"
+                                        width="88"
+                                        height="16"
+                                        rx="4"
+                                        fill="#0b101d"
+                                        stroke="#eab308"
+                                        strokeWidth="1.2"
+                                        filter="url(#badge-shadow)"
+                                    />
+                                    <text
+                                        x="0"
+                                        y="-4"
+                                        textAnchor="middle"
+                                        fill="#fbbf24"
+                                        fontSize="8.5"
+                                        fontFamily="monospace"
+                                        fontWeight="900"
+                                    >
+                                        TARGET PIN
+                                    </text>
+                                </g>
                             </g>
                         )}
 
@@ -1061,7 +1096,7 @@ export default function WarehouseDigitalTwin({
 
             {/* ─── Bottom Legend Bar ─── */}
             <div className="absolute bottom-4 left-4 z-20 pointer-events-auto">
-                <div className="px-4 py-2.5 rounded-2xl bg-black/90 border border-white/10 backdrop-blur-xl text-xs flex flex-wrap items-center gap-4 text-slate-300 shadow-2xl">
+                <div className="px-4 py-2.5 rounded-2xl bg-[#090d16]/95 border border-white/10 text-xs flex flex-wrap items-center gap-4 text-slate-300 shadow-2xl">
                     {heatmapMode === "occupancy" ? (
                         <>
                             <div className="flex items-center gap-1.5">
