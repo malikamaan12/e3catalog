@@ -1,0 +1,1102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E3 Rentals - Enterprise Platform Presentation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-base: #060912;
+            --bg-surface: #0b1020;
+            --bg-card: #10172e;
+            --bg-card-hover: #151f3d;
+            --border-subtle: rgba(255, 255, 255, 0.08);
+            --border-highlight: rgba(229, 169, 60, 0.35);
+            --color-gold: #e5a93c;
+            --color-gold-light: #f5c66c;
+            --color-white: #ffffff;
+            --color-offwhite: #e2e8f0;
+            --color-slate: #94a3b8;
+            --color-cyan: #06b6d4;
+            --color-emerald: #10b981;
+            --color-rose: #f43f5e;
+            --color-indigo: #818cf8;
+            --font-heading: 'Cinzel', serif;
+            --font-sans: 'Plus Jakarta Sans', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-base);
+            color: var(--color-offwhite);
+            font-family: var(--font-sans);
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+            display: flex;
+            flex-direction: column;
+            user-select: none;
+        }
+
+        /* Ambient subtle backdrop grid */
+        .ambient-grid {
+            position: fixed;
+            inset: 0;
+            background-image: 
+                radial-gradient(circle at 50% 20%, rgba(229, 169, 60, 0.06), transparent 60%),
+                linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+            background-size: 100% 100%, 40px 40px, 40px 40px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* Top Executive Control Deck */
+        header.deck-header {
+            position: relative;
+            z-index: 20;
+            height: 64px;
+            border-bottom: 1px solid var(--border-subtle);
+            background: rgba(6, 9, 18, 0.9);
+            backdrop-filter: blur(12px);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 28px;
+        }
+
+        .brand-cluster {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .brand-logo {
+            font-family: var(--font-heading);
+            font-weight: 900;
+            font-size: 20px;
+            letter-spacing: 2px;
+            color: var(--color-gold);
+            text-transform: uppercase;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .brand-badge {
+            font-family: var(--font-mono);
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            padding: 2px 8px;
+            border-radius: 6px;
+            background: rgba(229, 169, 60, 0.12);
+            color: var(--color-gold-light);
+            border: 1px solid rgba(229, 169, 60, 0.25);
+            letter-spacing: 1px;
+        }
+
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .control-btn {
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            color: var(--color-offwhite);
+            font-family: var(--font-mono);
+            font-size: 11px;
+            font-weight: 600;
+            padding: 7px 14px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            text-decoration: none;
+        }
+
+        .control-btn:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--color-gold);
+            color: var(--color-white);
+            transform: translateY(-1px);
+        }
+
+        .control-btn.primary {
+            background: var(--color-gold);
+            color: #050811;
+            border-color: var(--color-gold);
+            font-weight: 800;
+        }
+
+        .control-btn.primary:hover {
+            background: var(--color-gold-light);
+            box-shadow: 0 0 20px rgba(229, 169, 60, 0.35);
+        }
+
+        /* Presentation Canvas Stage */
+        main.stage {
+            position: relative;
+            z-index: 10;
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            overflow: hidden;
+        }
+
+        .slide-viewport {
+            width: 100%;
+            max-width: 1380px;
+            height: 100%;
+            max-height: 780px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            border-radius: 28px;
+            box-shadow: 0 25px 70px rgba(0, 0, 0, 0.85);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            padding: 44px 52px;
+            overflow-y: auto;
+        }
+
+        /* Slide Content Animations */
+        .slide {
+            display: none;
+            flex-direction: column;
+            height: 100%;
+            animation: slideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        .slide.active {
+            display: flex;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(12px) scale(0.99);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        /* Slide Header Typography */
+        .slide-category {
+            font-family: var(--font-mono);
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--color-gold);
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .slide-category::before {
+            content: "";
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background: var(--color-gold);
+            border-radius: 50%;
+        }
+
+        .slide-title {
+            font-family: var(--font-heading);
+            font-size: 30px;
+            font-weight: 800;
+            color: var(--color-white);
+            letter-spacing: -0.5px;
+            margin-bottom: 8px;
+            line-height: 1.2;
+        }
+
+        .slide-subtitle {
+            font-size: 14px;
+            color: var(--color-slate);
+            margin-bottom: 28px;
+            line-height: 1.5;
+            max-width: 1000px;
+        }
+
+        /* Card Layouts */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 22px;
+            flex: 1;
+        }
+
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            flex: 1;
+        }
+
+        .grid-4 {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 18px;
+            flex: 1;
+        }
+
+        .grid-5 {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 16px;
+            flex: 1;
+        }
+
+        .feature-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: 20px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            transition: all 0.25s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .feature-card:hover {
+            border-color: var(--color-gold);
+            background: var(--bg-card-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+        }
+
+        .feature-card.gold-border {
+            border-color: var(--border-highlight);
+        }
+
+        .feature-card.cyan-border {
+            border-color: rgba(6, 182, 212, 0.35);
+        }
+
+        .feature-card.emerald-border {
+            border-color: rgba(16, 185, 129, 0.35);
+        }
+
+        .card-number {
+            font-family: var(--font-mono);
+            font-size: 11px;
+            font-weight: 800;
+            color: var(--color-gold);
+            margin-bottom: 8px;
+        }
+
+        .card-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--color-white);
+            margin-bottom: 12px;
+            line-height: 1.3;
+        }
+
+        .card-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 9px;
+            flex: 1;
+        }
+
+        .card-list li {
+            font-size: 12px;
+            line-height: 1.45;
+            color: var(--color-offwhite);
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+        }
+
+        .card-list li::before {
+            content: "•";
+            color: var(--color-gold);
+            font-size: 14px;
+            line-height: 1;
+        }
+
+        .card-list li strong {
+            color: var(--color-white);
+            font-weight: 600;
+        }
+
+        /* Metric KPI Highlights */
+        .kpi-card {
+            background: linear-gradient(180deg, var(--bg-card) 0%, rgba(16, 23, 46, 0.6) 100%);
+            border: 1px solid var(--border-subtle);
+            border-radius: 22px;
+            padding: 30px 24px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .kpi-card:hover {
+            border-color: var(--color-gold);
+            transform: translateY(-4px);
+        }
+
+        .kpi-value {
+            font-family: var(--font-heading);
+            font-size: 48px;
+            font-weight: 900;
+            color: var(--color-gold);
+            margin-bottom: 8px;
+            line-height: 1;
+        }
+
+        .kpi-label {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--color-white);
+            margin-bottom: 12px;
+        }
+
+        .kpi-desc {
+            font-size: 12px;
+            color: var(--color-slate);
+            line-height: 1.5;
+        }
+
+        /* Title Slide Custom Hero */
+        .hero-title-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            max-width: 1000px;
+        }
+
+        .hero-badge-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(229, 169, 60, 0.1);
+            border: 1px solid rgba(229, 169, 60, 0.3);
+            color: var(--color-gold);
+            font-family: var(--font-mono);
+            font-size: 11px;
+            font-weight: 700;
+            padding: 6px 14px;
+            border-radius: 20px;
+            margin-bottom: 20px;
+            width: fit-content;
+        }
+
+        .hero-h1 {
+            font-family: var(--font-heading);
+            font-size: 46px;
+            font-weight: 900;
+            color: var(--color-white);
+            line-height: 1.15;
+            letter-spacing: -0.5px;
+            margin-bottom: 16px;
+        }
+
+        .hero-h1 span {
+            color: var(--color-gold);
+        }
+
+        .hero-desc {
+            font-size: 16px;
+            color: var(--color-slate);
+            line-height: 1.6;
+            margin-bottom: 34px;
+            max-width: 860px;
+        }
+
+        .hero-meta-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            padding-top: 24px;
+            border-top: 1px solid var(--border-subtle);
+        }
+
+        .meta-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .meta-label {
+            font-family: var(--font-mono);
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--color-slate);
+        }
+
+        .meta-val {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--color-white);
+        }
+
+        /* Bottom Status & Navigation Bar */
+        footer.deck-footer {
+            position: relative;
+            z-index: 20;
+            height: 56px;
+            border-top: 1px solid var(--border-subtle);
+            background: rgba(6, 9, 18, 0.95);
+            backdrop-filter: blur(12px);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 28px;
+        }
+
+        .slide-counter {
+            font-family: var(--font-mono);
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--color-slate);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .slide-counter span.current {
+            color: var(--color-gold);
+            font-size: 14px;
+        }
+
+        .deck-progress-bar {
+            flex: 1;
+            max-width: 480px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 0 24px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--color-gold);
+            width: 8.3%;
+            transition: width 0.3s ease;
+        }
+
+        .nav-buttons {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .nav-btn {
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            color: var(--color-white);
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            transition: all 0.2s ease;
+        }
+
+        .nav-btn:hover:not(:disabled) {
+            background: var(--color-gold);
+            color: #050811;
+            border-color: var(--color-gold);
+        }
+
+        .nav-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        /* Print formatting */
+        @media print {
+            body {
+                overflow: visible !important;
+                height: auto !important;
+                background: #000 !important;
+            }
+            header, footer, .ambient-grid {
+                display: none !important;
+            }
+            main.stage {
+                padding: 0 !important;
+                display: block !important;
+            }
+            .slide-viewport {
+                max-width: 100% !important;
+                max-height: none !important;
+                border: none !important;
+                box-shadow: none !important;
+                padding: 20px !important;
+            }
+            .slide {
+                display: flex !important;
+                page-break-after: always;
+                min-height: 90vh;
+                margin-bottom: 40px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="ambient-grid"></div>
+
+    <!-- Header Control Bar -->
+    <header class="deck-header">
+        <div class="brand-cluster">
+            <div class="brand-logo">
+                <span>E3</span> RENTALS
+            </div>
+            <div class="brand-badge">ENTERPRISE PLATFORM BRIEFING</div>
+        </div>
+
+        <div class="header-controls">
+            <button class="control-btn" id="fullscreen-btn" title="Toggle Fullscreen (F)">
+                ⛶ Fullscreen
+            </button>
+            <button class="control-btn" onclick="window.print()" title="Print or Save as PDF">
+                🖶 Print to PDF
+            </button>
+            <a href="/E3_Rentals_Enterprise_Platform_Presentation.pptx" download class="control-btn primary" title="Download editable PowerPoint presentation">
+                ⬇ Download PPTX
+            </a>
+        </div>
+    </header>
+
+    <!-- Presentation Stage Viewport -->
+    <main class="stage">
+        <div class="slide-viewport">
+
+            <!-- SLIDE 1: TITLE SLIDE -->
+            <div class="slide active" id="slide-1">
+                <div class="hero-title-container">
+                    <div class="hero-badge-pill">
+                        ★ LIVE EVENT PRODUCTION & AV LOGISTICS OS
+                    </div>
+                    <h1 class="hero-h1">
+                        E3 Rentals <span>Enterprise</span>
+                    </h1>
+                    <p class="hero-desc">
+                        The definitive next-generation equipment rental platform integrating real-time 3D spatial digital twin warehouse tracking, automated multi-tier booking contracts, fleet transport logistics, and photographic chain-of-custody damage prevention.
+                    </p>
+                    <div class="hero-meta-grid">
+                        <div class="meta-item">
+                            <span class="meta-label">ARCHITECTURE</span>
+                            <span class="meta-val">Next.js 16 & Drizzle ORM</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">FACILITY RESOLUTION</span>
+                            <span class="meta-val">1.0m Spatial Digital Twin</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">RESILIENCE</span>
+                            <span class="meta-val">Offline-First IndexedDB</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">GOVERNANCE</span>
+                            <span class="meta-val">Multi-Tenant Vendor RBAC</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLIDE 2: THE CHALLENGE VS THE SOLUTION -->
+            <div class="slide" id="slide-2">
+                <div class="slide-category">Executive Overview</div>
+                <h2 class="slide-title">The AV Rental Disconnect & The E3 Solution</h2>
+                <p class="slide-subtitle">Why traditional ERPs and generic rental software fail high-stakes live events, and how E3 Rentals closes the critical operational gaps.</p>
+                
+                <div class="grid-3">
+                    <div class="feature-card" style="border-color: rgba(244, 63, 94, 0.35);">
+                        <div class="card-number" style="color: var(--color-rose);">THE INDUSTRY CHALLENGE</div>
+                        <div class="card-title">Where Operations Break Down</div>
+                        <ul class="card-list">
+                            <li><strong>Spatial Blindness:</strong> Warehouse crews spend hours looking for specific serialized hardware across multi-tier racks.</li>
+                            <li><strong>Disputed Damage Claims:</strong> Without photo proof, clients argue over repair costs, costing vendors tens of thousands.</li>
+                            <li><strong>Sub-Rental Confusion:</strong> Cross-hires are managed on spreadsheets, causing inventory conflicts and margin loss.</li>
+                            <li><strong>Basement Blackouts:</strong> Steel bunker stadiums and desert venues have zero Wi-Fi, crashing web-only tools.</li>
+                        </ul>
+                    </div>
+
+                    <div class="feature-card" style="border-color: rgba(16, 185, 129, 0.35);">
+                        <div class="card-number" style="color: var(--color-emerald);">THE E3 RENTALS ENGINE</div>
+                        <div class="card-title">Purpose-Built Event Logistics</div>
+                        <ul class="card-list">
+                            <li><strong>Interactive Digital Twin:</strong> 3D & 2D spatial layouts guide pickers directly to the exact shelf tier and slot.</li>
+                            <li><strong>Visual QC Lab Pipeline:</strong> Inbound audits capture timestamped optical photo evidence of returned gear.</li>
+                            <li><strong>Sub-Rental Margin Engine:</strong> Outsources shortfalls to approved third-party vendors while locking in profit.</li>
+                            <li><strong>Zero-Downtime Offline Sync:</strong> Full client-side offline queue lets scanners run uninterrupted in basements.</li>
+                        </ul>
+                    </div>
+
+                    <div class="feature-card" style="border-color: rgba(229, 169, 60, 0.35);">
+                        <div class="card-number" style="color: var(--color-gold);">MEASURABLE OUTCOMES</div>
+                        <div class="card-title">Proven Financial & Speed ROI</div>
+                        <ul class="card-list">
+                            <li><strong>65% Faster Picking:</strong> Turnaround times cut by more than half with illuminated walking directions.</li>
+                            <li><strong>99.4% Asset Recovery:</strong> Zero missing cables or accessories on show site via smart flight case kitting.</li>
+                            <li><strong>100% Dispute Elimination:</strong> Indisputable photographic chain of custody secures deposit retention.</li>
+                            <li><strong>4.2x Faster Deals:</strong> Dynamic rate cards and automated contracts close enterprise bids in minutes.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLIDE 3: OPERATIONAL TOPOLOGY -->
+            <div class="slide" id="slide-3">
+                <div class="slide-category">System Architecture</div>
+                <h2 class="slide-title">End-to-End Operational Workflow Ecosystem</h2>
+                <p class="slide-subtitle">A seamless lifecycle coordinating client inquiry, spatial warehouse pick, road fleet transit, and return decontamination.</p>
+                
+                <div class="grid-5">
+                    <div class="feature-card">
+                        <div class="card-number">STEP 01</div>
+                        <div class="card-title">Catalog & Booking</div>
+                        <p style="font-size: 11px; color: var(--color-slate); line-height: 1.5;">Clients discover gear, verify live calendar availability, configure multi-day terms, and submit requests.</p>
+                    </div>
+
+                    <div class="feature-card">
+                        <div class="card-number">STEP 02</div>
+                        <div class="card-title">Quote & Contract</div>
+                        <p style="font-size: 11px; color: var(--color-slate); line-height: 1.5;">Admins review timelines, apply custom discounts or damage deposit rules, and execute digital contracts.</p>
+                    </div>
+
+                    <div class="feature-card gold-border">
+                        <div class="card-number">STEP 03</div>
+                        <div class="card-title">Digital Twin Pick</div>
+                        <p style="font-size: 11px; color: var(--color-slate); line-height: 1.5;">Handlers search asset tags to light up 3D floor beacons, follow arterial highways, and pull slotted tiers.</p>
+                    </div>
+
+                    <div class="feature-card">
+                        <div class="card-number">STEP 04</div>
+                        <div class="card-title">Fleet Dispatch</div>
+                        <p style="font-size: 11px; color: var(--color-slate); line-height: 1.5;">Truck consolidation, PDF transport manifests, driver route scheduling, and electronic gate sign-offs.</p>
+                    </div>
+
+                    <div class="feature-card">
+                        <div class="card-number">STEP 05</div>
+                        <div class="card-title">Inbound QC Audit</div>
+                        <p style="font-size: 11px; color: var(--color-slate); line-height: 1.5;">Check-in scanning, quarantine lab isolation, automated damage photo claims, and health score refresh.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLIDE 4: MODULES 1 & 2 -->
+            <div class="slide" id="slide-4">
+                <div class="slide-category">Modules 1 & 2</div>
+                <h2 class="slide-title">Catalog Booking Engine & 3D Digital Twin Studio</h2>
+                <p class="slide-subtitle">Empowering commercial clients with instant self-service while equipping warehouse staff with CAD-grade spatial intelligence.</p>
+                
+                <div class="grid-2">
+                    <div class="feature-card cyan-border">
+                        <div class="card-number">MODULE 01</div>
+                        <div class="card-title">Interactive Catalog & Dynamic Booking Engine</div>
+                        <ul class="card-list">
+                            <li><strong>Category Navigation:</strong> High-res photo galleries and technical specifications across Audio, Lighting, LED Video, Staging, and Rigging.</li>
+                            <li><strong>Live Availability Engine:</strong> Prevents overbooking by verifying serialized unit availability across dates in real time.</li>
+                            <li><strong>Dynamic Tiered Day Rates:</strong> Automated multi-day discounts (e.g. Day 1: 100%, Day 2: 70%, Day 3+: 50%) and weekend project pricing.</li>
+                            <li><strong>5-Stage Project Pipeline:</strong> Clear lifecycle progression: Request &rarr; Quote Sent &rarr; Changes Requested &rarr; Approved &rarr; Active Booking.</li>
+                        </ul>
+                    </div>
+
+                    <div class="feature-card gold-border">
+                        <div class="card-number">MODULE 02</div>
+                        <div class="card-title">Warehouse Digital Twin & Spatial Layout Studio</div>
+                        <ul class="card-list">
+                            <li><strong>3D Isometric & 2D Top-Down Views:</strong> Seamless toggle between volumetric 3D extruded storage units and high-precision CAD floor plans.</li>
+                            <li><strong>Sub-Second Spatial Locator:</strong> Search any asset tag, RFID, or gear name to illuminate the rack on the map with animated routing.</li>
+                            <li><strong>Studio Layout Editor:</strong> Drag-and-drop racks, dock bays, quarantine labs, and pedestrian corridors with live snap-to-grid.</li>
+                            <li><strong>Non-Blocking Floating Inspector:</strong> Slide-over drawer reveals vertical 4-tier storage without ever hiding the physical layout map.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLIDE 5: MODULES 3 & 4 -->
+            <div class="slide" id="slide-5">
+                <div class="slide-category">Modules 3 & 4</div>
+                <h2 class="slide-title">Occupancy Heatmaps & Serialized Putaway Operations</h2>
+                <p class="slide-subtitle">Eliminating storage bottlenecks, identifying dead warehouse corners, and tracking equipment down to the individual shelf.</p>
+                
+                <div class="grid-2">
+                    <div class="feature-card cyan-border">
+                        <div class="card-number">MODULE 03</div>
+                        <div class="card-title">Occupancy Heatmaps & Cold Dead-Spot Analytics</div>
+                        <ul class="card-list">
+                            <li><strong>Occupancy Heatmap Layer:</strong> Visual color coding: Cyan (100% Empty), Green (1-40% Optimal), Amber (41-80%), Red (&gt;80% Locked).</li>
+                            <li><strong>Velocity & Dead-Spot Intelligence:</strong> Highlights fast-moving turnover racks in Orange vs dormant cold corners (&gt;60 days unpicked) in Icy Indigo.</li>
+                            <li><strong>Facility Efficiency Score:</strong> Real-time 0-100 algorithmic flow rating evaluating spatial balance and picking obstruction.</li>
+                            <li><strong>Empty Rack Putaway Filter:</strong> Instantly isolates empty racks ready for incoming event putaway.</li>
+                        </ul>
+                    </div>
+
+                    <div class="feature-card gold-border">
+                        <div class="card-number">MODULE 04</div>
+                        <div class="card-title">Serialized Inventory & Directed Putaway Operations</div>
+                        <ul class="card-list">
+                            <li><strong>Vertical 4-Tier Breakdown:</strong> Visualizes Tier 1 (Base) through Tier 4 (Top) with slot capacity, weight limits, and fill percentages.</li>
+                            <li><strong>Serialized Profiles:</strong> Comprehensive logs of Asset Tag Codes, RFID chips, serial numbers, firmware versions, and usage hours.</li>
+                            <li><strong>Condition Grade Audits:</strong> Automated status assignment (EXCELLENT, GOOD, FAIR, MAINTENANCE_REQUIRED).</li>
+                            <li><strong>Industrial Label Printing:</strong> Integrates directly with Zebra ZT411 and barcode printers for instant QR/RFID tag creation.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLIDE 6: MODULES 5 & 6 -->
+            <div class="slide" id="slide-6">
+                <div class="slide-category">Modules 5 & 6</div>
+                <h2 class="slide-title">Fleet Logistics Management & Smart Flight Case Kitting</h2>
+                <p class="slide-subtitle">Orchestrating road fleet dispatches, transport manifests, and bulletproof master-slave case packaging.</p>
+                
+                <div class="grid-2">
+                    <div class="feature-card emerald-border">
+                        <div class="card-number">MODULE 05</div>
+                        <div class="card-title">Fleet Logistics Management & Driver Dispatch</div>
+                        <ul class="card-list">
+                            <li><strong>Multi-Vehicle Fleet Tracking:</strong> Monitor Actros heavy haulers, Luton box vans, and runners with payload, fuel, and service logs.</li>
+                            <li><strong>Digital Transport Manifests:</strong> Auto-generate legal PDF cargo manifests detailing vehicle assignments and destination venues.</li>
+                            <li><strong>Driver Route Sequencing:</strong> Assign drivers, schedule load-in/load-out windows, and monitor real-time delivery status.</li>
+                            <li><strong>Electronic Chain of Custody:</strong> Driver e-signature capture at warehouse gate exit and client venue delivery handover.</li>
+                        </ul>
+                    </div>
+
+                    <div class="feature-card gold-border">
+                        <div class="card-number">MODULE 06</div>
+                        <div class="card-title">Smart Flight Case Manager & Kitting Audits</div>
+                        <ul class="card-list">
+                            <li><strong>Parent-Child Asset Pairing:</strong> Group delicate consoles, moving heads, or transceivers inside serialized heavy road cases.</li>
+                            <li><strong>Pre-Dispatch Kit Checklists:</strong> Digital enforcement ensures power cords, safety bonds, and clamps are inside before sealing.</li>
+                            <li><strong>Rapid Barcode Pack Verification:</strong> Scan flight case outer QR code to immediately verify all bundled sub-components.</li>
+                            <li><strong>Missing Component Alerts:</strong> Blocks dispatch if any paired item is missing, preventing disastrous show-day cable shortages.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLIDE 7: MODULES 7 & 8 -->
+            <div class="slide" id="slide-7">
+                <div class="slide-category">Modules 7 & 8</div>
+                <h2 class="slide-title">QC Inspection Lab & Cross-Hire Brokerage Engine</h2>
+                <p class="slide-subtitle">Preserving equipment health through rigorous return audits while scaling fleet capacity through partner sub-rentals.</p>
+                
+                <div class="grid-2">
+                    <div class="feature-card" style="border-color: rgba(244, 63, 94, 0.35);">
+                        <div class="card-number" style="color: var(--color-rose);">MODULE 07</div>
+                        <div class="card-title">QC Inspection Lab & Automated Damage Claims</div>
+                        <ul class="card-list">
+                            <li><strong>Inbound Return Audit Station:</strong> Dedicated station workflow for staging return pallets, testing electronics, and decontaminating.</li>
+                            <li><strong>Visual Optical Evidence Capture:</strong> Take and link high-resolution photographic proof of scratches, tears, or blown components.</li>
+                            <li><strong>Automated Damage Deductions:</strong> Generates itemized repair invoices linked to the booking with client deposit hold.</li>
+                            <li><strong>Equipment Health Score (0-100):</strong> Algorithmic health tracking based on total rental hours, inspection notes, and repair cycles.</li>
+                        </ul>
+                    </div>
+
+                    <div class="feature-card gold-border">
+                        <div class="card-number">MODULE 08</div>
+                        <div class="card-title">Cross-Hire Brokerage & Sub-Rental Margins</div>
+                        <ul class="card-list">
+                            <li><strong>Third-Party Partner Sourcing:</strong> Fulfill massive festival rider requirements by seamlessly sub-renting from vetted AV peers.</li>
+                            <li><strong>Split-Cost Margin Tracking:</strong> Automatically calculates supplier cost vs client billable rate to lock in profit margins.</li>
+                            <li><strong>Sub-Vendor Purchase Orders:</strong> Instantly produces professional PDF purchase orders with agreed liability terms.</li>
+                            <li><strong>Cross-Hire Barcode Tagging:</strong> Temporary barcode assignment prevents external equipment from getting lost in internal stock.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLIDE 8: MODULES 9 & 10 -->
+            <div class="slide" id="slide-8">
+                <div class="slide-category">Modules 9 & 10</div>
+                <h2 class="slide-title">Billing Automation, Security Deposits & Enterprise RBAC</h2>
+                <p class="slide-subtitle">Securing revenue flow, managing damage liabilities, and enforcing bulletproof multi-tenant access control.</p>
+                
+                <div class="grid-2">
+                    <div class="feature-card cyan-border">
+                        <div class="card-number">MODULE 09</div>
+                        <div class="card-title">Dynamic Billing Logic & Security Deposit Engine</div>
+                        <ul class="card-list">
+                            <li><strong>Multi-Tier Rate Cards:</strong> Configure daily multipliers, weekly caps, festival surcharges, and crew labor pricing.</li>
+                            <li><strong>Security Deposit Management:</strong> Automatically calculate and hold damage deposits based on gear value; release with one click.</li>
+                            <li><strong>Net-30 Corporate Terms:</strong> Automated VAT calculation, corporate credit terms, and instant PDF invoice generation.</li>
+                            <li><strong>Milestone Payment Tracking:</strong> Monitor 50% booking deposits, prepayments, and final post-event balance reconciliations.</li>
+                        </ul>
+                    </div>
+
+                    <div class="feature-card gold-border">
+                        <div class="card-number">MODULE 10</div>
+                        <div class="card-title">Multi-Tenant RBAC & Zero-Downtime Offline Engine</div>
+                        <ul class="card-list">
+                            <li><strong>Role-Based Access Control:</strong> Strict permission boundaries for Super Admin, Warehouse Manager, Logistics Driver, and Client.</li>
+                            <li><strong>Multi-Facility Segregation:</strong> Supports independent warehouse hubs (e.g. Industrial Area 01, Lusail Depot) with tenant isolation.</li>
+                            <li><strong>Zero-Downtime Offline Engine:</strong> IndexedDB client queue allows scanning in concrete basements; syncs automatically when online.</li>
+                            <li><strong>Cryptographic Audit Trails:</strong> Every movement, putaway, and damage report is logged with user identity and timestamp.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLIDE 9: TOP 10 FEATURES (PART 1) -->
+            <div class="slide" id="slide-9">
+                <div class="slide-category">Competitive Edge</div>
+                <h2 class="slide-title">The 10 Best Features Why E3 Rentals Is Worth It (1-5)</h2>
+                <p class="slide-subtitle">Five operational breakthroughs that eliminate warehouse chaos, speed up load-in, and guarantee gear reliability.</p>
+                
+                <div class="grid-3">
+                    <div class="feature-card gold-border">
+                        <div class="card-number">FEATURE 01</div>
+                        <div class="card-title">Interactive 3D/2D Spatial Digital Twin</div>
+                        <p style="font-size: 12px; color: var(--color-slate); line-height: 1.5;">Volumetric 3D extrusion combined with 1.0m CAD blueprinting transforms the warehouse into an interactive control room.</p>
+                    </div>
+
+                    <div class="feature-card gold-border">
+                        <div class="card-number">FEATURE 02</div>
+                        <div class="card-title">Sub-Second Real-Time Spatial Locator</div>
+                        <p style="font-size: 12px; color: var(--color-slate); line-height: 1.5;">Search any serial tag or gear name to light up an animated pulsing beacon with exact shelf tier coordinates.</p>
+                    </div>
+
+                    <div class="feature-card gold-border">
+                        <div class="card-number">FEATURE 03</div>
+                        <div class="card-title">Smart Flight Case & Cable Kitting</div>
+                        <p style="font-size: 12px; color: var(--color-slate); line-height: 1.5;">Enforces paired component audits before sealing cases, eliminating missing show cables and forgotten accessories.</p>
+                    </div>
+
+                    <div class="feature-card gold-border">
+                        <div class="card-number">FEATURE 04</div>
+                        <div class="card-title">Occupancy & Dead-Spot Heatmaps</div>
+                        <p style="font-size: 12px; color: var(--color-slate); line-height: 1.5;">Automated detection of non-performing storage and fast-moving turnover aisles maximizes warehouse floor ROI.</p>
+                    </div>
+
+                    <div class="feature-card gold-border">
+                        <div class="card-number">FEATURE 05</div>
+                        <div class="card-title">Non-Blocking Floating Inspector</div>
+                        <p style="font-size: 12px; color: var(--color-slate); line-height: 1.5;">Inspect 4-tier vertical shelving and slot details without ever obscuring or dimming the warehouse floor plan.</p>
+                    </div>
+
+                    <div class="feature-card cyan-border" style="background: rgba(6, 182, 212, 0.05);">
+                        <div class="card-number" style="color: var(--color-cyan);">OPERATIONAL BENCHMARK</div>
+                        <div class="card-title" style="color: var(--color-cyan);">65% Faster Prep</div>
+                        <p style="font-size: 12px; color: var(--color-offwhite); line-height: 1.5;">Features 1-5 cut equipment retrieval times from 45 minutes to under 15 minutes per festival truck.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLIDE 10: TOP 10 FEATURES (PART 2) -->
+            <div class="slide" id="slide-10">
+                <div class="slide-category">Competitive Edge</div>
+                <h2 class="slide-title">The 10 Best Features Why E3 Rentals Is Worth It (6-10)</h2>
+                <p class="slide-subtitle">Five commercial and architectural engines that protect company margins and guarantee zero downtime.</p>
+                
+                <div class="grid-3">
+                    <div class="feature-card gold-border">
+                        <div class="card-number">FEATURE 06</div>
+                        <div class="card-title">Photographic Damage Evidence Pipeline</div>
+                        <p style="font-size: 12px; color: var(--color-slate); line-height: 1.5;">High-resolution optical photo capture at return check-in eliminates client deposit disputes with indisputable proof.</p>
+                    </div>
+
+                    <div class="feature-card gold-border">
+                        <div class="card-number">FEATURE 07</div>
+                        <div class="card-title">Digital Transport Manifests & Sign-Off</div>
+                        <p style="font-size: 12px; color: var(--color-slate); line-height: 1.5;">Automated PDF cargo manifests with electronic driver sign-offs ensure full legal compliance on the road.</p>
+                    </div>
+
+                    <div class="feature-card gold-border">
+                        <div class="card-number">FEATURE 08</div>
+                        <div class="card-title">Zero-Downtime Offline-First Sync</div>
+                        <p style="font-size: 12px; color: var(--color-slate); line-height: 1.5;">IndexedDB background queue keeps warehouse barcode scanners working in underground basements without internet.</p>
+                    </div>
+
+                    <div class="feature-card gold-border">
+                        <div class="card-number">FEATURE 09</div>
+                        <div class="card-title">Cross-Hire Margin Brokerage Engine</div>
+                        <p style="font-size: 12px; color: var(--color-slate); line-height: 1.5;">Source missing equipment from partner AV vendors with automated purchase orders and locked-in profit margins.</p>
+                    </div>
+
+                    <div class="feature-card gold-border">
+                        <div class="card-number">FEATURE 10</div>
+                        <div class="card-title">Enterprise Multi-Tenant RBAC & Security</div>
+                        <p style="font-size: 12px; color: var(--color-slate); line-height: 1.5;">Strict permission layers for Super Admins, Managers, Drivers, and Clients with cryptographic audit logging.</p>
+                    </div>
+
+                    <div class="feature-card emerald-border" style="background: rgba(16, 185, 129, 0.05);">
+                        <div class="card-number" style="color: var(--color-emerald);">COMMERCIAL BENCHMARK</div>
+                        <div class="card-title" style="color: var(--color-emerald);">100% Deposit Recovery</div>
+                        <p style="font-size: 12px; color: var(--color-offwhite); line-height: 1.5;">Features 6-10 eliminate unrecovered equipment damages and capture up to 18% in previously lost sub-hire margins.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLIDE 11: ROI & METRICS -->
+            <div class="slide" id="slide-11">
+                <div class="slide-category">Business Case</div>
+                <h2 class="slide-title">Quantifiable ROI & Operational Impact Benchmarks</h2>
+                <p class="slide-subtitle">Real-world performance metrics achieved by transitioning to E3 Rentals' integrated platform.</p>
+                
+                <div class="grid-4">
+                    <div class="kpi-card">
+                        <div class="kpi-value">65%</div>
+                        <div class="kpi-label">Faster Pick & Prep</div>
+                        <p class="kpi-desc">Operators navigate digital twin pathways directly to the required rack tier, eliminating wandering.</p>
+                    </div>
+
+                    <div class="kpi-card">
+                        <div class="kpi-value">99.4%</div>
+                        <div class="kpi-label">Asset Accountability</div>
+                        <p class="kpi-desc">Smart flight case kitting and serialized barcoding virtually eliminate missing show gear.</p>
+                    </div>
+
+                    <div class="kpi-card">
+                        <div class="kpi-value">100%</div>
+                        <div class="kpi-label">Dispute Elimination</div>
+                        <p class="kpi-desc">Timestamped photographic check-in audits provide indisputable legal evidence for damage deductions.</p>
+                    </div>
+
+                    <div class="kpi-card">
+                        <div class="kpi-value">4.2x</div>
+                        <div class="kpi-label">Quote Conversion Speed</div>
+                        <p class="kpi-desc">Dynamic multi-day pricing algorithms generate ready-to-sign digital contracts in under 3 minutes.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLIDE 12: DEPLOYMENT ROADMAP -->
+            <div class="slide" id="slide-12">
+                <div class="slide-category">Rollout Plan</div>
+                <h2 class="slide-title">Enterprise Deployment Roadmap & Next Steps</h2>
+                <p class="slide-subtitle">A phased, low-risk onboarding model taking facilities from blueprint upload to fully automated operations.</p>
+                
+                <div class="grid-2">
+                    <div class="feature-card emerald-border">
+                        <div class="card-number">ARCHITECTURE SUMMARY</div>
+                        <div class="card-title">Production-Ready Enterprise Stack</div>
+                        <ul class="card-list">
+                            <li><strong>High Velocity:</strong> Built on Next.js 16 App Router, React 19, and Tailwind CSS for instant sub-second responses.</li>
+                            <li><strong>Database Resilience:</strong> Drizzle ORM connected to pooled PostgreSQL with full transactional safety.</li>
+                            <li><strong>Industrial Hardware Support:</strong> Native compatibility with Zebra barcode scanners, RFID readers, and thermal tag printers.</li>
+                            <li><strong>Unified Ecosystem:</strong> Replaces 5 fragmented software subscriptions with a single cohesive operating system.</li>
+                        </ul>
+                    </div>
+
+                    <div class="feature-card gold-border">
+                        <div class="card-number">PHASED ROLLOUT</div>
+                        <div class="card-title">5-Stage Onboarding Path</div>
+                        <ul class="card-list">
+                            <li><strong>Phase 1 (Week 1):</strong> Map physical layout, aisles, and 4-tier racks in the Interactive Layout Studio.</li>
+                            <li><strong>Phase 2 (Week 2):</strong> Batch print Zebra QR tags, barcode equipment, and assemble master flight cases.</li>
+                            <li><strong>Phase 3 (Week 3):</strong> Register transport fleet vehicles and onboard logistics drivers with mobile access.</li>
+                            <li><strong>Phase 4 (Week 4):</strong> Launch client portal, configure rate cards, and begin live quotation workflows.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Bottom Navigation Footer -->
+    <footer class="deck-footer">
+        <div class="slide-counter">
+            SLIDE <span class="current" id="slide-num">1</span> OF <span id="slide-total">12</span>
+        </div>
+
+        <div class="deck-progress-bar">
+            <div class="progress-fill" id="progress-fill"></div>
+        </div>
+
+        <div class="nav-buttons">
+            <button class="nav-btn" id="prev-btn" onclick="prevSlide()" title="Previous Slide (← / ↑)">‹</button>
+            <button class="nav-btn" id="next-btn" onclick="nextSlide()" title="Next Slide (→ / ↓ / Space)">›</button>
+        </div>
+    </footer>
+
+    <script>
+        const slides = document.querySelectorAll('.slide');
+        const slideNumEl = document.getElementById('slide-num');
+        const slideTotalEl = document.getElementById('slide-total');
+        const progressFill = document.getElementById('progress-fill');
+        const prevBtn = document.getElementById('prev-btn');
+        const nextBtn = document.getElementById('next-btn');
+
+        let currentSlide = 0;
+        const totalSlides = slides.length;
+        slideTotalEl.textContent = totalSlides;
+
+        function updateSlide(index) {
+            if (index < 0 || index >= totalSlides) return;
+            
+            slides[currentSlide].classList.remove('active');
+            currentSlide = index;
+            slides[currentSlide].classList.add('active');
+
+            slideNumEl.textContent = currentSlide + 1;
+            progressFill.style.width = `${((currentSlide + 1) / totalSlides) * 100}%`;
+
+            prevBtn.disabled = currentSlide === 0;
+            nextBtn.disabled = currentSlide === totalSlides - 1;
+        }
+
+        function nextSlide() {
+            if (currentSlide < totalSlides - 1) updateSlide(currentSlide + 1);
+        }
+
+        function prevSlide() {
+            if (currentSlide > 0) updateSlide(currentSlide - 1);
+        }
+
+        // Keyboard Navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') {
+                e.preventDefault();
+                nextSlide();
+            } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+                e.preventDefault();
+                prevSlide();
+            } else if (e.key.toLowerCase() === 'f') {
+                toggleFullscreen();
+            }
+        });
+
+        // Fullscreen Toggle
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(() => {});
+            } else {
+                document.exitFullscreen().catch(() => {});
+            }
+        }
+        document.getElementById('fullscreen-btn').addEventListener('click', toggleFullscreen);
+
+        // Initial update
+        updateSlide(0);
+    </script>
+</body>
+</html>
