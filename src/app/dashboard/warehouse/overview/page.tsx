@@ -10,7 +10,8 @@ import {
     Scan, LayoutGrid, Printer, ShieldAlert, Boxes,
     CheckSquare, ArrowLeftRight, Grid, ClipboardList,
     Clock, Sparkles, MapPin, Radio, Activity, ArrowRight,
-    FileSignature, CheckCircle2, Navigation, Gauge, Battery
+    FileSignature, CheckCircle2, Navigation, Gauge, Battery,
+    Map
 } from "lucide-react";
 import Link from "next/link";
 import { format, addDays, startOfDay, endOfDay } from "date-fns";
@@ -175,6 +176,14 @@ export default async function WarehouseOverviewPage() {
             iconColor: "text-blue-400",
         },
         {
+            href: "/dashboard/warehouse/map",
+            icon: Map,
+            label: "3D Floor Map",
+            sub: "Digital Twin · Locator",
+            accent: "from-amber-500/20 to-amber-600/5 border-amber-500/25 hover:border-amber-500/60",
+            iconColor: "text-[var(--color-gold)]",
+        },
+        {
             href: "/dashboard/warehouse/setup",
             icon: Wrench,
             label: "Hardware Setup",
@@ -249,6 +258,14 @@ export default async function WarehouseOverviewPage() {
                         <span className="text-slate-400">RFID Wedge:</span>
                         <span className="font-bold text-white">Active</span>
                     </div>
+
+                    <Link
+                        href="/dashboard/warehouse/map"
+                        className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider bg-white/[0.04] hover:bg-white/[0.08] text-white border border-white/10 transition-all active:scale-95"
+                    >
+                        <Map className="w-4 h-4 text-amber-400" />
+                        Floor Map 3D
+                    </Link>
 
                     <Link
                         href="/dashboard/warehouse/fulfillment"
